@@ -285,6 +285,132 @@ definition expansion :: "array \<Rightarrow> nat \<Rightarrow> array" ("_[_]" [8
       else strip_zero_rows (G_block A @ Bs_concat A n))"
 
 
+text \<open>
+  Auxiliary computations for the \<open>i = 0\<close> case of the expansion.
+  When \<open>i = 0\<close>, the term \<open>i \<cdot> delta A m\<close> vanishes, so each
+  \<open>bump_col A d 0\<close> just returns the corresponding column of \<open>A\<close>
+  unchanged. Consequently \<open>Bi_block A 0 = B0_block A\<close> and
+  \<open>Bs_concat A 0 = B0_block A\<close>.
+\<close>
+
+lemma bump_col_zero:
+  assumes s_def: "s = (case b0_start A of None \<Rightarrow> 0 | Some s \<Rightarrow> s)"
+  shows "bump_col A d 0 = A ! (s + d)"
+proof -
+  let ?c = "A ! (s + d)"
+  have "bump_col A d 0 = map (\<lambda>m. ?c ! m + 0) [0..<length ?c]"
+    unfolding bump_col_def Let_def using s_def by simp
+  also have "\<dots> = map ((!) ?c) [0..<length ?c]" by simp
+  also have "\<dots> = ?c" by (simp add: map_nth)
+  finally show ?thesis .
+qed
+
+lemma map_nth_offset:
+  assumes "s + n \<le> length xs"
+  shows "map (\<lambda>d. xs ! (s + d)) [0..<n] = take n (drop s xs)"
+proof (rule nth_equalityI)
+  show "length (map (\<lambda>d. xs ! (s + d)) [0..<n]) = length (take n (drop s xs))"
+    using assms by simp
+next
+  fix i assume "i < length (map (\<lambda>d. xs ! (s + d)) [0..<n])"
+  hence "i < n" by simp
+  thus "map (\<lambda>d. xs ! (s + d)) [0..<n] ! i = take n (drop s xs) ! i"
+    using assms by simp
+qed
+
+text \<open>
+  An m-parent of column \<open>i\<close> is always at an earlier position.
+\<close>
+lemma m_parent_lt:
+  "m_parent A m i = Some p \<Longrightarrow> p < i"
+  by (cases m)
+     (auto simp: Let_def split: if_split_asm intro: m_parent_lt_aux)
+
+lemma b0_start_lt:
+  assumes "b0_start A = Some s" "A \<noteq> []"
+  shows "s < last_col_idx A"
+proof -
+  from assms obtain m\<^sub>0 where
+    "max_parent_level A = Some m\<^sub>0"
+    "m_parent A m\<^sub>0 (last_col_idx A) = Some s"
+    unfolding b0_start_def by (auto split: option.splits)
+  thus ?thesis using m_parent_lt by blast
+qed
+
+lemma b0_start_le_length:
+  assumes "b0_start A = Some s" "A \<noteq> []"
+  shows "s < length A"
+  using b0_start_lt[OF assms] assms(2) by (cases A) auto
+
+lemma Bi_block_zero:
+  assumes "A \<noteq> []"
+  shows "Bi_block A 0 = B0_block A"
+proof (cases "b0_start A")
+  case None
+  hence "B0_block A = []" by (simp add: B0_block_def)
+  thus ?thesis using None by (simp add: Bi_block_def Let_def)
+next
+  case (Some s)
+  hence b0_def: "B0_block A = take (last_col_idx A - s) (drop s A)"
+    by (simp add: B0_block_def)
+  have s_lt: "s < length A" using b0_start_le_length[OF Some assms] .
+  have eq_col: "bump_col A d 0 = A ! (s + d)" for d
+    using bump_col_zero[where A = A and d = d and s = s] Some by simp
+  have len_b0_le: "s + length (B0_block A) \<le> length A"
+    using b0_def s_lt by simp
+  have "Bi_block A 0 = map (\<lambda>d. A ! (s + d)) [0..<length (B0_block A)]"
+    unfolding Bi_block_def Let_def using eq_col by simp
+  also have "\<dots> = take (length (B0_block A)) (drop s A)"
+    by (rule map_nth_offset[OF len_b0_le])
+  also have "\<dots> = B0_block A" using b0_def by simp
+  finally show ?thesis .
+qed
+
+lemma Bs_concat_zero: "A \<noteq> [] \<Longrightarrow> Bs_concat A 0 = B0_block A"
+  unfolding Bs_concat_def using Bi_block_zero by simp
+
+text \<open>
+  \<open>G_block A @ B0_block A = butlast A\<close> for any non-empty array.
+\<close>
+
+lemma G_block_B0_block:
+  assumes "A \<noteq> []"
+  shows "G_block A @ B0_block A = butlast A"
+proof (cases "b0_start A")
+  case None
+  thus ?thesis using assms by (simp add: G_block_def B0_block_def)
+next
+  case (Some s)
+  have s_lt: "s < length A" using b0_start_le_length[OF Some assms] .
+  have last_lt: "last_col_idx A < length A" using assms by (cases A) auto
+  have s_lt_last: "s < last_col_idx A" using b0_start_lt[OF Some assms] .
+  have G_eq: "G_block A = take s A" using Some by (simp add: G_block_def)
+  have B0_eq: "B0_block A = take (last_col_idx A - s) (drop s A)"
+    using Some by (simp add: B0_block_def)
+  have "G_block A @ B0_block A = take s A @ take (last_col_idx A - s) (drop s A)"
+    using G_eq B0_eq by simp
+  also have "\<dots> = take (s + (last_col_idx A - s)) A"
+    by (simp add: take_add)
+  also have "\<dots> = take (last_col_idx A) A"
+    using s_lt_last by simp
+  also have "\<dots> = butlast A"
+    using assms by (simp add: butlast_conv_take)
+  finally show ?thesis .
+qed
+
+text \<open>
+  \<open>A[0]\<close> equals \<open>butlast A\<close> after stripping trailing zero rows
+  (Definition 1.1, expansion).
+\<close>
+
+lemma expansion_zero_eq:
+  assumes "A \<noteq> []"
+  shows "A[0] = strip_zero_rows (butlast A)"
+  unfolding expansion_def
+  using assms Bs_concat_zero[OF assms] G_block_B0_block[OF assms]
+  by simp
+
+
 section \<open>The set BMS (Definition 1.1, last paragraph)\<close>
 
 text \<open>

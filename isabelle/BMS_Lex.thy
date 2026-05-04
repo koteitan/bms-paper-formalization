@@ -118,6 +118,17 @@ text \<open>
 lemma arr_lex_Nil_lt: "A \<noteq> [] \<Longrightarrow> [] <\<^sub>l\<^sub>e\<^sub>x A"
   unfolding arr_lex_def by (cases A) auto
 
+lemma butlast_arr_lex: "A \<noteq> [] \<Longrightarrow> butlast A <\<^sub>l\<^sub>e\<^sub>x A"
+  unfolding arr_lex_def
+  using lexord_append_rightI[where r = "{(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+                             and y = "[last A]" and x = "butlast A"]
+        append_butlast_last_id
+  by metis
+
+lemma strip_zero_rows_le_lex:
+  "strip_zero_rows X = X \<or> strip_zero_rows X <\<^sub>l\<^sub>e\<^sub>x X"
+  sorry  \<comment> \<open>placeholder.\<close>
+
 text \<open>
   Totality of \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close> and \<open><\<^sub>l\<^sub>e\<^sub>x\<close> on arbitrary
   inputs (not just BMS), via @{thm lexord_linear}.
@@ -179,6 +190,13 @@ lemma trans_col_lt_set: "trans {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}
 lemma arr_lex_trans:
   "A <\<^sub>l\<^sub>e\<^sub>x B \<Longrightarrow> B <\<^sub>l\<^sub>e\<^sub>x C \<Longrightarrow> A <\<^sub>l\<^sub>e\<^sub>x C"
   unfolding arr_lex_def using lexord_trans[OF _ _ trans_col_lt_set] .
+
+lemma lemma_2_1_zero:
+  assumes "A \<noteq> []"
+  shows "A[0] <\<^sub>l\<^sub>e\<^sub>x A"
+  using expansion_zero_eq[OF assms] butlast_arr_lex[OF assms]
+        strip_zero_rows_le_lex arr_lex_trans
+  by metis
 
 text \<open>
   Auxiliary: from \<open>A' \<le>\<^sub>B A\<close> we obtain either \<open>A' = A\<close> or
