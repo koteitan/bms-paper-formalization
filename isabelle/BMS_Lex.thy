@@ -55,11 +55,21 @@ text \<open>
   specialised to \<open><\<close> on \<open>nat\<close>.
 \<close>
 
+text \<open>
+  We use Isabelle's @{const lexord} to capture the paper's lexicographic
+  order on lists, which compares lists of possibly differing length:
+  a strict prefix is smaller than its extension. The earlier definition
+  via @{const lex} only compared equal-length lists; switching to
+  @{const lexord} matches the paper's intent (e.g.\ \<open>A[n]\<close> may have
+  fewer columns than \<open>A\<close> when \<open>m\<^sub>0\<close> is undefined, and the paper
+  considers it \<open><_lex A\<close>).
+\<close>
+
 definition col_lt :: "column \<Rightarrow> column \<Rightarrow> bool" (infix "<\<^sub>c\<^sub>l\<^sub>e\<^sub>x" 50) where
-  "c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c' \<longleftrightarrow> (c, c') \<in> lex {(x, y). x < y}"
+  "c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c' \<longleftrightarrow> (c, c') \<in> lexord {(x, y). x < y}"
 
 definition arr_lex :: "array \<Rightarrow> array \<Rightarrow> bool" (infix "<\<^sub>l\<^sub>e\<^sub>x" 50) where
-  "A <\<^sub>l\<^sub>e\<^sub>x A' \<longleftrightarrow> (A, A') \<in> lex {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+  "A <\<^sub>l\<^sub>e\<^sub>x A' \<longleftrightarrow> (A, A') \<in> lexord {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
 
 
 section \<open>Lemma 2.1\<close>
@@ -100,14 +110,36 @@ text \<open>
     \<open>A[n] <_lex A\<close>.
 \<close>
 
+text \<open>
+  Auxiliary: an empty list is strictly lex-less than any non-empty list,
+  via @{const lexord} via prefix-extension.
+\<close>
+
+lemma arr_lex_Nil_lt: "A \<noteq> [] \<Longrightarrow> [] <\<^sub>l\<^sub>e\<^sub>x A"
+  unfolding arr_lex_def by (cases A) auto
+
+text \<open>
+  Totality of \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close> and \<open><\<^sub>l\<^sub>e\<^sub>x\<close> on arbitrary
+  inputs (not just BMS), via @{thm lexord_linear}.
+\<close>
+
+lemma col_lt_total: "c = c' \<or> c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c' \<or> c' <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c"
+  unfolding col_lt_def using lexord_linear[where r = "{(x::nat, y). x < y}"]
+  by force
+
+lemma arr_lex_total: "A = B \<or> A <\<^sub>l\<^sub>e\<^sub>x B \<or> B <\<^sub>l\<^sub>e\<^sub>x A"
+  unfolding arr_lex_def
+  using lexord_linear[where r = "{(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"] col_lt_total
+  by blast
+
 lemma lemma_2_1:
   fixes A :: array and n :: nat
   assumes "A \<in> BMS" "A \<noteq> []"
   shows "A[n] <\<^sub>l\<^sub>e\<^sub>x A"
-  sorry  \<comment> \<open>To be proved by structural translation of the paper proof.
-            Non-emptiness is needed because the paper's argument uses the
-            decomposition \<open>A = G + B\<^sub>0 + (C)\<close>, which requires \<open>A \<noteq> []\<close>.
-            For \<open>A = []\<close>, the expansion gives \<open>A[n] = A\<close> by definition.\<close>
+  sorry  \<comment> \<open>The paper's full proof uses the decomposition
+            \<open>A = G + B\<^sub>0 + (C)\<close> and case-splits on whether \<open>m\<^sub>0\<close>
+            is defined. Computational details of the expansion are
+            still being filled in.\<close>
 
 
 section \<open>Corollary 2.2\<close>
@@ -127,24 +159,26 @@ text \<open>
 \<close>
 
 lemma col_lt_irrefl: "\<not> c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c"
-  by (induct c) (auto simp: col_lt_def)
+  unfolding col_lt_def
+  by (rule lexord_irreflexive) auto
 
 lemma arr_lex_irrefl: "\<not> A <\<^sub>l\<^sub>e\<^sub>x A"
-  by (induct A) (auto simp: arr_lex_def col_lt_irrefl)
+  unfolding arr_lex_def
+  by (rule lexord_irreflexive) (auto simp: col_lt_irrefl)
 
 lemma trans_nat_lt: "trans {(x::nat, y). x < y}"
   by (auto simp: trans_def)
 
 lemma col_lt_trans:
   "c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c' \<Longrightarrow> c' <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'' \<Longrightarrow> c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c''"
-  using lex_transI[OF trans_nat_lt] unfolding col_lt_def trans_def by blast
+  unfolding col_lt_def using lexord_trans[OF _ _ trans_nat_lt] .
 
 lemma trans_col_lt_set: "trans {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
   using col_lt_trans by (auto simp: trans_def)
 
 lemma arr_lex_trans:
   "A <\<^sub>l\<^sub>e\<^sub>x B \<Longrightarrow> B <\<^sub>l\<^sub>e\<^sub>x C \<Longrightarrow> A <\<^sub>l\<^sub>e\<^sub>x C"
-  using lex_transI[OF trans_col_lt_set] unfolding arr_lex_def trans_def by blast
+  unfolding arr_lex_def using lexord_trans[OF _ _ trans_col_lt_set] .
 
 text \<open>
   Auxiliary: from \<open>A' \<le>\<^sub>B A\<close> we obtain either \<open>A' = A\<close> or
