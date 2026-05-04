@@ -1,0 +1,15 @@
+session BMS = HOL +
+  description "
+    Formal verification of the well-orderedness of the Bashicu Matrix
+    System (BMS), following Rachel Hunter,
+    'Well-Orderedness of the Bashicu Matrix System' (arXiv:2307.04606v3).
+
+    Version: v0.1.1
+  "
+  options [document = false, quick_and_dirty]
+  theories
+    BMS_Defs
+    BMS_Lex
+    BMS_Ancestry
+    BMS_Stability
+    BMS_WellOrdered

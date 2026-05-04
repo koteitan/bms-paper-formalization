@@ -1,0 +1,6 @@
+.isabelle/
+*.heap
+heaps/
+output/
+*.swp
+*~
