@@ -244,6 +244,47 @@ next
   finally show ?case using Suc bms_le_trans by blast
 qed
 
+
+section \<open>Closure of BMS under \<open>\<le>\<^sub>B\<close>\<close>
+
+lemma bms_le_in_BMS:
+  assumes "A' \<le>\<^sub>B A" "A \<in> BMS"
+  shows "A' \<in> BMS"
+  using assms
+proof (induct rule: bms_le.induct)
+  case bms_le_refl thus ?case .
+next
+  case (bms_le_step A' A n)
+  have "A[n] \<in> BMS" using bms_le_step.prems by (rule expand_in_BMS)
+  thus ?case by (rule bms_le_step.hyps(2))
+qed
+
+
+section \<open>Strict order \<open><\<^sub>B\<close>: irreflexivity and transitivity\<close>
+
+lemma bms_lt_irrefl: "\<not> A <\<^sub>B A"
+  by (simp add: bms_lt_def)
+
+lemma bms_lt_implies_lex:
+  assumes "A \<in> BMS" "A' <\<^sub>B A"
+  shows "A' <\<^sub>l\<^sub>e\<^sub>x A"
+  using corollary_2_2[OF assms] .
+
+lemma bms_lt_trans:
+  assumes "A'' <\<^sub>B A'" "A' <\<^sub>B A" "A \<in> BMS"
+  shows "A'' <\<^sub>B A"
+proof -
+  from assms have le1: "A'' \<le>\<^sub>B A'" and le2: "A' \<le>\<^sub>B A"
+    unfolding bms_lt_def by auto
+  have le: "A'' \<le>\<^sub>B A" using bms_le_trans[OF le1 le2] .
+  have A'_BMS: "A' \<in> BMS" using bms_le_in_BMS[OF le2 \<open>A \<in> BMS\<close>] .
+  have lex1: "A' <\<^sub>l\<^sub>e\<^sub>x A" using bms_lt_implies_lex[OF \<open>A \<in> BMS\<close> \<open>A' <\<^sub>B A\<close>] .
+  have lex2: "A'' <\<^sub>l\<^sub>e\<^sub>x A'" using bms_lt_implies_lex[OF A'_BMS \<open>A'' <\<^sub>B A'\<close>] .
+  have lex: "A'' <\<^sub>l\<^sub>e\<^sub>x A" using arr_lex_trans[OF lex2 lex1] .
+  have ne: "A'' \<noteq> A" using lex arr_lex_irrefl by auto
+  show "A'' <\<^sub>B A" using le ne unfolding bms_lt_def by blast
+qed
+
 lemma lemma_2_3:
   shows "(\<forall>A \<in> BMS. \<forall>A' \<in> BMS. A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A)"
   sorry
@@ -256,9 +297,14 @@ text \<open>
   ordering with columns compared lexicographically.''
 \<close>
 
+corollary corollary_2_4_forward:
+  assumes "A \<in> BMS" "A' <\<^sub>B A"
+  shows "A' <\<^sub>l\<^sub>e\<^sub>x A"
+  using corollary_2_2[OF assms] .
+
 corollary corollary_2_4:
   assumes "A \<in> BMS" "A' \<in> BMS"
   shows "A' <\<^sub>B A \<longleftrightarrow> A' <\<^sub>l\<^sub>e\<^sub>x A"
-  sorry
+  sorry  \<comment> \<open>backward direction needs Lemma 2.3 (totality of \<open>\<le>\<^sub>B\<close>).\<close>
 
 end
