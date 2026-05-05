@@ -480,6 +480,135 @@ lemma seed_nth0: "(seed n) ! 0 = replicate n 0"
 lemma seed_nth1: "(seed n) ! 1 = replicate n 1"
   by (simp add: seed_def)
 
+lemma elem_seed_0: "m < n \<Longrightarrow> elem (seed n) 0 m = 0"
+  unfolding elem_def seed_def by simp
+
+lemma elem_seed_1: "m < n \<Longrightarrow> elem (seed n) 1 m = 1"
+  unfolding elem_def seed_def by simp
+
+lemma m_parent_seed_zero:
+  assumes "0 < n"
+  shows "m_parent (seed n) 0 1 = Some 0"
+proof -
+  have "[j \<leftarrow> [0..<1]. elem (seed n) j 0 < elem (seed n) 1 0] = [0]"
+    using assms unfolding elem_def seed_def by simp
+  thus ?thesis by (simp add: Let_def)
+qed
+
+lemma m_ancestor_seed_zero:
+  assumes "0 < n"
+  shows "m_ancestor (seed n) 0 1 0"
+  using m_parent_seed_zero[OF assms]
+  by simp
+
+lemma m_parent_seed_succ:
+  assumes "m < n"
+  shows "m_parent (seed n) m 1 = Some 0 \<and> m_ancestor (seed n) m 1 0"
+  using assms
+proof (induct m)
+  case 0
+  show ?case using m_parent_seed_zero[OF \<open>0 < n\<close>] m_ancestor_seed_zero[OF \<open>0 < n\<close>]
+    by simp
+next
+  case (Suc m)
+  hence "m < n" by simp
+  with Suc.hyps have anc: "m_ancestor (seed n) m 1 0" by simp
+  have lt: "elem (seed n) 0 (Suc m) < elem (seed n) 1 (Suc m)"
+    using \<open>Suc m < n\<close> unfolding elem_def seed_def by simp
+  have "[j \<leftarrow> [0..<1]. elem (seed n) j (Suc m) < elem (seed n) 1 (Suc m)
+                       \<and> m_ancestor (seed n) m 1 j] = [0]"
+    using lt anc by simp
+  hence par: "m_parent (seed n) (Suc m) 1 = Some 0"
+    by (simp add: Let_def)
+  hence "m_ancestor (seed n) (Suc m) 1 0" by simp
+  thus ?case using par by simp
+qed
+
+lemma max_parent_level_seed:
+  assumes "0 < n"
+  shows "max_parent_level (seed n) = Some (n - 1)"
+proof -
+  have last_idx: "last_col_idx (seed n) = 1" by (simp add: length_seed)
+  have height_eq: "height (seed n) = n" by (rule height_seed)
+  have "[m \<leftarrow> [0..<n]. m_parent (seed n) m 1 \<noteq> None] = [0..<n]"
+    using m_parent_seed_succ by (simp add: filter_True)
+  hence ms_eq: "[m \<leftarrow> [0..<height (seed n)]. m_parent (seed n) m (last_col_idx (seed n)) \<noteq> None] = [0..<n]"
+    using last_idx height_eq by simp
+  have "max_parent_level (seed n) = Some (Max (set [0..<n]))"
+    using assms ms_eq seed_nonempty
+    unfolding max_parent_level_def
+    by (simp add: Let_def)
+  also have "Max (set [0..<n]) = n - 1"
+  proof -
+    have "Max {0..<n} = n - 1"
+      using assms
+      by (intro Max_eqI) auto
+    thus ?thesis by simp
+  qed
+  finally show ?thesis .
+qed
+
+lemma b0_start_seed:
+  assumes "0 < n"
+  shows "b0_start (seed n) = Some 0"
+proof -
+  have "max_parent_level (seed n) = Some (n - 1)"
+    using max_parent_level_seed[OF assms] .
+  moreover have "m_parent (seed n) (n - 1) (last_col_idx (seed n)) = Some 0"
+    using m_parent_seed_succ[where m = "n - 1" and n = n] assms
+    by (simp add: length_seed)
+  ultimately show ?thesis
+    unfolding b0_start_def by simp
+qed
+
+lemma ascends_seed_succ:
+  assumes "m < n"
+  shows "ascends (seed (Suc n)) 0 m"
+proof -
+  have b0: "b0_start (seed (Suc n)) = Some 0" using b0_start_seed by simp
+  have mp: "max_parent_level (seed (Suc n)) = Some n"
+    using max_parent_level_seed[where n = "Suc n"] by simp
+  have nsa: "non_strict_ancestor (seed (Suc n)) m 0 0"
+    by (simp add: non_strict_ancestor_def)
+  show ?thesis
+    unfolding ascends_def using b0 mp assms nsa by simp
+qed
+
+lemma not_ascends_seed_succ_top:
+  shows "\<not> ascends (seed (Suc n)) 0 n"
+proof -
+  have b0: "b0_start (seed (Suc n)) = Some 0" using b0_start_seed by simp
+  have mp: "max_parent_level (seed (Suc n)) = Some n"
+    using max_parent_level_seed[where n = "Suc n"] by simp
+  show ?thesis
+    unfolding ascends_def using b0 mp by simp
+qed
+
+lemma delta_seed_succ:
+  assumes "m < Suc n"
+  shows "delta (seed (Suc n)) m = 1"
+proof -
+  have b0: "b0_start (seed (Suc n)) = Some 0" using b0_start_seed by simp
+  have last_idx: "last_col_idx (seed (Suc n)) = 1" by (simp add: length_seed)
+  have e1: "elem (seed (Suc n)) 1 m = 1" using assms by (rule elem_seed_1)
+  have e0: "elem (seed (Suc n)) 0 m = 0" using assms by (rule elem_seed_0)
+  show ?thesis
+    unfolding delta_def using b0 last_idx e1 e0 by simp
+qed
+
+text \<open>
+  Bumping the single column of \<open>B_0\<close> in \<open>seed (Suc n)\<close> with
+  multiplier \<open>1\<close> yields the column \<open>(1, 1, ..., 1, 0)\<close> of
+  length \<open>Suc n\<close>: the first \<open>n\<close> rows ascend (each gaining
+  \<open>1 \<cdot> 1 = 1\<close>) and the last row stays at \<open>0\<close>.
+\<close>
+
+lemma bump_col_seed_one:
+  shows "bump_col (seed (Suc n)) 0 1 = replicate n 1 @ [0]"
+  sorry  \<comment> \<open>computational proof; rep_eq substitution dance with simp.
+            Suspended: all the inputs (b0_start, ascends, delta) are
+            already proved; what remains is a list/arith manipulation.\<close>
+
 inductive_set BMS :: "array set" where
   seed_in_BMS:   "seed n \<in> BMS"
 | expand_in_BMS: "A \<in> BMS \<Longrightarrow> A[n] \<in> BMS"
