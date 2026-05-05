@@ -410,6 +410,45 @@ lemma expansion_zero_eq:
   using assms Bs_concat_zero[OF assms] G_block_B0_block[OF assms]
   by simp
 
+text \<open>
+  When \<open>m\<^sub>0\<close> is undefined (\<open>b0_start A = None\<close>), the blocks
+  \<open>B_i\<close> are all empty for every \<open>i\<close>; consequently the expansion
+  \<open>A[n]\<close> does not depend on \<open>n\<close>, and equals \<open>A[0]\<close>.
+\<close>
+
+lemma Bi_block_no_b0:
+  assumes "b0_start A = None"
+  shows "Bi_block A i = []"
+proof -
+  have "B0_block A = []" using assms by (simp add: B0_block_def)
+  thus ?thesis by (simp add: Bi_block_def Let_def)
+qed
+
+lemma Bs_concat_no_b0:
+  assumes "b0_start A = None"
+  shows "Bs_concat A n = []"
+  unfolding Bs_concat_def
+  using assms Bi_block_no_b0 by simp
+
+lemma expansion_no_b0_eq_zero:
+  fixes A :: array
+  assumes "A \<noteq> []" "b0_start A = None"
+  shows "A[n] = A[0]"
+proof -
+  have "A[n] = strip_zero_rows (G_block A @ Bs_concat A n)"
+    unfolding expansion_def using assms(1) by simp
+  also have "\<dots> = strip_zero_rows (G_block A @ [])"
+    using Bs_concat_no_b0[OF assms(2)] by simp
+  also have "\<dots> = strip_zero_rows (G_block A)" by simp
+  also have "\<dots> = strip_zero_rows (G_block A @ B0_block A)"
+    using assms(2) by (simp add: B0_block_def)
+  also have "\<dots> = strip_zero_rows (G_block A @ Bs_concat A 0)"
+    using Bs_concat_zero[OF assms(1)] by simp
+  also have "\<dots> = A[0]"
+    unfolding expansion_def using assms(1) by simp
+  finally show ?thesis .
+qed
+
 
 section \<open>The set BMS (Definition 1.1, last paragraph)\<close>
 
@@ -425,6 +464,21 @@ text \<open>
 
 definition seed :: "nat \<Rightarrow> array" where
   "seed n = [replicate n 0, replicate n 1]"
+
+lemma length_seed: "length (seed n) = 2"
+  by (simp add: seed_def)
+
+lemma height_seed: "height (seed n) = n"
+  by (simp add: seed_def)
+
+lemma seed_nonempty: "seed n \<noteq> []"
+  by (simp add: seed_def)
+
+lemma seed_nth0: "(seed n) ! 0 = replicate n 0"
+  by (simp add: seed_def)
+
+lemma seed_nth1: "(seed n) ! 1 = replicate n 1"
+  by (simp add: seed_def)
 
 inductive_set BMS :: "array set" where
   seed_in_BMS:   "seed n \<in> BMS"

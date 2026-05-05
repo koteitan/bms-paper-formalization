@@ -192,11 +192,26 @@ lemma arr_lex_trans:
   unfolding arr_lex_def using lexord_trans[OF _ _ trans_col_lt_set] .
 
 lemma lemma_2_1_zero:
+  fixes A :: array
   assumes "A \<noteq> []"
   shows "A[0] <\<^sub>l\<^sub>e\<^sub>x A"
   using expansion_zero_eq[OF assms] butlast_arr_lex[OF assms]
         strip_zero_rows_le_lex arr_lex_trans
   by metis
+
+text \<open>
+  Lemma 2.1 in the special case where \<open>m\<^sub>0\<close> is undefined
+  (\<open>b0_start A = None\<close>): for any \<open>n\<close>, \<open>A[n] <\<^sub>l\<^sub>e\<^sub>x A\<close>.
+\<close>
+
+lemma lemma_2_1_no_b0:
+  fixes A :: array
+  assumes "A \<noteq> []" "b0_start A = None"
+  shows "A[n] <\<^sub>l\<^sub>e\<^sub>x A"
+proof -
+  have "A[n] = A[0]" using expansion_no_b0_eq_zero[OF assms] .
+  thus ?thesis using lemma_2_1_zero[OF assms(1)] by simp
+qed
 
 text \<open>
   Auxiliary: from \<open>A' \<le>\<^sub>B A\<close> we obtain either \<open>A' = A\<close> or
@@ -294,6 +309,37 @@ next
   have "iter_zero A (Suc k) = (iter_zero A k)[0]" by simp
   also have "(iter_zero A k)[0] \<le>\<^sub>B iter_zero A k" by (rule bms_le_expand)
   finally show ?case using Suc bms_le_trans by blast
+qed
+
+text \<open>
+  Iterated \<open>[0]\<close>-expansion of a non-empty array is strictly
+  \<open><\<^sub>l\<^sub>e\<^sub>x\<close>-less than the starting array, when applied at least
+  once. Combines @{thm lemma_2_1_zero} with @{thm arr_lex_Nil_lt} for
+  the case where iteration drives the array empty.
+\<close>
+
+lemma iter_zero_Suc_lex:
+  assumes "A \<noteq> []"
+  shows "iter_zero A (Suc k) <\<^sub>l\<^sub>e\<^sub>x A"
+proof (induct k)
+  case 0
+  have "iter_zero A (Suc 0) = A[0]" by simp
+  thus ?case using lemma_2_1_zero[OF assms] by simp
+next
+  case (Suc k)
+  show ?case
+  proof (cases "iter_zero A (Suc k) = []")
+    case True
+    have "iter_zero A (Suc (Suc k)) = (iter_zero A (Suc k))[0]" by simp
+    also have "\<dots> = []" using True by (simp add: expansion_def)
+    finally show ?thesis using arr_lex_Nil_lt[OF assms] by simp
+  next
+    case False
+    have step: "(iter_zero A (Suc k))[0] <\<^sub>l\<^sub>e\<^sub>x iter_zero A (Suc k)"
+      by (rule lemma_2_1_zero[OF False])
+    have "iter_zero A (Suc (Suc k)) = (iter_zero A (Suc k))[0]" by simp
+    thus ?thesis using step Suc arr_lex_trans by metis
+  qed
 qed
 
 
