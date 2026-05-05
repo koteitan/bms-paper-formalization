@@ -326,6 +326,39 @@ lemma m_parent_lt:
   by (cases m)
      (auto simp: Let_def split: if_split_asm intro: m_parent_lt_aux)
 
+text \<open>
+  The \<open>m\<close>-th element of an \<open>m\<close>-parent is strictly smaller than
+  the \<open>m\<close>-th element of the column itself: this comes directly from
+  the candidate filter in the definition of \<open>m_parent\<close>.
+\<close>
+
+lemma last_filter_satisfies:
+  "filter P xs \<noteq> [] \<Longrightarrow> P (last (filter P xs))"
+  using last_in_set[of "filter P xs"] by auto
+
+lemma m_parent_elem_lt:
+  "m_parent A m i = Some p \<Longrightarrow> elem A p m < elem A i m"
+proof (cases m)
+  case 0
+  assume H: "m_parent A m i = Some p"
+  with 0 have cands_ne: "filter (\<lambda>j. elem A j 0 < elem A i 0) [0..<i] \<noteq> []"
+                  and p_eq: "p = last (filter (\<lambda>j. elem A j 0 < elem A i 0) [0..<i])"
+    by (auto simp: Let_def split: if_split_asm)
+  have "elem A p 0 < elem A i 0"
+    using last_filter_satisfies[OF cands_ne] p_eq by simp
+  thus ?thesis using 0 by simp
+next
+  case (Suc m')
+  assume H: "m_parent A m i = Some p"
+  let ?P = "\<lambda>j. elem A j (Suc m') < elem A i (Suc m') \<and> m_ancestor A m' i j"
+  from H Suc have cands_ne: "filter ?P [0..<i] \<noteq> []"
+                and p_eq: "p = last (filter ?P [0..<i])"
+    by (auto simp: Let_def split: if_split_asm)
+  have "?P p"
+    using last_filter_satisfies[OF cands_ne] p_eq by simp
+  thus ?thesis using Suc by simp
+qed
+
 lemma b0_start_lt:
   assumes "b0_start A = Some s" "A \<noteq> []"
   shows "s < last_col_idx A"
@@ -605,9 +638,7 @@ text \<open>
 
 lemma bump_col_seed_one:
   shows "bump_col (seed (Suc n)) 0 1 = replicate n 1 @ [0]"
-  sorry  \<comment> \<open>computational proof; rep_eq substitution dance with simp.
-            Suspended: all the inputs (b0_start, ascends, delta) are
-            already proved; what remains is a list/arith manipulation.\<close>
+  sorry  \<comment> \<open>computational; future target.\<close>
 
 inductive_set BMS :: "array set" where
   seed_in_BMS:   "seed n \<in> BMS"
