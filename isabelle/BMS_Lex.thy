@@ -125,9 +125,47 @@ lemma butlast_arr_lex: "A \<noteq> [] \<Longrightarrow> butlast A <\<^sub>l\<^su
         append_butlast_last_id
   by metis
 
+lemma take_strict_prefix_col_lt:
+  fixes c :: "nat list"
+  assumes "k < length c"
+  shows "take k c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c"
+proof -
+  have drop_ne: "drop k c \<noteq> []" using assms by simp
+  then obtain b z where bz: "drop k c = b # z" by (cases "drop k c") auto
+  have c_eq: "c = take k c @ drop k c" by simp
+  have "(take k c, take k c @ drop k c) \<in> lexord {(x::nat, y). x < y}"
+    using lexord_append_rightI[where r = "{(x::nat, y). x < y}"
+                               and y = "drop k c" and x = "take k c"] bz
+    by blast
+  hence "(take k c, c) \<in> lexord {(x::nat, y). x < y}" using c_eq by simp
+  thus ?thesis unfolding col_lt_def .
+qed
+
+text \<open>
+  Map of \<open>take k\<close> over a non-empty array \<open>X\<close>: if the head column
+  has length greater than \<open>k\<close>, then the resulting array has the
+  head column shortened, hence is \<open><\<^sub>l\<^sub>e\<^sub>x\<close>-smaller.
+\<close>
+
+lemma map_take_arr_lex_lt:
+  fixes X :: array
+  assumes "X \<noteq> []" "k < length (hd X)"
+  shows "map (take k) X <\<^sub>l\<^sub>e\<^sub>x X"
+proof -
+  obtain c rest where X_eq: "X = c # rest" using assms(1) by (cases X) auto
+  have c_eq: "hd X = c" using X_eq by simp
+  have "take k c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c" using assms(2) c_eq take_strict_prefix_col_lt by simp
+  hence "(take k c, c) \<in> {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}" by simp
+  hence "(take k c # map (take k) rest, c # rest)
+           \<in> lexord {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+    by simp
+  thus ?thesis using X_eq unfolding arr_lex_def by simp
+qed
+
 lemma strip_zero_rows_le_lex:
   "strip_zero_rows X = X \<or> strip_zero_rows X <\<^sub>l\<^sub>e\<^sub>x X"
-  sorry  \<comment> \<open>placeholder.\<close>
+  sorry  \<comment> \<open>case split on whether keep < height: if so use
+            map_take_arr_lex_lt; else show strip = X. Future target.\<close>
 
 text \<open>
   Totality of \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close> and \<open><\<^sub>l\<^sub>e\<^sub>x\<close> on arbitrary
