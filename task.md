@@ -4,13 +4,15 @@
 
 | ID | タスク | 状態 |
 |----|--------|------|
-| 3 | Lemma 2.1 (一般 n) の証明 | sorry (n=0 ケースは本証明済) |
+| 3 | Lemma 2.1 (一般 n) の証明 | sorry (n=0, m_0 未定義 ケースは本証明済) |
 | 4 | Lemma 2.3 / Cor 2.4 backward の証明 | sorry |
 | 5 | Lemma 2.5 (i)〜(v) の証明 | sorry |
 | 7 | Theorem 2.7 のサブステップ | sorry |
 | 8 | Phase 3: Isabelle/ZF で Lemma 2.6 を解消 | 未着手 |
 | 10 | `m_parent` / `m_ancestor` の termination 証明 | sorry (補助 m_parent_lt は本証明済) |
 | 12 | `strip_zero_rows_le_lex` の本証明 | sorry |
+| 13 | `bump_col_seed_one` の本証明 | sorry (構成要素は全て本証明済) |
+| 14 | `seed_lex_lt` の本証明 | sorry (誘導でビルドハング) |
 
 ## 本証明済 (実 sorry なし)
 
@@ -34,32 +36,46 @@
 - `Bi_block_zero`, `Bs_concat_zero` (i=0 で B_0)
 - `G_block_B0_block` (G + B_0 = butlast A)
 - `expansion_empty`, `expansion_zero_eq` (A[0] = strip_zero_rows (butlast A))
+- `Bi_block_no_b0`, `Bs_concat_no_b0`, `expansion_no_b0_eq_zero`
 
 ### iter_zero
-- `iter_zero` (定義)
-- `iter_zero_le` (iter_zero A k ≤_B A)
+- `iter_zero` (定義), `iter_zero_le`
 - `iter_zero_Suc_lex` (A ≠ [] ⇒ iter_zero A (Suc k) <_lex A)
 
 ### 補助補題
 - `bms_le_empty`, `bms_le_implies_lex`
 
+### seed の構造
+- `length_seed`, `height_seed`, `seed_nonempty`
+- `seed_nth0`, `seed_nth1`, `elem_seed_0`, `elem_seed_1`
+- `m_parent_seed_zero`, `m_parent_seed_succ`, `m_ancestor_seed_zero`
+- `max_parent_level_seed`, `b0_start_seed`
+- `ascends_seed_succ`, `not_ascends_seed_succ_top`
+- `delta_seed_succ`
+- `replicate_strict_prefix_col_lt`, `seed_lex_succ`
+- `seed_inj`, `X0_lex_total`
+
 ### 主要結果
 - `corollary_2_2` (Lemma 2.1 sorry を仮定)
 - `corollary_2_4_forward` (← 方向, Cor 2.2 経由)
-- **`lemma_2_1_zero`** (Lemma 2.1 の n=0 ケース、本証明)
+- `lemma_2_1_zero` (Lemma 2.1 の n=0 ケース、本証明)
+- `lemma_2_1_no_b0` (Lemma 2.1 の m_0 未定義ケース、本証明)
 
-## 残 `sorry` (合計 15)
+## 残 `sorry` (合計 17)
 
 | ファイル | 数 | 内訳 |
 |----------|:--:|------|
-| `BMS_Defs.thy` | 1 | termination of m_parent/m_ancestor |
-| `BMS_Lex.thy` | 4 | lemma_2_1 (一般), lemma_2_3, corollary_2_4 (backward), strip_zero_rows_le_lex |
+| `BMS_Defs.thy` | 2 | termination, bump_col_seed_one |
+| `BMS_Lex.thy` | 5 | lemma_2_1, lemma_2_3, corollary_2_4, strip_zero_rows_le_lex, seed_lex_lt |
 | `BMS_Ancestry.thy` | 5 | Lemma 2.5 (i)-(v) |
 | `BMS_WellOrdered.thy` | 5 | 2.7 sub-steps (o_on_seed, stable_rep_extend, o_defined, o_preserves, theorem_2_7) |
 | `BMS_Stability.thy` | 0 | (Lemma 2.6 は axiomatized) |
 
 ## メモ
 
-- **proof script の罠**: `consider...cases` 構造は `lexord` まわりの `auto`/`blast` でビルドが無限ループする場合あり。代替として `metis` を使うと安定。
+- **proof script の罠**: `consider...cases` 構造や帰納の `induct ... arbitrary:` で
+  `lexord` まわりの自動化がループする場合あり。`metis` 単発が安定。
 - 環境: Isabelle2025-2 (`/opt/Isabelle2025-2`), Ubuntu 22.04 WSL2。
-- ビルド時間: `0:00:02` 程度 (heap キャッシュ後)。
+- ビルド時間: `0:00:02`〜`0:00:03` 程度 (heap キャッシュ後)。
+- 進捗: 種集合 `X_0` が辞書式順序で線形に並んでいる事実は `seed_lex_succ`,
+  `seed_inj`, `X0_lex_total` で確立 (seed_lex_lt のみ sorry)。

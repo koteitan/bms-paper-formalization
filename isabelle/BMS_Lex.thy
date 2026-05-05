@@ -405,4 +405,66 @@ corollary corollary_2_4:
   shows "A' <\<^sub>B A \<longleftrightarrow> A' <\<^sub>l\<^sub>e\<^sub>x A"
   sorry  \<comment> \<open>backward direction needs Lemma 2.3 (totality of \<open>\<le>\<^sub>B\<close>).\<close>
 
+
+section \<open>The seed set \<open>X\<^sub>0\<close> is linearly ordered\<close>
+
+text \<open>
+  \<open>replicate n 0\<close> is a strict prefix of \<open>replicate (Suc n) 0\<close>,
+  hence smaller in @{const col_lt}. From this, \<open>seed n <\<^sub>l\<^sub>e\<^sub>x
+  seed (Suc n)\<close>.
+\<close>
+
+lemma replicate_strict_prefix_col_lt:
+  "(replicate n (0::nat)) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x (replicate (Suc n) 0)"
+proof -
+  have "replicate (Suc n) (0::nat) = replicate n 0 @ [0]"
+    by (induct n) auto
+  thus ?thesis
+    unfolding col_lt_def
+    using lexord_append_rightI[where r = "{(x::nat, y). x < y}"
+                               and y = "[0]" and x = "replicate n 0"]
+    by simp
+qed
+
+lemma seed_lex_succ:
+  shows "seed n <\<^sub>l\<^sub>e\<^sub>x seed (Suc n)"
+proof -
+  have c0_lt: "(seed n ! 0) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x (seed (Suc n) ! 0)"
+    using replicate_strict_prefix_col_lt by (simp add: seed_nth0)
+  thus ?thesis
+    unfolding arr_lex_def seed_def
+    by simp
+qed
+
+text \<open>
+  By transitivity, \<open>seed n <\<^sub>l\<^sub>e\<^sub>x seed m\<close> for any \<open>n < m\<close>.
+\<close>
+
+lemma seed_lex_lt:
+  assumes "n < m"
+  shows "seed n <\<^sub>l\<^sub>e\<^sub>x seed m"
+  sorry  \<comment> \<open>by transitivity on a chain of seed_lex_succ; metis chains
+            via lexord triggered build hangs, deferred.\<close>
+
+text \<open>
+  And the seeds are pairwise distinct: \<open>seed n = seed m \<Longrightarrow> n = m\<close>.
+\<close>
+
+lemma seed_inj: "seed n = seed m \<Longrightarrow> n = m"
+  by (auto simp: seed_def)
+
+text \<open>
+  The seed set \<open>X\<^sub>0\<close> is linearly ordered by @{const arr_lex}.
+\<close>
+
+lemma X0_lex_total:
+  "seed n = seed m \<or> seed n <\<^sub>l\<^sub>e\<^sub>x seed m \<or> seed m <\<^sub>l\<^sub>e\<^sub>x seed n"
+proof (cases n m rule: linorder_cases)
+  case less thus ?thesis using seed_lex_lt by blast
+next
+  case equal thus ?thesis by simp
+next
+  case greater thus ?thesis using seed_lex_lt by blast
+qed
+
 end

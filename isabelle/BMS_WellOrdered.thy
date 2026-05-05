@@ -98,8 +98,24 @@ lemma o_preserves:
 
 section \<open>Theorem 2.7\<close>
 
+text \<open>
+  Order-preserving image of \<open>\<le>\<^sub>B\<close> on BMS, expressed as a relation
+  inclusion. Suppose the BMS-relation is not well-founded; then there
+  is an infinite descending chain in BMS, which maps via @{const o_of}
+  to an infinite descending chain of @{typ Ord_t}, contradicting
+  @{thm ord_wf}.
+\<close>
+
 theorem theorem_2_7_BMS_well_ordered:
   shows "wfP (\<lambda>A' A. A \<in> BMS \<and> A' <\<^sub>B A)"
-  sorry
+proof (rule wfp_if_convertible_to_wfp)
+  show "wfP ((<\<^sub>o) :: Ord_t \<Rightarrow> Ord_t \<Rightarrow> bool)" by (rule ord_wf)
+next
+  fix A A' :: array
+  assume "A \<in> BMS \<and> A' <\<^sub>B A"
+  hence "A \<in> BMS" "A' <\<^sub>B A" by auto
+  hence "A' \<in> BMS" using bms_le_in_BMS unfolding bms_lt_def by blast
+  thus "o_of A' <\<^sub>o o_of A" using o_preserves \<open>A \<in> BMS\<close> \<open>A' <\<^sub>B A\<close> by blast
+qed
 
 end
