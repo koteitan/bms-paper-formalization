@@ -6,7 +6,7 @@
 |----|--------|------|
 | 3 | Lemma 2.1 (一般 n) の証明 | sorry (n=0, m_0 未定義 ケースは本証明済) |
 | 4 | Lemma 2.3 / Cor 2.4 backward の証明 | sorry |
-| 5 | Lemma 2.5 (i)〜(v) の証明 | sorry |
+| 5 | Lemma 2.5 (i)〜(v) の証明 | sorry (4 sorry → 1 sorry: 同時帰納の `b0_start = None` 自明ケースを切り出し、実質ケースは単一の `sorry` に統合) |
 | 7 | Theorem 2.7 のサブステップ (o_on_seed, stable_rep_extend, o_defined, o_preserves) | sorry |
 | 8 | Phase 3: Isabelle/ZF で Lemma 2.6 を解消 | 未着手 |
 | 10 | `m_parent` / `m_ancestor` の termination 証明 | sorry (補助 m_parent_lt は本証明済) |
@@ -64,13 +64,13 @@
 - `lemma_2_1_no_b0` (Lemma 2.1 の m_0 未定義ケース、本証明)
 - **`theorem_2_7_BMS_well_ordered`** (Theorem 2.7、`o_preserves` を sorry 仮定として、`ord_wf` から条件付本証明)
 
-## 残 `sorry` (合計 15)
+## 残 `sorry` (合計 11)
 
 | ファイル | 数 | 内訳 |
 |----------|:--:|------|
 | `BMS_Defs.thy` | 2 | termination, bump_col_seed_one |
 | `BMS_Lex.thy` | 4 | lemma_2_1, lemma_2_3, corollary_2_4, strip_zero_rows_le_lex |
-| `BMS_Ancestry.thy` | 5 | Lemma 2.5 (i)-(v) |
+| `BMS_Ancestry.thy` | 1 | Lemma 2.5 (`lemma_2_5_at_main` の `b0_start = Some s` ケース) |
 | `BMS_WellOrdered.thy` | 4 | 2.7 sub-steps (o_on_seed, stable_rep_extend, o_defined, o_preserves) |
 | `BMS_Stability.thy` | 0 | (Lemma 2.6 は axiomatized) |
 
