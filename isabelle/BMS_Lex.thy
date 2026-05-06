@@ -162,10 +162,71 @@ proof -
   thus ?thesis using X_eq unfolding arr_lex_def by simp
 qed
 
+text \<open>
+  General lemma: for any array \<open>X\<close> and any \<open>k\<close>, either
+  \<open>map (take k) X = X\<close> (every column already has length \<open>\<le> k\<close>),
+  or \<open>map (take k) X <\<^sub>l\<^sub>e\<^sub>x X\<close>. By induction on \<open>X\<close>.
+\<close>
+
+lemma map_take_arr_lex_le:
+  fixes X :: array
+  shows "map (take k) X = X \<or> map (take k) X <\<^sub>l\<^sub>e\<^sub>x X"
+proof (induct X)
+  case Nil
+  show ?case by simp
+next
+  case (Cons c rest)
+  show ?case
+  proof (cases "length c \<le> k")
+    case True
+    hence take_c: "take k c = c" by simp
+    from Cons.hyps show ?thesis
+    proof
+      assume rest_eq: "map (take k) rest = rest"
+      have "map (take k) (c # rest) = c # rest"
+        using take_c rest_eq by simp
+      thus ?thesis by simp
+    next
+      assume rest_lt: "map (take k) rest <\<^sub>l\<^sub>e\<^sub>x rest"
+      hence "(map (take k) rest, rest) \<in> lexord {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+        unfolding arr_lex_def by simp
+      hence "(c # map (take k) rest, c # rest)
+               \<in> lexord {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+        by simp
+      hence "(map (take k) (c # rest), c # rest)
+               \<in> lexord {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+        using take_c by simp
+      thus ?thesis unfolding arr_lex_def by simp
+    qed
+  next
+    case False
+    hence "k < length c" by simp
+    hence head_lt: "take k c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c"
+      by (rule take_strict_prefix_col_lt)
+    hence "(take k c, c) \<in> {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}" by simp
+    hence "(take k c # map (take k) rest, c # rest)
+             \<in> lexord {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+      by simp
+    thus ?thesis unfolding arr_lex_def by simp
+  qed
+qed
+
 lemma strip_zero_rows_le_lex:
   "strip_zero_rows X = X \<or> strip_zero_rows X <\<^sub>l\<^sub>e\<^sub>x X"
-  sorry  \<comment> \<open>case split on whether keep < height: if so use
-            map_take_arr_lex_lt; else show strip = X. Future target.\<close>
+proof (cases "X = []")
+  case True
+  thus ?thesis by (simp add: strip_zero_rows_def)
+next
+  case False
+  let ?H = "height X"
+  let ?keep = "(LEAST h. h \<le> ?H \<and> (\<forall>m. h \<le> m \<and> m < ?H \<longrightarrow>
+                                       (\<forall>c \<in> set X. c ! m = 0)))"
+  have strip_eq: "strip_zero_rows X = map (\<lambda>c. take ?keep c) X"
+    using False unfolding strip_zero_rows_def by (simp add: Let_def)
+  have "map (take ?keep) X = X \<or> map (take ?keep) X <\<^sub>l\<^sub>e\<^sub>x X"
+    by (rule map_take_arr_lex_le)
+  thus ?thesis using strip_eq by simp
+qed
 
 text \<open>
   Totality of \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close> and \<open><\<^sub>l\<^sub>e\<^sub>x\<close> on arbitrary
