@@ -499,10 +499,31 @@ corollary corollary_2_4_forward:
   shows "A' <\<^sub>l\<^sub>e\<^sub>x A"
   using corollary_2_2[OF assms] .
 
+corollary corollary_2_4_backward:
+  assumes "A \<in> BMS" "A' \<in> BMS" "A' <\<^sub>l\<^sub>e\<^sub>x A"
+  shows "A' <\<^sub>B A"
+proof -
+  from lemma_2_3 assms(1,2) consider "A \<le>\<^sub>B A'" | "A' \<le>\<^sub>B A" by blast
+  thus ?thesis
+  proof cases
+    case 1
+    have ne: "A \<noteq> A'" using assms(3) arr_lex_irrefl by auto
+    hence "A <\<^sub>B A'" using 1 unfolding bms_lt_def by blast
+    hence "A <\<^sub>l\<^sub>e\<^sub>x A'" using bms_lt_implies_lex[OF assms(2)] by blast
+    hence "A' <\<^sub>l\<^sub>e\<^sub>x A'" using arr_lex_trans[OF assms(3)] by blast
+    thus ?thesis using arr_lex_irrefl by simp
+  next
+    case 2
+    have "A' \<noteq> A" using assms(3) arr_lex_irrefl by auto
+    thus ?thesis using 2 unfolding bms_lt_def by blast
+  qed
+qed
+
 corollary corollary_2_4:
   assumes "A \<in> BMS" "A' \<in> BMS"
   shows "A' <\<^sub>B A \<longleftrightarrow> A' <\<^sub>l\<^sub>e\<^sub>x A"
-  sorry  \<comment> \<open>backward direction needs Lemma 2.3 (totality of \<open>\<le>\<^sub>B\<close>).\<close>
+  using corollary_2_4_forward[OF assms(1)] corollary_2_4_backward[OF assms]
+  by blast
 
 
 section \<open>The seed set \<open>X\<^sub>0\<close> is linearly ordered\<close>
