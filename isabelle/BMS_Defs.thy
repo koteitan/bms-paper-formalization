@@ -638,7 +638,62 @@ text \<open>
 
 lemma bump_col_seed_one:
   shows "bump_col (seed (Suc n)) 0 1 = replicate n 1 @ [0]"
-  sorry  \<comment> \<open>computational; future target.\<close>
+proof -
+  let ?A = "seed (Suc n)"
+  let ?f = "\<lambda>m. (replicate (Suc n) 0) ! m
+                + (if ascends ?A 0 m then 1 * delta ?A m else 0)"
+  have b0: "b0_start ?A = Some 0" using b0_start_seed by simp
+  have c_eq: "?A ! (0 + 0) = replicate (Suc n) 0"
+    using seed_nth0 by simp
+  have len_c: "length (?A ! (0 + 0)) = Suc n"
+    using c_eq length_replicate by metis
+  let ?lhs = "bump_col ?A 0 1"
+  let ?rhs = "replicate n 1 @ [0]"
+  have lhs_unfold: "?lhs = map ?f [0..<Suc n]"
+    unfolding bump_col_def Let_def
+    using b0 c_eq len_c by (simp only: option.case)
+  have len_lhs: "length ?lhs = Suc n"
+    using lhs_unfold by simp
+  have len_rhs: "length ?rhs = Suc n" by simp
+  have nth_lhs: "?lhs ! i = ?f i" if i_lt: "i < Suc n" for i
+    using lhs_unfold i_lt by (simp only: nth_map_upt) simp
+  have z_rep: "(replicate (Suc n) 0) ! i = 0" if "i < Suc n" for i
+    using that nth_replicate by metis
+  have nth_eq: "?lhs ! i = ?rhs ! i" if i_lt: "i < Suc n" for i
+  proof (cases "i < n")
+    case True
+    have asc: "ascends ?A 0 i" using ascends_seed_succ[OF True] .
+    have dlt: "delta ?A i = 1" using delta_seed_succ[where m = i] i_lt by simp
+    have z: "(replicate (Suc n) 0) ! i = 0" using z_rep i_lt by simp
+    have "?lhs ! i = ?f i" using nth_lhs i_lt by simp
+    also have "\<dots> = 0 + 1 * 1" using asc dlt z by simp
+    also have "\<dots> = 1" by simp
+    finally have lhs_val: "?lhs ! i = 1" .
+    have rhs_val: "?rhs ! i = 1"
+      using True by (simp add: nth_append)
+    show ?thesis using lhs_val rhs_val by metis
+  next
+    case False
+    with i_lt have i_eq: "i = n" by simp
+    have nasc: "\<not> ascends ?A 0 n" using not_ascends_seed_succ_top .
+    have z: "(replicate (Suc n) 0) ! n = 0"
+      using z_rep[of n] by simp
+    have "?lhs ! n = ?f n" using nth_lhs[of n] by simp
+    also have "\<dots> = 0" using nasc z by simp
+    finally have lhs_val: "?lhs ! n = 0" .
+    have rhs_val: "?rhs ! n = 0"
+      by (simp add: nth_append)
+    show ?thesis using lhs_val rhs_val i_eq by metis
+  qed
+  show ?thesis
+  proof (intro nth_equalityI)
+    show "length ?lhs = length ?rhs" using len_lhs len_rhs by simp
+  next
+    fix i assume "i < length ?lhs"
+    hence "i < Suc n" using len_lhs by simp
+    thus "?lhs ! i = ?rhs ! i" using nth_eq by simp
+  qed
+qed
 
 inductive_set BMS :: "array set" where
   seed_in_BMS:   "seed n \<in> BMS"
