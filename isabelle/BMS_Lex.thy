@@ -481,8 +481,23 @@ text \<open>
 lemma seed_lex_lt:
   assumes "n < m"
   shows "seed n <\<^sub>l\<^sub>e\<^sub>x seed m"
-  sorry  \<comment> \<open>by transitivity on a chain of seed_lex_succ; metis chains
-            via lexord triggered build hangs, deferred.\<close>
+proof -
+  have rep_eq: "replicate n (0::nat) = take n (replicate m 0)"
+    using assms by simp
+  have len_rep: "n < length (replicate m (0::nat))"
+    using assms by simp
+  have "take n (replicate m (0::nat)) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x replicate m 0"
+    using take_strict_prefix_col_lt[OF len_rep] .
+  hence rep_lt: "replicate n (0::nat) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x replicate m 0"
+    using rep_eq by simp
+  hence pair_in: "(replicate n (0::nat), replicate m 0)
+                  \<in> {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+    by simp
+  have "(seed n, seed m) \<in> lexord {(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+    unfolding seed_def
+    using pair_in by (rule lexord_cons_cons[THEN iffD2, OF disjI1])
+  thus ?thesis unfolding arr_lex_def .
+qed
 
 text \<open>
   And the seeds are pairwise distinct: \<open>seed n = seed m \<Longrightarrow> n = m\<close>.
