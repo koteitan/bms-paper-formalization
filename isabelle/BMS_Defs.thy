@@ -359,6 +359,148 @@ next
   thus ?thesis using Suc by simp
 qed
 
+text \<open>
+  An m-ancestor's m-th element is strictly smaller, by induction along
+  the m-parent chain.
+\<close>
+
+lemma m_ancestor_elem_lt:
+  "m_ancestor A m i j \<Longrightarrow> elem A j m < elem A i m"
+proof (induct i arbitrary: j rule: nat_less_induct)
+  fix i j assume IH: "\<forall>k<i. \<forall>j'. m_ancestor A m k j' \<longrightarrow> elem A j' m < elem A k m"
+  assume H: "m_ancestor A m i j"
+  obtain p where mp: "m_parent A m i = Some p"
+              and case_p: "p = j \<or> m_ancestor A m p j"
+    using H by (cases "m_parent A m i") auto
+  have p_lt_i: "p < i" using mp m_parent_lt by simp
+  have elem_p_lt: "elem A p m < elem A i m" using mp m_parent_elem_lt by simp
+  show "elem A j m < elem A i m"
+  proof (cases "p = j")
+    case True thus ?thesis using elem_p_lt by simp
+  next
+    case False
+    hence "m_ancestor A m p j" using case_p by simp
+    hence "elem A j m < elem A p m" using IH p_lt_i by blast
+    thus ?thesis using elem_p_lt by simp
+  qed
+qed
+
+text \<open>
+  Transitivity of m-ancestry at a fixed level m.
+\<close>
+
+lemma m_ancestor_trans_aux:
+  "\<forall>j k. m_ancestor A m i j \<longrightarrow> m_ancestor A m j k \<longrightarrow> m_ancestor A m i k"
+proof (induct i rule: nat_less_induct)
+  fix i
+  assume IH: "\<forall>i' < i. \<forall>j k. m_ancestor A m i' j \<longrightarrow> m_ancestor A m j k
+                              \<longrightarrow> m_ancestor A m i' k"
+  show "\<forall>j k. m_ancestor A m i j \<longrightarrow> m_ancestor A m j k
+              \<longrightarrow> m_ancestor A m i k"
+  proof (intro allI impI)
+    fix j k
+    assume Hij: "m_ancestor A m i j" and Hjk: "m_ancestor A m j k"
+    obtain p where mp: "m_parent A m i = Some p"
+                and case_p: "p = j \<or> m_ancestor A m p j"
+      using Hij by (cases "m_parent A m i") auto
+    have p_lt_i: "p < i" using mp m_parent_lt by simp
+    have goal_iff: "m_ancestor A m i k \<longleftrightarrow> (p = k \<or> m_ancestor A m p k)"
+      using mp by simp
+    show "m_ancestor A m i k"
+    proof (cases "p = j")
+      case True
+      hence "p = k \<or> m_ancestor A m p k" using Hjk by simp
+      thus ?thesis using goal_iff by simp
+    next
+      case False
+      hence "m_ancestor A m p j" using case_p by simp
+      hence "m_ancestor A m p k" using IH p_lt_i Hjk by blast
+      thus ?thesis using goal_iff by simp
+    qed
+  qed
+qed
+
+lemma m_ancestor_trans:
+  "m_ancestor A m i j \<Longrightarrow> m_ancestor A m j k \<Longrightarrow> m_ancestor A m i k"
+  using m_ancestor_trans_aux by blast
+
+text \<open>
+  An (Suc m)-parent of \<open>i\<close> is, by definition, an m-ancestor of \<open>i\<close>.
+\<close>
+
+lemma m_parent_Suc_implies_m_ancestor:
+  "m_parent A (Suc m) i = Some p \<Longrightarrow> m_ancestor A m i p"
+proof -
+  assume H: "m_parent A (Suc m) i = Some p"
+  let ?P = "\<lambda>j. elem A j (Suc m) < elem A i (Suc m) \<and> m_ancestor A m i j"
+  from H have cands_ne: "filter ?P [0..<i] \<noteq> []"
+              and p_eq: "p = last (filter ?P [0..<i])"
+    by (auto simp: Let_def split: if_split_asm)
+  have "?P p" using last_filter_satisfies[OF cands_ne] p_eq by simp
+  thus ?thesis by simp
+qed
+
+text \<open>
+  An (Suc m)-ancestor of \<open>i\<close> is also an m-ancestor.
+\<close>
+
+lemma m_ancestor_Suc_implies_m_ancestor_aux:
+  "\<forall>j. m_ancestor A (Suc m) i j \<longrightarrow> m_ancestor A m i j"
+proof (induct i rule: nat_less_induct)
+  fix i
+  assume IH: "\<forall>i' < i. \<forall>j. m_ancestor A (Suc m) i' j
+                              \<longrightarrow> m_ancestor A m i' j"
+  show "\<forall>j. m_ancestor A (Suc m) i j \<longrightarrow> m_ancestor A m i j"
+  proof (intro allI impI)
+    fix j assume H: "m_ancestor A (Suc m) i j"
+    obtain p where mp: "m_parent A (Suc m) i = Some p"
+                and case_p: "p = j \<or> m_ancestor A (Suc m) p j"
+      using H by (cases "m_parent A (Suc m) i") auto
+    have p_lt_i: "p < i" using mp m_parent_lt by blast
+    have m_anc_p: "m_ancestor A m i p"
+      using m_parent_Suc_implies_m_ancestor[OF mp] .
+    show "m_ancestor A m i j"
+    proof (cases "p = j")
+      case True thus ?thesis using m_anc_p by simp
+    next
+      case False
+      hence "m_ancestor A (Suc m) p j" using case_p by simp
+      hence "m_ancestor A m p j" using IH p_lt_i by blast
+      thus ?thesis using m_anc_p m_ancestor_trans by blast
+    qed
+  qed
+qed
+
+lemma m_ancestor_Suc_implies_m_ancestor:
+  "m_ancestor A (Suc m) i j \<Longrightarrow> m_ancestor A m i j"
+  using m_ancestor_Suc_implies_m_ancestor_aux by blast
+
+text \<open>
+  Monotonicity in the level: an \<open>m'\<close>-ancestor for \<open>m \<le> m'\<close> is also
+  an \<open>m\<close>-ancestor.
+\<close>
+
+lemma m_ancestor_mono:
+  assumes "m \<le> m'"
+  shows "m_ancestor A m' i j \<Longrightarrow> m_ancestor A m i j"
+proof -
+  obtain d where d_eq: "m' = m + d" using assms le_Suc_ex by blast
+  show "m_ancestor A m' i j \<Longrightarrow> m_ancestor A m i j"
+    using d_eq
+  proof (induct d arbitrary: m')
+    case 0 thus ?case by simp
+  next
+    case (Suc d)
+    have m'_eq: "m' = Suc (m + d)" using Suc(3) by simp
+    have anc: "m_ancestor A (Suc (m + d)) i j" using Suc(2) m'_eq by simp
+    hence "m_ancestor A (m + d) i j"
+      using m_ancestor_Suc_implies_m_ancestor by blast
+    thus ?case using Suc.hyps[where m' = "m + d"] by simp
+  qed
+qed
+
+
+
 lemma b0_start_lt:
   assumes "b0_start A = Some s" "A \<noteq> []"
   shows "s < last_col_idx A"
