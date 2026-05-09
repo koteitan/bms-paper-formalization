@@ -501,6 +501,41 @@ qed
 
 
 
+lemma filter_set_subset_aux:
+  "x \<in> set (filter P xs) \<Longrightarrow> x \<in> set xs"
+proof (induct xs)
+  case Nil thus ?case by simp
+next
+  case (Cons a xs) thus ?case by (cases "P a") auto
+qed
+
+lemma max_parent_level_lt:
+  assumes "max_parent_level A = Some m\<^sub>0"
+  shows "m\<^sub>0 < height A"
+proof -
+  have ne: "A \<noteq> []"
+    using assms unfolding max_parent_level_def
+    by (auto split: if_splits)
+  define P :: "nat \<Rightarrow> bool" where
+    P_def: "P = (\<lambda>m. m_parent A m (last_col_idx A) \<noteq> None)"
+  define ms where ms_def: "ms = filter P [0..<height A]"
+  have mp_form: "max_parent_level A
+               = (if ms = [] then None else Some (Max (set ms)))"
+    using ne unfolding max_parent_level_def ms_def P_def
+    by (simp add: Let_def)
+  hence ms_ne: "ms \<noteq> []"
+    using assms by (cases "ms = []") auto
+  with assms mp_form have m0_eq: "m\<^sub>0 = Max (set ms)" by simp
+  have set_fin: "finite (set ms)" by simp
+  have set_ne: "set ms \<noteq> {}" using ms_ne by (cases ms) auto
+  have "Max (set ms) \<in> set ms"
+    using set_fin set_ne by (rule Max_in)
+  hence m0_in: "m\<^sub>0 \<in> set ms" using m0_eq by simp
+  hence "m\<^sub>0 \<in> set [0..<height A]"
+    unfolding ms_def by (rule filter_set_subset_aux)
+  thus ?thesis by simp
+qed
+
 lemma b0_start_lt:
   assumes "b0_start A = Some s" "A \<noteq> []"
   shows "s < last_col_idx A"
@@ -635,6 +670,88 @@ qed
 
 lemma Bs_concat_zero: "A \<noteq> [] \<Longrightarrow> Bs_concat A 0 = B0_block A"
   unfolding Bs_concat_def using Bi_block_zero by simp
+
+lemma length_Bi_block: "length (Bi_block A i) = length (B0_block A)"
+  unfolding Bi_block_def Let_def by simp
+
+lemma Bi_block_nth:
+  assumes "d < length (B0_block A)"
+  shows "Bi_block A i ! d = bump_col A d i"
+  unfolding Bi_block_def Let_def using assms by simp
+
+lemma length_Bs_concat:
+  "length (Bs_concat A n) = Suc n * length (B0_block A)"
+proof (induct n)
+  case 0
+  show ?case by (simp add: Bs_concat_def length_Bi_block)
+next
+  case (Suc n)
+  have step: "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
+    by (simp add: Bs_concat_def)
+  show ?case using step Suc length_Bi_block by simp
+qed
+
+lemma Bs_concat_take_l1:
+  assumes ne: "A \<noteq> []"
+  shows "take (length (B0_block A)) (Bs_concat A n) = B0_block A"
+proof -
+  let ?l = "length (B0_block A)"
+  have aux: "take ?l (Bs_concat A n) = Bi_block A 0"
+  proof (induct n)
+    case 0
+    have base: "Bs_concat A 0 = Bi_block A 0"
+      by (simp add: Bs_concat_def)
+    have take_b0i: "take ?l (Bi_block A 0) = Bi_block A 0"
+      by (simp add: length_Bi_block)
+    show ?case using base take_b0i by simp
+  next
+    case (Suc n)
+    have step: "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
+      by (simp add: Bs_concat_def)
+    have len_lower: "?l \<le> length (Bs_concat A n)"
+      using length_Bs_concat[where n = n and A = A] by simp
+    have "take ?l (Bs_concat A (Suc n)) = take ?l (Bs_concat A n)"
+      using step len_lower by (simp add: take_append)
+    thus ?case using Suc by simp
+  qed
+  thus ?thesis using Bi_block_zero[OF ne] by simp
+qed
+
+lemma Bs_concat_nth_first_B1:
+  assumes nge: "1 \<le> n" and bne: "0 < length (B0_block A)"
+  shows "Bs_concat A n ! length (B0_block A) = bump_col A 0 1"
+  using nge
+proof (induct n)
+  case 0
+  thus ?case by simp
+next
+  case (Suc n)
+  let ?l = "length (B0_block A)"
+  have bs_step: "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
+    by (simp add: Bs_concat_def)
+  show ?case
+  proof (cases "n = 0")
+    case True
+    have bs0: "Bs_concat A 0 = Bi_block A 0"
+      by (simp add: Bs_concat_def)
+    have len_b0i: "length (Bi_block A 0) = ?l" by (rule length_Bi_block)
+    have b1_nth: "Bi_block A 1 ! 0 = bump_col A 0 1"
+      using Bi_block_nth[where d = 0 and i = 1] bne by simp
+    have "Bs_concat A (Suc n) = Bi_block A 0 @ Bi_block A 1"
+      using bs_step bs0 True by simp
+    moreover have "(Bi_block A 0 @ Bi_block A 1) ! ?l = Bi_block A 1 ! 0"
+      using len_b0i by (simp add: nth_append)
+    ultimately show ?thesis using b1_nth by simp
+  next
+    case False
+    have nge': "1 \<le> n" using False by simp
+    have IH: "Bs_concat A n ! ?l = bump_col A 0 1"
+      using Suc.hyps nge' by simp
+    have len_lt: "?l < length (Bs_concat A n)"
+      using length_Bs_concat[where n = n and A = A] bne nge' by simp
+    show ?thesis using bs_step IH len_lt by (simp add: nth_append)
+  qed
+qed
 
 text \<open>
   \<open>G_block A @ B0_block A = butlast A\<close> for any non-empty array.
