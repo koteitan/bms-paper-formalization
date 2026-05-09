@@ -28,3 +28,5 @@
   sorry 9 → 8 に減少。Lemma 2.1 → Cor 2.2, Lemma 2.3, Cor 2.4 への依存連鎖が完全解放。
 - **v0.1.12** `bump_col_value_lt_m0` に `m_0 < length (A!s)` 仮定を追加し縁ケース sorry 解消。
   caller `bump_col_lt_C` も既に同条件を持つので呼び出し変更のみ。sorry 8 → 7。
+- **v0.1.13** seed chain の基礎: `seed_Suc_expand_one : (seed (Suc n))[1] = seed n` を証明。
+  さらに `seed_le_B_succ` (seed n ≤_B seed (Suc n)) と `seed_chain_le_B` (n ≤ m ⟹ seed n ≤_B seed m) を追加。Lemma 2.3 の seed 部分の基盤。

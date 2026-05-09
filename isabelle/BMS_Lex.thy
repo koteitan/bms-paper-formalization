@@ -47,6 +47,37 @@ lemma bms_le_expand: "A[n] \<le>\<^sub>B A"
   by (rule bms_le.bms_le_step[OF bms_le.bms_le_refl])
 
 
+text \<open>
+  Seed chain: \<open>seed n \<le>\<^sub>B seed (Suc n)\<close> via @{thm seed_Suc_expand_one}
+  (\<open>(seed (Suc n))[1] = seed n\<close>).
+\<close>
+
+lemma seed_le_B_succ: "seed n \<le>\<^sub>B seed (Suc n)"
+proof -
+  have "(seed (Suc n))[1] = seed n" by (rule seed_Suc_expand_one)
+  thus ?thesis using bms_le_expand[where A = "seed (Suc n)" and n = 1] by simp
+qed
+
+lemma seed_chain_le_B_aux: "seed n \<le>\<^sub>B seed (n + k)"
+proof (induct k)
+  case 0 thus ?case by (simp add: bms_le_refl)
+next
+  case (Suc k)
+  have step: "seed (n + k) \<le>\<^sub>B seed (Suc (n + k))"
+    using seed_le_B_succ[where n = "n + k"] .
+  have eq: "n + Suc k = Suc (n + k)" by simp
+  show ?case using Suc step bms_le_trans eq by metis
+qed
+
+lemma seed_chain_le_B:
+  assumes "n \<le> m"
+  shows "seed n \<le>\<^sub>B seed m"
+proof -
+  obtain k where m_eq: "m = n + k" using assms le_Suc_ex by blast
+  show ?thesis using seed_chain_le_B_aux m_eq by simp
+qed
+
+
 section \<open>Lexicographic order on columns and arrays\<close>
 
 text \<open>

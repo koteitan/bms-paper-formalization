@@ -1035,6 +1035,122 @@ proof -
   qed
 qed
 
+text \<open>
+  Strip helper: when \<open>X = [replicate (Suc n) 0, replicate n 1 @ [0]]\<close>,
+  the @{const strip_zero_rows} of \<open>X\<close> equals @{term "seed n"}.
+\<close>
+
+lemma strip_zero_rows_seed_X:
+  fixes n :: nat
+  defines "X \<equiv> [replicate (Suc n) (0::nat), replicate n 1 @ [0]]"
+  shows "strip_zero_rows X = seed n"
+proof -
+  have X_ne: "X \<noteq> []" by (simp add: X_def)
+  have hX: "height X = Suc n" by (simp add: X_def)
+  let ?P = "\<lambda>h. h \<le> Suc n \<and>
+              (\<forall>m. h \<le> m \<and> m < Suc n \<longrightarrow> (\<forall>c \<in> set X. c ! m = 0))"
+  let ?keep = "Least ?P"
+
+  have wit_n: "?P n"
+  proof -
+    have a: "\<forall>m. n \<le> m \<and> m < Suc n \<longrightarrow> (\<forall>c \<in> set X. c ! m = 0)"
+    proof (intro allI impI)
+      fix m assume "n \<le> m \<and> m < Suc n"
+      hence m_eq: "m = n" by simp
+      have e1: "(replicate (Suc n) (0::nat)) ! n = 0"
+        by (rule nth_replicate) simp
+      have e2: "(replicate n (1::nat) @ [0]) ! n = 0"
+        by (simp add: nth_append)
+      show "\<forall>c \<in> set X. c ! m = 0"
+        using e1 e2 m_eq by (simp add: X_def)
+    qed
+    show ?thesis using a by simp
+  qed
+  have keep_le_n: "?keep \<le> n" using wit_n by (rule Least_le)
+
+  have not_P: "\<not> ?P k" if k_lt: "k < n" for k
+  proof
+    assume P_k: "?P k"
+    have c_in: "(replicate n (1::nat) @ [0]) \<in> set X" by (simp add: X_def)
+    have k_le_k: "k \<le> k \<and> k < Suc n" using k_lt by simp
+    from P_k k_le_k c_in have z: "(replicate n (1::nat) @ [0]) ! k = 0" by blast
+    have len_lt: "k < length (replicate n (1::nat))" using k_lt by simp
+    have nz: "(replicate n (1::nat) @ [0]) ! k = 1"
+      using len_lt by (simp add: nth_append)
+    show False using z nz by simp
+  qed
+
+  have keep_ge_n: "n \<le> ?keep"
+  proof (rule ccontr)
+    assume "\<not> n \<le> ?keep"
+    hence "?keep < n" by simp
+    moreover have "?P ?keep"
+      using wit_n by (rule LeastI)
+    ultimately show False using not_P by blast
+  qed
+
+  have keep_eq: "?keep = n" using keep_le_n keep_ge_n by simp
+
+  have strip_form: "strip_zero_rows X = map (\<lambda>c. take ?keep c) X"
+    using X_ne hX unfolding strip_zero_rows_def by (simp add: Let_def)
+  have strip_n: "strip_zero_rows X = map (\<lambda>c. take n c) X"
+    using strip_form keep_eq by simp
+  have take_a: "take n (replicate (Suc n) (0::nat)) = replicate n 0"
+  proof -
+    have "take n (replicate (Suc n) (0::nat)) = replicate (min n (Suc n)) 0"
+      by (rule take_replicate)
+    also have "min n (Suc n) = n" by simp
+    finally show ?thesis .
+  qed
+  have take_b: "take n (replicate n (1::nat) @ [0]) = replicate n 1"
+    by simp
+  have map_eq: "map (\<lambda>c. take n c) X = [replicate n 0, replicate n 1]"
+    using take_a take_b by (simp add: X_def)
+  show ?thesis
+    using strip_n map_eq by (simp add: seed_def)
+qed
+
+lemma seed_Suc_expand_one:
+  shows "(seed (Suc n))[1] = seed n"
+proof -
+  let ?A = "seed (Suc n)"
+  have ne: "?A \<noteq> []" by (rule seed_nonempty)
+  have len_A: "length ?A = 2" by (rule length_seed)
+  have last_idx: "last_col_idx ?A = 1" using len_A by simp
+  have b0: "b0_start ?A = Some 0" using b0_start_seed[where n = "Suc n"] by simp
+
+  have G_eq: "G_block ?A = []"
+    using b0 by (simp add: G_block_def)
+  have B0_eq: "B0_block ?A = [?A ! 0]"
+    using b0 last_idx len_A by (simp add: B0_block_def take_Suc_conv_app_nth)
+  have B0_len: "length (B0_block ?A) = 1" using B0_eq by simp
+
+  have Bi0: "Bi_block ?A 0 = B0_block ?A"
+    by (rule Bi_block_zero[OF ne])
+
+  have bump_eq: "bump_col ?A 0 1 = replicate n 1 @ [0]"
+    by (rule bump_col_seed_one)
+  have Bi1: "Bi_block ?A 1 = [replicate n 1 @ [0]]"
+  proof -
+    have "Bi_block ?A 1 = map (\<lambda>d. bump_col ?A d 1) [0..<1]"
+      unfolding Bi_block_def Let_def using B0_len by simp
+    also have "\<dots> = [bump_col ?A 0 1]" by simp
+    finally show ?thesis using bump_eq by simp
+  qed
+
+  have Bs_step: "Bs_concat ?A 1 = Bi_block ?A 0 @ Bi_block ?A 1"
+    by (simp add: Bs_concat_def)
+  have A0: "?A ! 0 = replicate (Suc n) 0" by (rule seed_nth0)
+
+  have X_eq: "G_block ?A @ Bs_concat ?A 1
+            = [replicate (Suc n) (0::nat), replicate n 1 @ [0]]"
+    using G_eq Bs_step Bi0 Bi1 B0_eq A0 by simp
+
+  show ?thesis
+    unfolding expansion_def
+    using ne X_eq strip_zero_rows_seed_X[where n = n] by simp
+qed
+
 inductive_set BMS :: "array set" where
   seed_in_BMS:   "seed n \<in> BMS"
 | expand_in_BMS: "A \<in> BMS \<Longrightarrow> A[n] \<in> BMS"
