@@ -894,9 +894,30 @@ proof -
   show "A'' <\<^sub>B A" using le ne unfolding bms_lt_def by blast
 qed
 
+text \<open>
+  Seed-pair total: any two seeds are \<open>\<le>\<^sub>B\<close>-comparable.
+\<close>
+
+lemma seed_pair_le_B_total:
+  shows "seed n \<le>\<^sub>B seed m \<or> seed m \<le>\<^sub>B seed n"
+proof (cases "n \<le> m")
+  case True
+  thus ?thesis using seed_chain_le_B by simp
+next
+  case False
+  hence "m \<le> n" by simp
+  thus ?thesis using seed_chain_le_B by simp
+qed
+
 lemma lemma_2_3:
   shows "(\<forall>A \<in> BMS. \<forall>A' \<in> BMS. A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A)"
-  sorry
+  sorry  \<comment> \<open>Open. Building blocks: @{thm seed_chain_le_B},
+            @{thm bms_below_seed}, @{thm bms_pair_below_seed},
+            @{thm seed_pair_le_B_total}. The remaining gap is to lift
+            \<open><\<^sub>l\<^sub>e\<^sub>x\<close>-totality (@{thm arr_lex_total}) within the
+            common-seed subtree to \<open>\<le>\<^sub>B\<close>-totality, which is essentially
+            a structural induction over the construction of one of the
+            elements.\<close>
 
 
 section \<open>Corollary 2.4\<close>

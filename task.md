@@ -32,3 +32,5 @@
   さらに `seed_le_B_succ` (seed n ≤_B seed (Suc n)) と `seed_chain_le_B` (n ≤ m ⟹ seed n ≤_B seed m) を追加。Lemma 2.3 の seed 部分の基盤。
 - **v0.1.14** `bms_below_seed : A ∈ BMS ⟹ ∃N. A ≤_B seed N` 追加。
   `bms_pair_below_seed`: 2要素が共通の seed M 以下に収まることを示す。Lemma 2.3 への中間補題。
+- **v0.1.15** `seed_pair_le_B_total` 追加: 任意の2 seeds は ≤_B 比較可能。
+  Lemma 2.3 の seed-vs-seed ケースを完全カバー。
