@@ -30,3 +30,5 @@
   caller `bump_col_lt_C` も既に同条件を持つので呼び出し変更のみ。sorry 8 → 7。
 - **v0.1.13** seed chain の基礎: `seed_Suc_expand_one : (seed (Suc n))[1] = seed n` を証明。
   さらに `seed_le_B_succ` (seed n ≤_B seed (Suc n)) と `seed_chain_le_B` (n ≤ m ⟹ seed n ≤_B seed m) を追加。Lemma 2.3 の seed 部分の基盤。
+- **v0.1.14** `bms_below_seed : A ∈ BMS ⟹ ∃N. A ≤_B seed N` 追加。
+  `bms_pair_below_seed`: 2要素が共通の seed M 以下に収まることを示す。Lemma 2.3 への中間補題。

@@ -77,6 +77,46 @@ proof -
   show ?thesis using seed_chain_le_B_aux m_eq by simp
 qed
 
+text \<open>
+  Every \<open>A \<in> BMS\<close> is \<open>\<le>\<^sub>B\<close>-below some seed: this follows
+  from BMS construction by induction (seeds are seeds; expansions
+  preserve \<open>\<le>\<^sub>B\<close>-below-seed via @{thm bms_le_expand}).
+\<close>
+
+lemma bms_below_seed:
+  assumes "A \<in> BMS"
+  shows "\<exists>N. A \<le>\<^sub>B seed N"
+  using assms
+proof (induct rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case using bms_le_refl by blast
+next
+  case (expand_in_BMS A k)
+  then obtain N where "A \<le>\<^sub>B seed N" by blast
+  hence "A[k] \<le>\<^sub>B seed N" using bms_le_expand bms_le_trans by blast
+  thus ?case by blast
+qed
+
+text \<open>
+  Two elements of \<open>BMS\<close> share a common seed-bound: the larger of
+  the two seed-bounds is an upper bound of both.
+\<close>
+
+lemma bms_pair_below_seed:
+  assumes "A \<in> BMS" "A' \<in> BMS"
+  shows "\<exists>M. A \<le>\<^sub>B seed M \<and> A' \<le>\<^sub>B seed M"
+proof -
+  obtain N where N: "A \<le>\<^sub>B seed N" using bms_below_seed[OF assms(1)] by blast
+  obtain N' where N': "A' \<le>\<^sub>B seed N'" using bms_below_seed[OF assms(2)] by blast
+  let ?M = "max N N'"
+  have "seed N \<le>\<^sub>B seed ?M" using seed_chain_le_B[where n = N and m = ?M] by simp
+  hence "A \<le>\<^sub>B seed ?M" using N bms_le_trans by blast
+  moreover have "seed N' \<le>\<^sub>B seed ?M"
+    using seed_chain_le_B[where n = N' and m = ?M] by simp
+  hence "A' \<le>\<^sub>B seed ?M" using N' bms_le_trans by blast
+  ultimately show ?thesis by blast
+qed
+
 
 section \<open>Lexicographic order on columns and arrays\<close>
 
