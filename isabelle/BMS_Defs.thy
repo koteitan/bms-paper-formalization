@@ -603,6 +603,12 @@ proof -
 qed
 
 
+lemma length_bump_col_eq:
+  assumes "b0_start A = Some s"
+  shows "length (bump_col A 0 1) = length (A ! s)"
+  unfolding bump_col_def Let_def using assms by simp
+
+
 lemma Bi_block_zero:
   assumes "A \<noteq> []"
   shows "Bi_block A 0 = B0_block A"

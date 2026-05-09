@@ -4,7 +4,7 @@ session BMS = HOL +
     System (BMS), following Rachel Hunter,
     'Well-Orderedness of the Bashicu Matrix System' (arXiv:2307.04606v3).
 
-    Version: v0.1.9
+    Version: v0.1.10
   "
   options [document = false, quick_and_dirty]
   theories

@@ -602,4 +602,56 @@ next
   case greater thus ?thesis using seed_lex_lt by blast
 qed
 
+
+section \<open>Step 3: \<open>bump_col_lt_C\<close>\<close>
+
+text \<open>
+  The bumped first column \<open>B\<^sub>1[0]\<close> is strictly \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close>-less
+  than the last column \<open>C\<close>: at row \<open>m\<^sub>0\<close> the bumped value is
+  strictly smaller (Step 1, @{thm bump_col_value_lt_m0}), and at all
+  earlier rows they agree (Step 2, @{thm bump_col_value_eq_below}).
+\<close>
+
+lemma bump_col_lt_C:
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and ne: "A \<noteq> []"
+      and len_s: "m\<^sub>0 < length (A ! s)"
+      and len_C: "m\<^sub>0 < length (A ! last_col_idx A)"
+  shows "(bump_col A 0 1) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x (A ! last_col_idx A)"
+proof -
+  let ?bump = "bump_col A 0 1"
+  let ?C = "A ! last_col_idx A"
+  have len_bump: "length ?bump = length (A ! s)"
+    using length_bump_col_eq[OF b0] .
+  have m0_lt_min: "m\<^sub>0 < min (length ?bump) (length ?C)"
+    using len_bump len_s len_C by simp
+  have eq_below: "\<And>m. m < m\<^sub>0 \<Longrightarrow> ?bump ! m = ?C ! m"
+  proof -
+    fix m assume "m < m\<^sub>0"
+    moreover from this len_s have "m < length (A ! s)" by simp
+    ultimately show "?bump ! m = ?C ! m"
+      using bump_col_value_eq_below[OF b0 mp ne] by simp
+  qed
+  have take_eq: "take m\<^sub>0 ?bump = take m\<^sub>0 ?C"
+  proof (rule nth_equalityI)
+    show "length (take m\<^sub>0 ?bump) = length (take m\<^sub>0 ?C)"
+      using m0_lt_min by simp
+    fix i assume "i < length (take m\<^sub>0 ?bump)"
+    hence "i < m\<^sub>0" using m0_lt_min by simp
+    thus "take m\<^sub>0 ?bump ! i = take m\<^sub>0 ?C ! i"
+      using eq_below m0_lt_min by simp
+  qed
+  have lt_at_m0: "?bump ! m\<^sub>0 < ?C ! m\<^sub>0"
+    using bump_col_value_lt_m0[OF b0 mp ne] .
+  have pair_in: "(?bump ! m\<^sub>0, ?C ! m\<^sub>0) \<in> {(x::nat, y). x < y}"
+    using lt_at_m0 by simp
+  have "(?bump, ?C) \<in> lexord {(x::nat, y). x < y}"
+    using lexord_take_index_conv[where r = "{(x::nat, y). x < y}"
+                                 and x = ?bump and y = ?C]
+          m0_lt_min take_eq pair_in
+    by blast
+  thus ?thesis unfolding col_lt_def .
+qed
+
 end
