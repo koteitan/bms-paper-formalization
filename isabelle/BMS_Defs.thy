@@ -565,6 +565,7 @@ lemma bump_col_value_lt_m0:
   assumes b0: "b0_start A = Some s"
       and mp: "max_parent_level A = Some m\<^sub>0"
       and ne: "A \<noteq> []"
+      and len_s: "m\<^sub>0 < length (A ! s)"
   shows "(bump_col A 0 1) ! m\<^sub>0 < (A ! last_col_idx A) ! m\<^sub>0"
 proof -
   have parent: "m_parent A m\<^sub>0 (last_col_idx A) = Some s"
@@ -573,27 +574,15 @@ proof -
     using m_parent_elem_lt[OF parent] .
   have not_asc: "\<not> ascends A 0 m\<^sub>0"
     unfolding ascends_def using b0 mp by simp
-  show ?thesis
-  proof (cases "m\<^sub>0 < length (A ! s)")
-    case True
-    have "(bump_col A 0 1) ! m\<^sub>0 = (A ! s) ! m\<^sub>0
-                                  + (if ascends A 0 m\<^sub>0 then 1 * delta A m\<^sub>0 else 0)"
-      unfolding bump_col_def Let_def using b0 True by simp
-    also have "\<dots> = (A ! s) ! m\<^sub>0" using not_asc by simp
-    also have "\<dots> = elem A s m\<^sub>0" unfolding elem_def by simp
-    finally have eq_left: "(bump_col A 0 1) ! m\<^sub>0 = elem A s m\<^sub>0" .
-    have eq_right: "(A ! last_col_idx A) ! m\<^sub>0 = elem A (last_col_idx A) m\<^sub>0"
-      unfolding elem_def by simp
-    show ?thesis using eq_left eq_right base_lt by simp
-  next
-    case False
-    \<comment> \<open>If \<open>m\<^sub>0\<close> is out of range for \<open>A ! s\<close>, the bump_col list has
-        no element at \<open>m\<^sub>0\<close>; the goal is vacuous in this branch
-        relative to a well-formed array. We still need to discharge it.
-        We use that elem A s m_0 < elem A (last) m_0 is true for the
-        underlying nat-list-indexing semantics in HOL.\<close>
-    show ?thesis sorry
-  qed
+  have "(bump_col A 0 1) ! m\<^sub>0 = (A ! s) ! m\<^sub>0
+                                + (if ascends A 0 m\<^sub>0 then 1 * delta A m\<^sub>0 else 0)"
+    unfolding bump_col_def Let_def using b0 len_s by simp
+  also have "\<dots> = (A ! s) ! m\<^sub>0" using not_asc by simp
+  also have "\<dots> = elem A s m\<^sub>0" unfolding elem_def by simp
+  finally have eq_left: "(bump_col A 0 1) ! m\<^sub>0 = elem A s m\<^sub>0" .
+  have eq_right: "(A ! last_col_idx A) ! m\<^sub>0 = elem A (last_col_idx A) m\<^sub>0"
+    unfolding elem_def by simp
+  show ?thesis using eq_left eq_right base_lt by simp
 qed
 
 

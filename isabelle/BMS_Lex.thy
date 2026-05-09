@@ -343,7 +343,7 @@ proof -
       using eq_below m0_lt_min by simp
   qed
   have lt_at_m0: "?bump ! m\<^sub>0 < ?C ! m\<^sub>0"
-    using bump_col_value_lt_m0[OF b0 mp ne] .
+    using bump_col_value_lt_m0[OF b0 mp ne len_s] .
   have pair_in: "(?bump ! m\<^sub>0, ?C ! m\<^sub>0) \<in> {(x::nat, y). x < y}"
     using lt_at_m0 by simp
   have "(?bump, ?C) \<in> lexord {(x::nat, y). x < y}"
