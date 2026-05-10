@@ -101,10 +101,80 @@ next
   thus ?case by blast
 qed
 
+text \<open>
+  Non-strict variant: chained \<open>\<le>\<^sub>B\<close> implies \<open>=/<\<^sub>o\<close>.
+  Proof by induction on \<open>A' \<le>\<^sub>B A\<close> using @{thm stable_rep_extend}
+  at each expansion step (giving stable rep of \<open>A[n]\<close> with all values
+  strictly below \<open>o_of A\<close>; minimality of @{const o_of} gives
+  \<open>o_of (A[n]) = o_of A \<or> o_of (A[n]) <\<^sub>o o_of A\<close>).
+  Each step's combination is via either equality substitution or
+  @{thm ord_lt_trans}.
+\<close>
+
+lemma o_le_via_bms_le:
+  assumes "A \<in> BMS" "A' \<le>\<^sub>B A"
+  shows "o_of A' = o_of A \<or> o_of A' <\<^sub>o o_of A"
+  using assms(2,1)
+proof (induct rule: bms_le.induct)
+  case bms_le_refl
+  thus ?case by simp
+next
+  case (bms_le_step A' A n)
+  have A_BMS: "A \<in> BMS" using bms_le_step.prems .
+  have An_BMS: "A[n] \<in> BMS" using A_BMS by (rule expand_in_BMS)
+  have IH_eq: "o_of A' = o_of (A[n]) \<or> o_of A' <\<^sub>o o_of (A[n])"
+    using bms_le_step.hyps(2)[OF An_BMS] .
+  obtain f where f_rep: "stable_rep A f"
+    using o_defined[OF A_BMS] by blast
+  obtain g where g_rep: "stable_rep (A[n]) g"
+                  and g_lt: "\<forall>i < arr_len (A[n]). g i <\<^sub>o o_of A"
+    using stable_rep_extend[OF A_BMS f_rep] by blast
+  have An_le_A: "o_of (A[n]) = o_of A \<or> o_of (A[n]) <\<^sub>o o_of A"
+  proof -
+    have witness: "\<exists>g'. stable_rep (A[n]) g'
+                       \<and> (\<forall>i < arr_len (A[n]). g' i <\<^sub>o o_of A)"
+      using g_rep g_lt by blast
+    obtain f' where mini:
+      "\<forall>\<beta>. (\<exists>g'. stable_rep (A[n]) g'
+                  \<and> (\<forall>i < arr_len (A[n]). g' i <\<^sub>o \<beta>))
+            \<longrightarrow> o_of (A[n]) = \<beta> \<or> o_of (A[n]) <\<^sub>o \<beta>"
+      using o_of_def[where A = "A[n]"] by blast
+    show ?thesis using mini[rule_format, OF witness] .
+  qed
+  show ?case
+  proof -
+    consider (i_eq) "o_of A' = o_of (A[n])"
+           | (i_lt) "o_of A' <\<^sub>o o_of (A[n])"
+      using IH_eq by blast
+    thus ?thesis
+    proof cases
+      case i_eq
+      thus ?thesis using An_le_A by simp
+    next
+      case i_lt
+      consider (j_eq) "o_of (A[n]) = o_of A"
+             | (j_lt) "o_of (A[n]) <\<^sub>o o_of A"
+        using An_le_A by blast
+      thus ?thesis
+      proof cases
+        case j_eq
+        thus ?thesis using i_lt by simp
+      next
+        case j_lt
+        thus ?thesis using i_lt ord_lt_trans by blast
+      qed
+    qed
+  qed
+qed
+
 lemma o_preserves:
   assumes "A \<in> BMS" "A' \<in> BMS" "A' <\<^sub>B A"
   shows "(o_of A') <\<^sub>o (o_of A)"
-  sorry
+  sorry  \<comment> \<open>The strict version. From @{thm o_le_via_bms_le} we
+            get \<open>o_of A' = o_of A \<or> o_of A' <\<^sub>o o_of A\<close>, and
+            \<open>A' \<noteq> A\<close>; ruling out the equality case requires
+            either an injectivity axiom on @{const o_of} or a stronger
+            strict bound from @{thm stable_rep_extend}.\<close>
 
 
 section \<open>Theorem 2.7\<close>

@@ -43,3 +43,5 @@
   集約され、構造が明確化された。
 - **v0.1.18** `o_defined` を `o_on_seed` + `stable_rep_extend` から BMS.induct で導出。
   sorry 6 → 5。
+- **v0.1.19** `o_le_via_bms_le : A ∈ BMS, A' ≤_B A ⟹ o_of A' = o_of A ∨ o_of A' <_o o_of A` を bms_le.induct で証明。
+  `o_preserves` の strict 化には未だ axiom 強化が必要だが、≤_o レベルのチェイン補題が利用可能に。
