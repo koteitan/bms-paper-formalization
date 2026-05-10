@@ -1,50 +1,37 @@
 # タスクリスト
 
-## 残タスク (推奨順)
+> **メモ**: 完了履歴はこのファイルに書かないこと。各 commit 自体が履歴であり、
+> 重複させると古くなって誤情報になる。
+> **メモ**: 番号 (ID) は一度付けたら変更しない。新規追加は末尾に追加し、
+> 完了・削除しても他の ID は再採番しない。
 
-| 順 | タスク | 状態 | 見込み |
-|:--:|--------|------|:--:|
-| 1 | `lex_implies_le_B` (Cor 2.4 backward 相当): A,A'∈BMS, A<_lex A' ⟹ A ≤_B A' | sorry | cross-branch 補題要 |
-| 2 | `lemma_2_5_at_main` の `b0_start = Some s` ケース (Lemma 2.5 同時帰納) | sorry (no_b0 ケース完全本証明済) | 数時間〜 |
-| 3 | Theorem 2.7 のサブステップ (`o_on_seed`, `stable_rep_extend`, `o_defined`, `o_preserves`) | sorry | 1〜2h + Ord_t 公理化判断 |
-| 4 | Phase 3: Isabelle/ZF で Lemma 2.6 を解消 | 未着手 | 数週間 (Paulson Constructible 学習要) |
+現在 `sorry`: **4** (`lex_implies_le_B`, `lemma_2_5_at_main` Some s, `o_on_seed`, `stable_rep_extend_strict`)。
 
-## 残 `sorry` (合計 4)
+## タスク
 
-| ファイル | 数 | 内訳 |
-|----------|:--:|------|
-| `BMS_Defs.thy` | 0 | (termination 解消済) |
-| `BMS_Lex.thy` | 1 | `lex_implies_le_B` (Cor 2.4 backward; lemma_2_3 と corollary_2_4 は本証明済) |
-| `BMS_Ancestry.thy` | 1 | Lemma 2.5 (`lemma_2_5_at_main` の `b0_start = Some s` ケース) |
-| `BMS_WellOrdered.thy` | 2 | `o_on_seed`, `stable_rep_extend_strict` (`o_defined` / `stable_rep_extend` / `o_le_via_bms_le` / `o_preserves` は本証明済) |
-| `BMS_Stability.thy` | 0 | (Lemma 2.6 は axiomatized) |
-
-## 完了履歴
-
-- **v0.1.10** Step 3 (`bump_col_lt_C`) 完成
-- **v0.1.11** Step 4 (`expansion_some_lt_orig`) + Step 5 (`lemma_2_1`) + `BMS_is_array` 完成。
-  Lemma 2.1 の sorry を完全解消 (BMS_is_array bridge も本証明済)。
-  sorry 9 → 8 に減少。Lemma 2.1 → Cor 2.2, Lemma 2.3, Cor 2.4 への依存連鎖が完全解放。
-- **v0.1.12** `bump_col_value_lt_m0` に `m_0 < length (A!s)` 仮定を追加し縁ケース sorry 解消。
-  caller `bump_col_lt_C` も既に同条件を持つので呼び出し変更のみ。sorry 8 → 7。
-- **v0.1.13** seed chain の基礎: `seed_Suc_expand_one : (seed (Suc n))[1] = seed n` を証明。
-  さらに `seed_le_B_succ` (seed n ≤_B seed (Suc n)) と `seed_chain_le_B` (n ≤ m ⟹ seed n ≤_B seed m) を追加。Lemma 2.3 の seed 部分の基盤。
-- **v0.1.14** `bms_below_seed : A ∈ BMS ⟹ ∃N. A ≤_B seed N` 追加。
-  `bms_pair_below_seed`: 2要素が共通の seed M 以下に収まることを示す。Lemma 2.3 への中間補題。
-- **v0.1.15** `seed_pair_le_B_total` 追加: 任意の2 seeds は ≤_B 比較可能。
-  Lemma 2.3 の seed-vs-seed ケースを完全カバー。
-- **v0.1.16** `m_parent` / `m_ancestor` の termination を解消。
-  3段 lex measure (m, i, tag) を `inv_image` で wrap し、case 4 の `p < i`
-  を `m_parent.psimps` (under dom) + `m_parent_lt_aux` で discharge。sorry 7 → 6。
-- **v0.1.17** Lemma 2.3 を `lex_implies_le_B` 経由に再構築。
-  `lemma_2_3` 自体は `arr_lex_total` + `lex_implies_le_B` から自動で証明され、
-  `corollary_2_4_backward` も `lex_implies_le_B` を直接参照する 3 行の証明に簡素化。
-  sorry の総数は 6 で同じだが、未証明の核 (Cor 2.4 backward) が単一の lemma に
-  集約され、構造が明確化された。
-- **v0.1.18** `o_defined` を `o_on_seed` + `stable_rep_extend` から BMS.induct で導出。
-  sorry 6 → 5。
-- **v0.1.19** `o_le_via_bms_le : A ∈ BMS, A' ≤_B A ⟹ o_of A' = o_of A ∨ o_of A' <_o o_of A` を bms_le.induct で証明。
-  `o_preserves` の strict 化には未だ axiom 強化が必要だが、≤_o レベルのチェイン補題が利用可能に。
-- **v0.1.20** `stable_rep_extend_strict` を導入 (sorry: Hunter の Lemma 2.6 構成
-  により β <_o o_of A の strict bound を提供)。これより `stable_rep_extend`
-  (非 strict) と `o_preserves` を本証明。sorry 5 → 4。
+| ID | Lemma | タスク | 状態 | 見込み |
+|---:|---|---|---|:---:|
+|  1 | Cor 2.4 backward | `expansion_succ_zero_eq` 系 (制限版) の正しい命題化: empirical に成立する `A` の class を整理 | 未着手 | 不明 |
+|  2 | Cor 2.4 backward | `expansion_chain_le_B`: `k ≤ k' ⟹ A[k] ≤_B A[k']` を 1 から導出 | 1 待ち | 30m |
+|  3 | Cor 2.4 backward | cross-branch totality: `B ∈ BMS, X ≤_B B, Y ≤_B B ⟹ X ≤_B Y ∨ Y ≤_B X` を double induction で構築 | 2 待ち | 数h |
+|  4 | Cor 2.4 backward | `lex_implies_le_B` 本体 (3 + `bms_pair_below_seed` で確定) | 3 待ち | 30m |
+|  5 | Lemma 2.5 | 補助補題群整備 (m_parent / m_ancestor が strip / bumping / k-祖先と相互作用する性質) | 未着手 | 不明 |
+|  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から各 clause を順に 5 個の helper として独立化 | 5 待ち | 数h+ |
+|  7 | Lemma 2.5 | `lemma_2_5_at_main_some` 本体: `nat_less_induct` で 6 を組み立て | 6 待ち | 1h |
+|  8 | Lemma 2.5 | 既存 `lemma_2_5_i` 〜 `lemma_2_5_v` projection が新証明と互換に動作することを確認 | 7 待ち | 30m |
+|  9 | Theorem 2.7 / `o_on_seed` | `Ord_t` の axiom 拡張: 任意の `n` に対し `stable_lt n α β` を満たす `α <_o β` の存在 | 公理化判断要 | 1h+ |
+| 10 | Theorem 2.7 / `o_on_seed` | seed n の 2 列に対し `f 0 = α, f 1 = β` で `stable_rep` を構築 | 9 待ち | 1h |
+| 11 | Theorem 2.7 / `o_on_seed` | `m_ancestor (seed n) m 1 0` の `m ≥ n` ケース補強 (m_parent_seed 系拡張) | 未着手 | 1h |
+| 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 で反射した値 | 5-8 待ち | 数h |
+| 13 | Theorem 2.7 / `stable_rep_extend_strict` | その `g` が `stable_rep` を満たすことの証明 (Lemma 2.5 を本質的に使用) | 12 待ち | 1日 |
+| 14 | Theorem 2.7 / `stable_rep_extend_strict` | `β` の構成と `g i <_o β` の検証 | 13 待ち | 半日 |
+| 15 | Lemma 2.6 / Phase 3 ZF | `isabelle_zf/` ディレクトリ・`ROOT` 雛形 | 未着手 | 30m |
+| 16 | Lemma 2.6 / Phase 3 ZF | Paulson `Constructible` ライブラリ import | 15 待ち | 1日 |
+| 17 | Lemma 2.6 / Phase 3 ZF | 2.6.A: `φ_0(η,ξ) := η ∈ ξ` が Σ_0 | 16 待ち | 1日 |
+| 18 | Lemma 2.6 / Phase 3 ZF | 2.6.B: `φ_1(η,ξ,k) := η <_k ξ` が Σ_{n+1} | 17 待ち | 1日 |
+| 19 | Lemma 2.6 / Phase 3 ZF | 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 経由) | 18 待ち | 数日 |
+| 20 | Lemma 2.6 / Phase 3 ZF | 2.6.D: 有限 Σ_{n+1} 連言の Σ_{n+1} 性 | 19 待ち | 1日 |
+| 21 | Lemma 2.6 / Phase 3 ZF | 2.6.E: Σ_{n+1} 存在閉包 | 20 待ち | 1日 |
+| 22 | Lemma 2.6 / Phase 3 ZF | 2.6.F: ψ ∧ φ の `L_β` から `L_α` への反射 | 21 待ち | 1日 |
+| 23 | Lemma 2.6 / Phase 3 ZF | 2.6.G: `L_α` 内の証拠から `Y'` と全単射 `f` を構成 | 22 待ち | 1日 |
+| 24 | Lemma 2.6 / Phase 3 ZF | HOL 側の `axiomatize lemma_2_6` を ZF 側からの transfer に置換 | 23 待ち | 半日 |
