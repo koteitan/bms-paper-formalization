@@ -21,7 +21,7 @@
 |  8 | Lemma 2.5 | 既存 `lemma_2_5_i` 〜 `lemma_2_5_v` projection が新証明と互換に動作することを確認 | 7 待ち | 30m |
 |  9 | Theorem 2.7 / `o_on_seed` | `Ord_t` の axiom 拡張: 任意の `n` に対し `stable_lt n α β` を満たす `α <_o β` の存在 | 公理化判断要 | 1h+ |
 | 10 | Theorem 2.7 / `o_on_seed` | seed n の 2 列に対し `f 0 = α, f 1 = β` で `stable_rep` を構築 | 9 待ち | 1h |
-| 11 | Theorem 2.7 / `o_on_seed` | `m_ancestor (seed n) m 1 0` の `m ≥ n` ケース補強 (m_parent_seed 系拡張) | 未着手 | 1h |
+| 11 | Theorem 2.7 / `o_on_seed` | `m_ancestor (seed n) m 1 0` の `m ≥ n` ケース補強 (m_parent_seed 系拡張) | 完了 | — |
 | 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 で反射した値 | 5-8 待ち | 数h |
 | 13 | Theorem 2.7 / `stable_rep_extend_strict` | その `g` が `stable_rep` を満たすことの証明 (Lemma 2.5 を本質的に使用) | 12 待ち | 1日 |
 | 14 | Theorem 2.7 / `stable_rep_extend_strict` | `β` の構成と `g i <_o β` の検証 | 13 待ち | 半日 |

@@ -932,6 +932,62 @@ next
   thus ?case using par by simp
 qed
 
+text \<open>
+  Out-of-range nth on equal-length replicates yields the same
+  (default) value, regardless of the replicated value.
+\<close>
+
+lemma replicate_nth_oob_eq:
+  fixes a b :: nat
+  assumes "n \<le> m"
+  shows "(replicate n a) ! m = (replicate n b) ! m"
+  using assms
+proof (induct n arbitrary: m)
+  case 0 thus ?case by simp
+next
+  case (Suc n)
+  obtain m' where m_eq: "m = Suc m'"
+    using Suc.prems by (cases m) auto
+  hence "n \<le> m'" using Suc.prems by simp
+  hence ih: "(replicate n a) ! m' = (replicate n b) ! m'"
+    by (rule Suc.hyps)
+  show ?case using m_eq ih by simp
+qed
+
+text \<open>
+  For \<open>m \<ge> n\<close>, the \<open>m\<close>-parent of column 1 in \<open>seed n\<close>
+  is undefined, since the candidate filter compares two values that
+  are equal (both out-of-range nth on \<open>replicate n _\<close>).
+\<close>
+
+lemma m_parent_seed_top:
+  assumes "n \<le> m"
+  shows "m_parent (seed n) m 1 = None"
+proof -
+  have eq: "(seed n) ! 0 ! m = (seed n) ! 1 ! m"
+    using assms by (simp add: seed_def replicate_nth_oob_eq)
+  hence not_lt: "\<not> elem (seed n) 0 m < elem (seed n) 1 m"
+    unfolding elem_def by simp
+  show ?thesis
+  proof (cases m)
+    case 0
+    have "[j \<leftarrow> [0..<1]. elem (seed n) j 0 < elem (seed n) 1 0] = []"
+      using not_lt 0 by simp
+    thus ?thesis using 0 by (simp add: Let_def)
+  next
+    case (Suc m')
+    have "[j \<leftarrow> [0..<1]. elem (seed n) j (Suc m') < elem (seed n) 1 (Suc m')
+                          \<and> m_ancestor (seed n) m' 1 j] = []"
+      using not_lt Suc by simp
+    thus ?thesis using Suc by (simp add: Let_def)
+  qed
+qed
+
+corollary m_ancestor_seed_top:
+  assumes "n \<le> m"
+  shows "\<not> m_ancestor (seed n) m 1 0"
+  using m_parent_seed_top[OF assms] by simp
+
 lemma max_parent_level_seed:
   assumes "0 < n"
   shows "max_parent_level (seed n) = Some (n - 1)"

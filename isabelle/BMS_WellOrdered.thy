@@ -46,11 +46,22 @@ begin
 
 section \<open>Stable representations\<close>
 
+text \<open>
+  Per Hunter (paper p.~9): if the \<open>i\<close>-th column is an
+  \<open>m\<close>-ancestor of the \<open>j\<close>-th column (paper convention:
+  \<open>i\<close> earlier, \<open>j\<close> later), then \<open>f(i) <\<^sub>m f(j)\<close>.
+  Translating to our index convention (\<open>m_ancestor A m later earlier\<close>
+  so that \<open>m_ancestor A m i j\<close> ⟹ \<open>j < i\<close>): the variable \<open>j\<close>
+  here is the earlier (ancestor), \<open>i\<close> the later (descendant), and
+  the requirement is \<open>stable_lt m (f j) (f i)\<close>, i.e.\ the
+  ancestor's image is stable-below the descendant's image.
+\<close>
+
 definition stable_rep :: "array \<Rightarrow> (nat \<Rightarrow> Ord_t) \<Rightarrow> bool" where
   "stable_rep A f \<longleftrightarrow>
      (\<forall>i < arr_len A. \<forall>j < arr_len A. i < j \<longrightarrow> (f i) <\<^sub>o (f j)) \<and>
      (\<forall>i < arr_len A. \<forall>j < arr_len A. \<forall>m.
-        m_ancestor A m i j \<longrightarrow> stable_lt m (f i) (f j))"
+        m_ancestor A m i j \<longrightarrow> stable_lt m (f j) (f i))"
 
 (*
   o_of axiomatized as the minimal alpha in Ord_t such that some stable
