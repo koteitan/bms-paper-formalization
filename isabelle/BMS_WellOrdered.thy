@@ -88,7 +88,18 @@ section \<open>Sub-step 2.7.e: o is defined and order-preserving on BMS\<close>
 lemma o_defined:
   assumes "A \<in> BMS"
   shows "\<exists>f. stable_rep A f"
-  sorry
+  using assms
+proof (induct rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case by (rule o_on_seed)
+next
+  case (expand_in_BMS A k)
+  obtain f where f_rep: "stable_rep A f" using expand_in_BMS.hyps(2) by blast
+  obtain g where "stable_rep (A[k]) g
+                   \<and> (\<forall>i < arr_len (A[k]). g i <\<^sub>o o_of A)"
+    using stable_rep_extend[OF expand_in_BMS.hyps(1) f_rep] by blast
+  thus ?case by blast
+qed
 
 lemma o_preserves:
   assumes "A \<in> BMS" "A' \<in> BMS" "A' <\<^sub>B A"

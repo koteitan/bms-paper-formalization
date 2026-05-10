@@ -9,14 +9,14 @@
 | 3 | Theorem 2.7 のサブステップ (`o_on_seed`, `stable_rep_extend`, `o_defined`, `o_preserves`) | sorry | 1〜2h + Ord_t 公理化判断 |
 | 4 | Phase 3: Isabelle/ZF で Lemma 2.6 を解消 | 未着手 | 数週間 (Paulson Constructible 学習要) |
 
-## 残 `sorry` (合計 6)
+## 残 `sorry` (合計 5)
 
 | ファイル | 数 | 内訳 |
 |----------|:--:|------|
 | `BMS_Defs.thy` | 0 | (termination 解消済) |
 | `BMS_Lex.thy` | 1 | `lex_implies_le_B` (Cor 2.4 backward; lemma_2_3 と corollary_2_4 は本証明済) |
 | `BMS_Ancestry.thy` | 1 | Lemma 2.5 (`lemma_2_5_at_main` の `b0_start = Some s` ケース) |
-| `BMS_WellOrdered.thy` | 4 | 2.7 sub-steps (o_on_seed, stable_rep_extend, o_defined, o_preserves) |
+| `BMS_WellOrdered.thy` | 3 | 2.7 sub-steps (o_on_seed, stable_rep_extend, o_preserves; o_defined は証明済) |
 | `BMS_Stability.thy` | 0 | (Lemma 2.6 は axiomatized) |
 
 ## 完了履歴
@@ -41,3 +41,5 @@
   `corollary_2_4_backward` も `lex_implies_le_B` を直接参照する 3 行の証明に簡素化。
   sorry の総数は 6 で同じだが、未証明の核 (Cor 2.4 backward) が単一の lemma に
   集約され、構造が明確化された。
+- **v0.1.18** `o_defined` を `o_on_seed` + `stable_rep_extend` から BMS.induct で導出。
+  sorry 6 → 5。
