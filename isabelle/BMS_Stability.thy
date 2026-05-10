@@ -40,7 +40,9 @@ axiomatization
 where
   ord_lt_irrefl: "\<not> \<alpha> <\<^sub>o \<alpha>"  and
   ord_lt_trans:  "\<alpha> <\<^sub>o \<beta> \<Longrightarrow> \<beta> <\<^sub>o \<gamma> \<Longrightarrow> \<alpha> <\<^sub>o \<gamma>"  and
-  ord_wf:        "wfP (<\<^sub>o)"
+  ord_wf:        "wfP (<\<^sub>o)"  and
+  seed_stable_pair_exists:
+    "\<exists>\<alpha> \<beta>. \<alpha> <\<^sub>o \<beta> \<and> (\<forall>m < n. stable_lt m \<alpha> \<beta>)"
 
 
 section \<open>Lemma 2.6 (Stability reflection)\<close>

@@ -81,9 +81,105 @@ where
 
 section \<open>Sub-step 2.7.b: o on the seed set\<close>
 
+text \<open>
+  For \<open>seed n\<close>, the only non-vacuous \<open>m_ancestor\<close> entry in
+  \<open>stable_rep\<close>'s second clause is \<open>m_ancestor (seed n) m 1 0\<close>
+  for \<open>m < n\<close> (proven by @{thm m_parent_seed_succ} for the
+  positive case and @{thm m_ancestor_seed_top} for \<open>m \<ge> n\<close>).
+  Hence we only need an \<open>\<alpha> <\<^sub>o \<beta>\<close> with \<open>stable_lt m \<alpha> \<beta>\<close>
+  for all \<open>m < n\<close>; this is supplied by axiom
+  @{thm seed_stable_pair_exists}.
+\<close>
+
+lemma m_ancestor_seed_only_1_0:
+  assumes "i < 2" "j < 2" "m_ancestor (seed n) m i j"
+  shows "i = 1 \<and> j = 0 \<and> m < n"
+proof -
+  have "i \<noteq> 0"
+  proof
+    assume "i = 0"
+    have "m_parent (seed n) m 0 = None"
+      by (cases m) (simp_all add: Let_def)
+    hence "\<not> m_ancestor (seed n) m 0 j" by simp
+    thus False using assms(3) \<open>i = 0\<close> by simp
+  qed
+  hence i_eq: "i = 1" using assms(1) by auto
+  have "j \<noteq> 1"
+  proof
+    assume "j = 1"
+    have anc_0_1_false: "\<not> m_ancestor (seed n) m 0 1"
+    proof -
+      have "m_parent (seed n) m 0 = None"
+        by (cases m) (simp_all add: Let_def)
+      thus ?thesis by simp
+    qed
+    have not_anc_1_1: "\<not> m_ancestor (seed n) m 1 1"
+    proof (cases "m_parent (seed n) m 1")
+      case None
+      thus ?thesis by simp
+    next
+      case (Some p)
+      \<comment> \<open>From either \<open>m < n\<close> branch (\<open>p = 0\<close>) or
+          \<open>m \<ge> n\<close> (which gives None, contradicting Some), we have
+          \<open>p = 0\<close>.\<close>
+      have "p = 0"
+      proof (cases "m < n")
+        case True
+        hence "m_parent (seed n) m 1 = Some 0"
+          using m_parent_seed_succ by blast
+        thus ?thesis using Some by simp
+      next
+        case False
+        hence "n \<le> m" by simp
+        hence "m_parent (seed n) m 1 = None" by (rule m_parent_seed_top)
+        thus ?thesis using Some by simp
+      qed
+      hence "m_ancestor (seed n) m 1 1
+              \<longleftrightarrow> (p = 1 \<or> m_ancestor (seed n) m p 1)"
+        using Some by simp
+      thus ?thesis using \<open>p = 0\<close> anc_0_1_false by simp
+    qed
+    thus False using assms(3) i_eq \<open>j = 1\<close> by simp
+  qed
+  hence j_eq: "j = 0" using assms(2) by auto
+  have "m < n"
+  proof (rule ccontr)
+    assume "\<not> m < n"
+    hence "n \<le> m" by simp
+    hence "\<not> m_ancestor (seed n) m 1 0" by (rule m_ancestor_seed_top)
+    thus False using assms(3) i_eq j_eq by simp
+  qed
+  thus ?thesis using i_eq j_eq by simp
+qed
+
 lemma o_on_seed:
   shows "\<exists>f. stable_rep (seed n) f"
-  sorry
+proof -
+  obtain \<alpha> \<beta> where lt: "\<alpha> <\<^sub>o \<beta>"
+                  and stab: "\<forall>m < n. stable_lt m \<alpha> \<beta>"
+    using seed_stable_pair_exists by blast
+  let ?f = "\<lambda>i. if i = 0 then \<alpha> else \<beta>"
+  have arr_len_2: "arr_len (seed n) = 2" by (rule length_seed)
+  have ord_part: "\<forall>i < arr_len (seed n). \<forall>j < arr_len (seed n).
+                    i < j \<longrightarrow> ?f i <\<^sub>o ?f j"
+    using lt arr_len_2 by auto
+  have stable_part: "\<forall>i < arr_len (seed n). \<forall>j < arr_len (seed n). \<forall>m.
+                       m_ancestor (seed n) m i j \<longrightarrow> stable_lt m (?f j) (?f i)"
+  proof (intro allI impI)
+    fix i j m
+    assume i_lt: "i < arr_len (seed n)" and j_lt: "j < arr_len (seed n)"
+       and anc: "m_ancestor (seed n) m i j"
+    have i2: "i < 2" using i_lt arr_len_2 by simp
+    have j2: "j < 2" using j_lt arr_len_2 by simp
+    have "i = 1 \<and> j = 0 \<and> m < n"
+      by (rule m_ancestor_seed_only_1_0[OF i2 j2 anc])
+    hence "i = 1" "j = 0" "m < n" by auto
+    thus "stable_lt m (?f j) (?f i)" using stab by simp
+  qed
+  have "stable_rep (seed n) ?f"
+    unfolding stable_rep_def using ord_part stable_part by blast
+  thus ?thesis by blast
+qed
 
 
 section \<open>Sub-step 2.7.c--d: induction step for the expansion\<close>
