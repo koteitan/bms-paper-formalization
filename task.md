@@ -26,7 +26,7 @@
 | 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 で反射した値 | 5-8 待ち | 数h |
 | 13 | Theorem 2.7 / `stable_rep_extend_strict` | その `g` が `stable_rep` を満たすことの証明 (Lemma 2.5 を本質的に使用) | 12 待ち | 1日 |
 | 14 | Theorem 2.7 / `stable_rep_extend_strict` | `β` の構成と `g i <_o β` の検証 | 13 待ち | 半日 |
-| 15 | Lemma 2.6 / Phase 3 ZF | `isabelle_zf/` ディレクトリ・`ROOT` 雛形 | 未着手 | 30m |
+| 15 | Lemma 2.6 / Phase 3 ZF | `isabelle_zf/` ディレクトリ・`ROOT` 雛形 | 完了 (`isabelle build -d isabelle_zf BMS_ZF` で空セッション通過) | — |
 | 16 | Lemma 2.6 / Phase 3 ZF | Paulson `Constructible` ライブラリ import | 15 待ち | 1日 |
 | 17 | Lemma 2.6 / Phase 3 ZF | 2.6.A: `φ_0(η,ξ) := η ∈ ξ` が Σ_0 | 16 待ち | 1日 |
 | 18 | Lemma 2.6 / Phase 3 ZF | 2.6.B: `φ_1(η,ξ,k) := η <_k ξ` が Σ_{n+1} | 17 待ち | 1日 |

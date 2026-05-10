@@ -1,0 +1,15 @@
+session BMS_ZF = ZF +
+  description "
+    Lemma 2.6 (stability reflection) discharge from the ZF side,
+    intended to displace the HOL-side axiomatization in
+    isabelle/BMS_Stability.thy.
+
+    Status: TODO. See task IDs 15-24 in task.md for sub-tasks.
+
+    Reference: Rachel Hunter, 'Well-Orderedness of the Bashicu
+    Matrix System' (arXiv:2307.04606v3, 2024), Lemma 2.6, plus
+    Kranakis 1982, Theorem 1.8.
+  "
+  options [document = false]
+  theories
+    BMS_Reflection
