@@ -909,15 +909,52 @@ next
   thus ?thesis using seed_chain_le_B by simp
 qed
 
+text \<open>
+  \<open>lex_implies_le_B\<close>: Hunter's key bridge between the lex order
+  and the BMS order \<open>\<le>\<^sub>B\<close> on \<open>BMS\<close>.  Equivalent to
+  Corollary 2.4 (backward).  The forward direction is
+  @{thm bms_le_implies_lex}.  This is the only direction whose proof
+  is not yet filled in; once filled in, both Lemma 2.3 and
+  Corollary 2.4 are immediate.
+\<close>
+
+lemma lex_implies_le_B:
+  assumes "A \<in> BMS" "A' \<in> BMS" "A <\<^sub>l\<^sub>e\<^sub>x A'"
+  shows "A \<le>\<^sub>B A'"
+  sorry  \<comment> \<open>Open. Hunter's key direction. Proof requires
+            cross-branch totality: for \<open>B \<in> BMS\<close> and \<open>k\<^sub>1 \<le> k\<^sub>2\<close>,
+            \<open>B[k\<^sub>1] \<le>\<^sub>B B[k\<^sub>2]\<close>, which itself reduces to the
+            structural lemma \<open>(B[Suc k])[0] = B[k]\<close>
+            (when \<open>b0_start B = Some s\<close>).\<close>
+
+text \<open>
+  Lemma 2.3 follows: by @{thm arr_lex_total} for any \<open>A, A' \<in> BMS\<close>
+  one of \<open>A = A'\<close>, \<open>A <\<^sub>l\<^sub>e\<^sub>x A'\<close>, \<open>A' <\<^sub>l\<^sub>e\<^sub>x A\<close> holds.
+  In each case we conclude \<open>A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A\<close> using
+  reflexivity or @{thm lex_implies_le_B}.
+\<close>
+
 lemma lemma_2_3:
   shows "(\<forall>A \<in> BMS. \<forall>A' \<in> BMS. A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A)"
-  sorry  \<comment> \<open>Open. Building blocks: @{thm seed_chain_le_B},
-            @{thm bms_below_seed}, @{thm bms_pair_below_seed},
-            @{thm seed_pair_le_B_total}. The remaining gap is to lift
-            \<open><\<^sub>l\<^sub>e\<^sub>x\<close>-totality (@{thm arr_lex_total}) within the
-            common-seed subtree to \<open>\<le>\<^sub>B\<close>-totality, which is essentially
-            a structural induction over the construction of one of the
-            elements.\<close>
+proof (intro ballI)
+  fix A A'
+  assume A_in: "A \<in> BMS" and A'_in: "A' \<in> BMS"
+  consider "A = A'" | "A <\<^sub>l\<^sub>e\<^sub>x A'" | "A' <\<^sub>l\<^sub>e\<^sub>x A"
+    using arr_lex_total by blast
+  thus "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+  proof cases
+    case 1
+    thus ?thesis using bms_le_refl by simp
+  next
+    case 2
+    hence "A \<le>\<^sub>B A'" using lex_implies_le_B[OF A_in A'_in] by simp
+    thus ?thesis by simp
+  next
+    case 3
+    hence "A' \<le>\<^sub>B A" using lex_implies_le_B[OF A'_in A_in] by simp
+    thus ?thesis by simp
+  qed
+qed
 
 
 section \<open>Corollary 2.4\<close>
@@ -936,20 +973,9 @@ corollary corollary_2_4_backward:
   assumes "A \<in> BMS" "A' \<in> BMS" "A' <\<^sub>l\<^sub>e\<^sub>x A"
   shows "A' <\<^sub>B A"
 proof -
-  from lemma_2_3 assms(1,2) consider "A \<le>\<^sub>B A'" | "A' \<le>\<^sub>B A" by blast
-  thus ?thesis
-  proof cases
-    case 1
-    have ne: "A \<noteq> A'" using assms(3) arr_lex_irrefl by auto
-    hence "A <\<^sub>B A'" using 1 unfolding bms_lt_def by blast
-    hence "A <\<^sub>l\<^sub>e\<^sub>x A'" using bms_lt_implies_lex[OF assms(2)] by blast
-    hence "A' <\<^sub>l\<^sub>e\<^sub>x A'" using arr_lex_trans[OF assms(3)] by blast
-    thus ?thesis using arr_lex_irrefl by simp
-  next
-    case 2
-    have "A' \<noteq> A" using assms(3) arr_lex_irrefl by auto
-    thus ?thesis using 2 unfolding bms_lt_def by blast
-  qed
+  have le: "A' \<le>\<^sub>B A" using lex_implies_le_B[OF assms(2,1,3)] .
+  have ne: "A' \<noteq> A" using assms(3) arr_lex_irrefl by auto
+  show ?thesis using le ne unfolding bms_lt_def by blast
 qed
 
 corollary corollary_2_4:
