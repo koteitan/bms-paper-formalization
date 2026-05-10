@@ -195,20 +195,31 @@ text \<open>
 \<close>
 
 lemma stable_rep_extend_strict:
-  assumes "A \<in> BMS" "stable_rep A f"
+  assumes "A \<in> BMS" "A \<noteq> []" "stable_rep A f"
   shows "\<exists>g \<beta>. \<beta> <\<^sub>o o_of A
                 \<and> stable_rep (A[n]) g
                 \<and> (\<forall>i < arr_len (A[n]). g i <\<^sub>o \<beta>)"
-  sorry  \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6\<close>
+  sorry  \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6.
+            The \<open>A \<noteq> []\<close> assumption is required: for \<open>A = []\<close>,
+            \<open>A[n] = []\<close> and \<open>o_of [] = bottom\<close> (vacuously least),
+            so no \<open>\<beta> <\<^sub>o o_of A\<close> exists.\<close>
 
 lemma stable_rep_extend:
   assumes "A \<in> BMS" "stable_rep A f"
   shows "\<exists>g. stable_rep (A[n]) g \<and> (\<forall>i < arr_len (A[n]). (g i) <\<^sub>o o_of A)"
-proof -
+proof (cases "A = []")
+  case True
+  hence "A[n] = []" by (simp add: expansion_def)
+  hence "arr_len (A[n]) = 0" by simp
+  have "stable_rep (A[n]) (\<lambda>_. undefined)"
+    unfolding stable_rep_def using \<open>arr_len (A[n]) = 0\<close> by simp
+  thus ?thesis using \<open>arr_len (A[n]) = 0\<close> by auto
+next
+  case False
   obtain g \<beta> where bnd: "\<beta> <\<^sub>o o_of A"
                      and g_rep: "stable_rep (A[n]) g"
                      and g_lt: "\<forall>i < arr_len (A[n]). g i <\<^sub>o \<beta>"
-    using stable_rep_extend_strict[OF assms] by blast
+    using stable_rep_extend_strict[OF assms(1) False assms(2)] by blast
   have "\<forall>i < arr_len (A[n]). g i <\<^sub>o o_of A"
     using g_lt bnd ord_lt_trans by blast
   thus ?thesis using g_rep by blast
@@ -322,12 +333,23 @@ proof -
     case (bms_le_step A' A n)
     have A_BMS: "A \<in> BMS" using bms_le_step.prems(1) .
     have An_BMS: "A[n] \<in> BMS" using A_BMS by (rule expand_in_BMS)
+    \<comment> \<open>The \<open>A = []\<close> branch is vacuous: \<open>A[n] = []\<close>, then
+        \<open>A' \<le>\<^sub>B []\<close> forces \<open>A' = []\<close>, contradicting
+        \<open>A \<noteq> A'\<close>.\<close>
+    have A_ne: "A \<noteq> []"
+    proof
+      assume "A = []"
+      hence "A[n] = []" by (simp add: expansion_def)
+      with bms_le_step.hyps(1) have "A' \<le>\<^sub>B []" by simp
+      hence "A' = []" by (rule bms_le_empty)
+      with \<open>A = []\<close> bms_le_step.prems(2) show False by simp
+    qed
     obtain f where f_rep: "stable_rep A f"
       using o_defined[OF A_BMS] by blast
     obtain g \<beta> where bnd: "\<beta> <\<^sub>o o_of A"
                      and g_rep: "stable_rep (A[n]) g"
                      and g_lt: "\<forall>i < arr_len (A[n]). g i <\<^sub>o \<beta>"
-      using stable_rep_extend_strict[OF A_BMS f_rep] by blast
+      using stable_rep_extend_strict[OF A_BMS A_ne f_rep] by blast
     have An_lt_A: "o_of (A[n]) <\<^sub>o o_of A"
     proof -
       have witness: "\<exists>g'. stable_rep (A[n]) g'
