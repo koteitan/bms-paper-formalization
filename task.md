@@ -9,14 +9,14 @@
 | 3 | Theorem 2.7 のサブステップ (`o_on_seed`, `stable_rep_extend`, `o_defined`, `o_preserves`) | sorry | 1〜2h + Ord_t 公理化判断 |
 | 4 | Phase 3: Isabelle/ZF で Lemma 2.6 を解消 | 未着手 | 数週間 (Paulson Constructible 学習要) |
 
-## 残 `sorry` (合計 5)
+## 残 `sorry` (合計 4)
 
 | ファイル | 数 | 内訳 |
 |----------|:--:|------|
 | `BMS_Defs.thy` | 0 | (termination 解消済) |
 | `BMS_Lex.thy` | 1 | `lex_implies_le_B` (Cor 2.4 backward; lemma_2_3 と corollary_2_4 は本証明済) |
 | `BMS_Ancestry.thy` | 1 | Lemma 2.5 (`lemma_2_5_at_main` の `b0_start = Some s` ケース) |
-| `BMS_WellOrdered.thy` | 3 | 2.7 sub-steps (o_on_seed, stable_rep_extend, o_preserves; o_defined は証明済) |
+| `BMS_WellOrdered.thy` | 2 | `o_on_seed`, `stable_rep_extend_strict` (`o_defined` / `stable_rep_extend` / `o_le_via_bms_le` / `o_preserves` は本証明済) |
 | `BMS_Stability.thy` | 0 | (Lemma 2.6 は axiomatized) |
 
 ## 完了履歴
@@ -45,3 +45,6 @@
   sorry 6 → 5。
 - **v0.1.19** `o_le_via_bms_le : A ∈ BMS, A' ≤_B A ⟹ o_of A' = o_of A ∨ o_of A' <_o o_of A` を bms_le.induct で証明。
   `o_preserves` の strict 化には未だ axiom 強化が必要だが、≤_o レベルのチェイン補題が利用可能に。
+- **v0.1.20** `stable_rep_extend_strict` を導入 (sorry: Hunter の Lemma 2.6 構成
+  により β <_o o_of A の strict bound を提供)。これより `stable_rep_extend`
+  (非 strict) と `o_preserves` を本証明。sorry 5 → 4。
