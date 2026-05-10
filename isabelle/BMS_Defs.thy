@@ -115,14 +115,49 @@ proof -
 qed
 
 termination
-  sorry  \<comment> \<open>The termination obligation requires proving
-            \<open>m_parent A m i = Some p \<Longrightarrow> p < i\<close> within the
-            termination proof, which is a meta-property of the
-            function being defined. The natural workaround is to
-            prove it after the fact using the function's induction
-            principle, then close termination retroactively, but
-            this requires either \<open>partial_function\<close> reformulation
-            or an explicit dom-induction. Left as TODO.\<close>
+proof (relation "inv_image (less_than <*lex*> less_than <*lex*> less_than)
+                            (\<lambda>x. case x of
+                                   Inl (A, m, i) \<Rightarrow> (m, i, 0::nat)
+                                 | Inr (A, m, i, j) \<Rightarrow> (m, i, Suc 0))",
+        goal_cases)
+  case 1 show ?case by auto
+next
+  case (2 A m i j) show ?case by auto
+next
+  case (3 A m i j) show ?case by auto
+next
+  case (4 A m i j x2)
+  \<comment> \<open>The recursive call in \<open>m_ancestor\<close>'s \<open>Some p\<close> branch.
+      We need \<open>x2 < i\<close>. From \<open>m_parent_m_ancestor_dom\<close> we can
+      apply \<open>m_parent.psimps\<close> to expose the body and use
+      \<open>m_parent_lt_aux\<close>.\<close>
+  from 4 have parent_eq: "m_parent A m i = Some x2"
+            and dom: "m_parent_m_ancestor_dom (Inl (A, m, i))"
+    by auto
+  show ?case
+  proof (cases m)
+    case 0
+    let ?cands = "[j \<leftarrow> [0..<i]. elem A j 0 < elem A i 0]"
+    from dom 0 have body: "m_parent A 0 i =
+        (if ?cands = [] then None else Some (last ?cands))"
+      by (simp add: m_parent.psimps Let_def)
+    with parent_eq 0 have ne: "?cands \<noteq> []" and eq: "x2 = last ?cands"
+      by (auto split: if_splits)
+    have "x2 < i" using ne eq m_parent_lt_aux[OF refl ne] by simp
+    thus ?thesis by simp
+  next
+    case (Suc m')
+    let ?cands = "[j \<leftarrow> [0..<i]. elem A j (Suc m') < elem A i (Suc m')
+                                  \<and> m_ancestor A m' i j]"
+    from dom Suc have body: "m_parent A (Suc m') i =
+        (if ?cands = [] then None else Some (last ?cands))"
+      by (simp add: m_parent.psimps Let_def)
+    with parent_eq Suc have ne: "?cands \<noteq> []" and eq: "x2 = last ?cands"
+      by (auto split: if_splits)
+    have "x2 < i" using ne eq m_parent_lt_aux[OF refl ne] by simp
+    thus ?thesis by simp
+  qed
+qed
 
 
 section \<open>Non-strict ancestry\<close>

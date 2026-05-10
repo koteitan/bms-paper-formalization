@@ -7,14 +7,13 @@
 | 1 | Lemma 2.3 の証明 (BMS 全順序) | sorry | 不明 (構造帰納要) |
 | 2 | `lemma_2_5_at_main` の `b0_start = Some s` ケース (Lemma 2.5 同時帰納) | sorry (no_b0 ケース完全本証明済) | 数時間〜 |
 | 3 | Theorem 2.7 のサブステップ (`o_on_seed`, `stable_rep_extend`, `o_defined`, `o_preserves`) | sorry | 1〜2h + Ord_t 公理化判断 |
-| 4 | `m_parent` / `m_ancestor` の termination 証明 | sorry (補助 m_parent_lt は本証明済) | 1〜2h (`partial_function` 化等) |
-| 5 | Phase 3: Isabelle/ZF で Lemma 2.6 を解消 | 未着手 | 数週間 (Paulson Constructible 学習要) |
+| 4 | Phase 3: Isabelle/ZF で Lemma 2.6 を解消 | 未着手 | 数週間 (Paulson Constructible 学習要) |
 
-## 残 `sorry` (合計 7)
+## 残 `sorry` (合計 6)
 
 | ファイル | 数 | 内訳 |
 |----------|:--:|------|
-| `BMS_Defs.thy` | 1 | termination |
+| `BMS_Defs.thy` | 0 | (termination 解消済) |
 | `BMS_Lex.thy` | 1 | lemma_2_3 |
 | `BMS_Ancestry.thy` | 1 | Lemma 2.5 (`lemma_2_5_at_main` の `b0_start = Some s` ケース) |
 | `BMS_WellOrdered.thy` | 4 | 2.7 sub-steps (o_on_seed, stable_rep_extend, o_defined, o_preserves) |
@@ -34,3 +33,6 @@
   `bms_pair_below_seed`: 2要素が共通の seed M 以下に収まることを示す。Lemma 2.3 への中間補題。
 - **v0.1.15** `seed_pair_le_B_total` 追加: 任意の2 seeds は ≤_B 比較可能。
   Lemma 2.3 の seed-vs-seed ケースを完全カバー。
+- **v0.1.16** `m_parent` / `m_ancestor` の termination を解消。
+  3段 lex measure (m, i, tag) を `inv_image` で wrap し、case 4 の `p < i`
+  を `m_parent.psimps` (under dom) + `m_parent_lt_aux` で discharge。sorry 7 → 6。
