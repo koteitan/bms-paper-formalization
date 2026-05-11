@@ -74,7 +74,15 @@ axiomatization
   o_of :: "array \<Rightarrow> Ord_t"
 where
   o_of_def:
-    "\<exists>f. stable_rep A f \<and> (\<forall>i < arr_len A. (f i) <\<^sub>o o_of A) \<and>
+    \<comment> \<open>For \<open>A \<in> BMS\<close>, \<open>o_of A\<close> is the least \<open>\<beta>\<close>
+        bounding some stable representation of \<open>A\<close>. Outside BMS
+        the value of \<open>o_of A\<close> is unspecified; we never reason
+        about it. Restricting the axiom is a soundness improvement:
+        arrays with inconsistent \<open>m_ancestor\<close> structure may admit
+        no stable representation, in which case the unconditional
+        existence claim would be false.\<close>
+    "A \<in> BMS \<Longrightarrow>
+     \<exists>f. stable_rep A f \<and> (\<forall>i < arr_len A. (f i) <\<^sub>o o_of A) \<and>
          (\<forall>\<beta>. (\<exists>g. stable_rep A g \<and> (\<forall>i < arr_len A. (g i) <\<^sub>o \<beta>))
                 \<longrightarrow> (o_of A = \<beta> \<or> o_of A <\<^sub>o \<beta>))"
 
@@ -285,7 +293,7 @@ next
       "\<forall>\<beta>. (\<exists>g'. stable_rep (A[n]) g'
                   \<and> (\<forall>i < arr_len (A[n]). g' i <\<^sub>o \<beta>))
             \<longrightarrow> o_of (A[n]) = \<beta> \<or> o_of (A[n]) <\<^sub>o \<beta>"
-      using o_of_def[where A = "A[n]"] by blast
+      using o_of_def[OF An_BMS] by blast
     show ?thesis using mini[rule_format, OF witness] .
   qed
   show ?case
@@ -363,7 +371,7 @@ proof -
         "\<forall>b. (\<exists>g'. stable_rep (A[n]) g'
                     \<and> (\<forall>i < arr_len (A[n]). g' i <\<^sub>o b))
               \<longrightarrow> o_of (A[n]) = b \<or> o_of (A[n]) <\<^sub>o b"
-        using o_of_def[where A = "A[n]"] by blast
+        using o_of_def[OF An_BMS] by blast
       hence "o_of (A[n]) = \<beta> \<or> o_of (A[n]) <\<^sub>o \<beta>"
         using witness by blast
       thus ?thesis using bnd ord_lt_trans by metis

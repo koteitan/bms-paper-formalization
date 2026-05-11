@@ -1,13 +1,13 @@
-v0.1.27/strengthen sigma_pair_exists to Hunter's σ-pair condition
+v0.1.28/restrict o_of_def to BMS arrays
 
-- Rename seed_stable_pair_exists -> sigma_pair_exists
-- Require alpha, beta in sigma_bound (so lemma_2_6 is applicable in
-  the inductive step of Theorem 2.7)
-- Require omega_o <_o alpha (matches Hunter's hypothesis on Lemma 2.6)
-- Strengthen to universal stability (forall m. stable_lt m alpha beta)
-  rather than per-n existence (matches Hunter's sigma definition;
-  single pair valid across all expansion levels)
-- Merge the previously separate omega_o declaration into the same
-  axiomatization block
-- Update o_on_seed obtain to extract the strengthened conjuncts
-- Bump version v0.1.26 -> v0.1.27
+- Add A : BMS premise to o_of_def axiom
+- Unrestricted form was potentially inconsistent: arrays whose
+  m_ancestor structure cannot be satisfied by any stable_rep admit
+  no f, but the axiom unconditionally claimed existence
+- For A : BMS, every A admits a stable_rep (provable by induction
+  on BMS membership using stable_rep_extend), so the axiom is
+  satisfiable on the intended domain
+- Outside BMS, o_of A is unspecified; no proof reasons about it
+- Update o_le_via_bms_le and o_preserves to discharge the BMS
+  precondition via the already-available An_BMS = A[n] : BMS fact
+- Bump version v0.1.27 -> v0.1.28
