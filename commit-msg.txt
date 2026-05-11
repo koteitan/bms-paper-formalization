@@ -1,0 +1,9 @@
+v0.1.26/refactor lex_implies_le_B via seed_lex_implies_le_B
+
+- Introduce seed_lex_implies_le_B (sorry) restricting the open
+  direction of Cor 2.4 to descendants of a single seed
+- Discharge lex_implies_le_B by reducing to seed_lex_implies_le_B
+  through bms_pair_below_seed (common seed bound for A, A' in BMS)
+- Sorry count unchanged (3); the open statement is now strictly
+  narrower and matches Hunter's structural argument scope
+- Bump version v0.1.25 -> v0.1.26

@@ -918,14 +918,28 @@ text \<open>
   Corollary 2.4 are immediate.
 \<close>
 
+text \<open>
+  Seed cross-branch totality: for descendants \<open>A, A'\<close> of the same
+  seed, lex order implies \<open>\<le>\<^sub>B\<close>.  This is the only remaining open
+  sorry for Corollary 2.4 backward; the BMS-level statement
+  @{term lex_implies_le_B} reduces to it via @{thm bms_pair_below_seed}.
+\<close>
+
+lemma seed_lex_implies_le_B:
+  assumes "A \<le>\<^sub>B seed N" "A' \<le>\<^sub>B seed N" "A <\<^sub>l\<^sub>e\<^sub>x A'"
+  shows "A \<le>\<^sub>B A'"
+  sorry  \<comment> \<open>Open. Hunter's key direction restricted to the
+            expansion-tree below a single seed.  Cross-branch totality
+            within the seed's expansion tree.\<close>
+
 lemma lex_implies_le_B:
   assumes "A \<in> BMS" "A' \<in> BMS" "A <\<^sub>l\<^sub>e\<^sub>x A'"
   shows "A \<le>\<^sub>B A'"
-  sorry  \<comment> \<open>Open. Hunter's key direction. Proof requires
-            cross-branch totality: for \<open>B \<in> BMS\<close> and \<open>k\<^sub>1 \<le> k\<^sub>2\<close>,
-            \<open>B[k\<^sub>1] \<le>\<^sub>B B[k\<^sub>2]\<close>, which itself reduces to the
-            structural lemma \<open>(B[Suc k])[0] = B[k]\<close>
-            (when \<open>b0_start B = Some s\<close>).\<close>
+proof -
+  obtain M where M: "A \<le>\<^sub>B seed M" "A' \<le>\<^sub>B seed M"
+    using bms_pair_below_seed[OF assms(1,2)] by blast
+  show ?thesis using seed_lex_implies_le_B[OF M(1) M(2) assms(3)] .
+qed
 
 text \<open>
   Lemma 2.3 follows: by @{thm arr_lex_total} for any \<open>A, A' \<in> BMS\<close>
