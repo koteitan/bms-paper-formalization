@@ -162,6 +162,44 @@ proof -
   show ?thesis using seed_chain_le_B_expansion_aux k'_eq by simp
 qed
 
+text \<open>
+  Uniform length formula: \<open>arr_len ((seed (Suc n))[k]) = Suc k\<close>.
+  Combines @{thm seed_expansion_zero} (\<open>k = 0\<close>) with
+  @{thm seed_expansion_form} (\<open>k \<ge> 1\<close>).
+\<close>
+
+lemma arr_len_seed_expansion:
+  shows "arr_len ((seed (Suc n))[k]) = Suc k"
+proof (cases k)
+  case 0
+  have "(seed (Suc n))[k] = [[]]" using 0 by (simp add: seed_expansion_zero)
+  thus ?thesis using 0 by simp
+next
+  case (Suc k')
+  hence k_ge: "1 \<le> k" by simp
+  have "(seed (Suc n))[k] = map (\<lambda>j. replicate n j) [0..<Suc k]"
+    by (rule seed_expansion_form[OF k_ge])
+  thus ?thesis by simp
+qed
+
+text \<open>
+  Strict version: distinct \<open>k, k'\<close> give distinct expansions
+  (since lengths differ), hence \<open>k < k' \<Longrightarrow> (seed (Suc n))[k]
+  <\<^sub>B (seed (Suc n))[k']\<close>.
+\<close>
+
+lemma seed_chain_lt_B_expansion:
+  assumes "k < k'"
+  shows "(seed (Suc n))[k] <\<^sub>B (seed (Suc n))[k']"
+proof -
+  have le: "(seed (Suc n))[k] \<le>\<^sub>B (seed (Suc n))[k']"
+    using seed_chain_le_B_expansion assms by simp
+  have len_diff: "arr_len ((seed (Suc n))[k]) \<noteq> arr_len ((seed (Suc n))[k'])"
+    using arr_len_seed_expansion assms by simp
+  hence ne: "(seed (Suc n))[k] \<noteq> (seed (Suc n))[k']" by auto
+  show ?thesis using le ne unfolding bms_lt_def by blast
+qed
+
 
 section \<open>Lexicographic order on columns and arrays\<close>
 
