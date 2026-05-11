@@ -1,12 +1,16 @@
-v0.1.29/seed_expansion_zero base lemmas + bug.md
+v0.1.30/seed_expansion_succ_zero structural identity proven
 
-- Add seed_expansion_zero: (seed N)[0] = [[]] for any N (the single
-  all-zero column in butlast(seed N) strips to one empty column)
-- Add seed_expansion_one_zero: (seed (Suc m))[1][0] = (seed (Suc m))[0]
-  (base case k = 0 of the structural identity for seed expansion chain)
-- Add bug.md: tracker for Hunter paper errors found during the audit
-  - B-1: Lemma 2.3 proof's "A[0] = A without last column" is literally
-    inconsistent with the strip in Definition 1.1 (concrete counter:
-    seed N for N >= 1); workaround = use the strip-respecting identity
-    (A[k+1])[0] = A[k] instead
-- Bump version v0.1.28 -> v0.1.29
+- Add bump_col_seed: general-i form of bump_col_seed_one
+- Add B0_block_seed, length_B0_block_seed, Bi_block_seed
+- Add Bs_concat_seed: closed form of Bs_concat (seed (Suc n)) k
+- Add strip_zero_rows_seed_form: strip of Bs_concat collapses
+  trailing all-zero row, exposes replicate n i per column
+- Add seed_expansion_form: seed (Suc n) [k] = map (replicate n) [0..<Suc k]
+  for k >= 1 (closed form)
+- Add strip_zero_rows_no_zero_row: strip is identity when rows
+  contain (0, 1, ..., k) with k >= 1
+- Add seed_expansion_succ_zero: (seed (Suc n) [Suc k])[0] = seed (Suc n) [k]
+  for any k. This is the strip-respecting reading of Hunter's
+  page-4 informal identity (cf. bug.md B-1), and is the foundation
+  for the seed-expansion chain in BMS_Lex
+- Bump version v0.1.29 -> v0.1.30

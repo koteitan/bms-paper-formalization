@@ -1127,6 +1127,319 @@ proof -
 qed
 
 text \<open>
+  General-\<open>i\<close> version of @{thm bump_col_seed_one}: the bumped
+  column of \<open>seed (Suc n)\<close> with multiplier \<open>i\<close> equals
+  \<open>replicate n i @ [0]\<close>.
+\<close>
+
+lemma bump_col_seed:
+  shows "bump_col (seed (Suc n)) 0 i = replicate n i @ [0]"
+proof -
+  let ?A = "seed (Suc n)"
+  let ?f = "\<lambda>m. (replicate (Suc n) 0) ! m
+                + (if ascends ?A 0 m then i * delta ?A m else 0)"
+  have b0: "b0_start ?A = Some 0" using b0_start_seed by simp
+  have c_eq: "?A ! (0 + 0) = replicate (Suc n) 0"
+    using seed_nth0 by simp
+  have len_c: "length (?A ! (0 + 0)) = Suc n"
+    using c_eq length_replicate by metis
+  let ?lhs = "bump_col ?A 0 i"
+  let ?rhs = "replicate n i @ [0]"
+  have lhs_unfold: "?lhs = map ?f [0..<Suc n]"
+    unfolding bump_col_def Let_def
+    using b0 c_eq len_c by (simp only: option.case)
+  have len_lhs: "length ?lhs = Suc n"
+    using lhs_unfold by simp
+  have len_rhs: "length ?rhs = Suc n" by simp
+  have nth_lhs: "?lhs ! m = ?f m" if m_lt: "m < Suc n" for m
+    using lhs_unfold m_lt by (simp only: nth_map_upt) simp
+  have z_rep: "(replicate (Suc n) 0) ! m = 0" if "m < Suc n" for m
+    using that nth_replicate by metis
+  have nth_eq: "?lhs ! m = ?rhs ! m" if m_lt: "m < Suc n" for m
+  proof (cases "m < n")
+    case True
+    have asc: "ascends ?A 0 m" using ascends_seed_succ[OF True] .
+    have dlt: "delta ?A m = 1" using delta_seed_succ[where m = m] m_lt by simp
+    have z: "(replicate (Suc n) 0) ! m = 0" using z_rep m_lt by simp
+    have "?lhs ! m = ?f m" using nth_lhs m_lt by simp
+    also have "\<dots> = 0 + i * 1" using asc dlt z by simp
+    also have "\<dots> = i" by simp
+    finally have lhs_val: "?lhs ! m = i" .
+    have rhs_val: "?rhs ! m = i"
+      using True by (simp add: nth_append)
+    show ?thesis using lhs_val rhs_val by metis
+  next
+    case False
+    with m_lt have m_eq: "m = n" by simp
+    have nasc: "\<not> ascends ?A 0 n" using not_ascends_seed_succ_top .
+    have z: "(replicate (Suc n) 0) ! n = 0"
+      using z_rep[of n] by simp
+    have "?lhs ! n = ?f n" using nth_lhs[of n] by simp
+    also have "\<dots> = 0" using nasc z by simp
+    finally have lhs_val: "?lhs ! n = 0" .
+    have rhs_val: "?rhs ! n = 0"
+      by (simp add: nth_append)
+    show ?thesis using lhs_val rhs_val m_eq by metis
+  qed
+  show ?thesis
+  proof (intro nth_equalityI)
+    show "length ?lhs = length ?rhs" using len_lhs len_rhs by simp
+  next
+    fix m assume "m < length ?lhs"
+    hence "m < Suc n" using len_lhs by simp
+    thus "?lhs ! m = ?rhs ! m" using nth_eq by simp
+  qed
+qed
+
+lemma B0_block_seed:
+  shows "B0_block (seed (Suc n)) = [replicate (Suc n) 0]"
+proof -
+  have b0: "b0_start (seed (Suc n)) = Some 0" using b0_start_seed by simp
+  have len: "length (seed (Suc n)) = 2" by (rule length_seed)
+  have last_idx: "last_col_idx (seed (Suc n)) = 1" using len by simp
+  have "B0_block (seed (Suc n))
+          = take (last_col_idx (seed (Suc n)) - 0) (drop 0 (seed (Suc n)))"
+    using b0 by (simp add: B0_block_def)
+  also have "\<dots> = take 1 (seed (Suc n))" using last_idx by simp
+  also have "\<dots> = [(seed (Suc n)) ! 0]" using len by (simp add: take_Suc_conv_app_nth)
+  also have "\<dots> = [replicate (Suc n) 0]" using seed_nth0 by simp
+  finally show ?thesis .
+qed
+
+lemma length_B0_block_seed:
+  shows "length (B0_block (seed (Suc n))) = 1"
+  by (simp add: B0_block_seed)
+
+lemma Bi_block_seed:
+  shows "Bi_block (seed (Suc n)) i = [replicate n i @ [0]]"
+proof -
+  have len: "length (B0_block (seed (Suc n))) = 1" by (rule length_B0_block_seed)
+  have "Bi_block (seed (Suc n)) i
+          = map (\<lambda>d. bump_col (seed (Suc n)) d i) [0..<1]"
+    unfolding Bi_block_def Let_def using len by simp
+  also have "\<dots> = [bump_col (seed (Suc n)) 0 i]" by simp
+  also have "\<dots> = [replicate n i @ [0]]" using bump_col_seed by simp
+  finally show ?thesis .
+qed
+
+text \<open>
+  Closed form of \<open>Bs_concat (seed (Suc n)) k\<close>: it is a list of
+  \<open>k+1\<close> bumped columns, one for each \<open>i \<in> [0..k]\<close>.
+\<close>
+
+lemma Bs_concat_seed:
+  shows "Bs_concat (seed (Suc n)) k = map (\<lambda>i. replicate n i @ [0]) [0..<Suc k]"
+proof (induct k)
+  case 0
+  show ?case
+    by (simp add: Bs_concat_def Bi_block_seed)
+next
+  case (Suc k)
+  have step: "Bs_concat (seed (Suc n)) (Suc k)
+                = Bs_concat (seed (Suc n)) k @ Bi_block (seed (Suc n)) (Suc k)"
+    by (simp add: Bs_concat_def)
+  have map_eq: "map (\<lambda>i. replicate n i @ [0]) [0..<Suc k]
+                  @ [replicate n (Suc k) @ [0]]
+                = map (\<lambda>i. replicate n i @ [0]) [0..<Suc (Suc k)]"
+    by simp
+  show ?case
+    using step Suc.hyps Bi_block_seed[where i = "Suc k"] map_eq by simp
+qed
+
+text \<open>
+  Strip applied to the closed-form \<open>Bs_concat (seed (Suc n)) k\<close>
+  for \<open>k \<ge> 1\<close>: the trailing all-zero row is removed, exposing
+  \<open>replicate n i\<close> for each column index \<open>i\<close>.
+\<close>
+
+lemma strip_zero_rows_seed_form:
+  fixes n k :: nat
+  assumes "1 \<le> k"
+  shows "strip_zero_rows (map (\<lambda>i. replicate n i @ [0]) [0..<Suc k])
+       = map (\<lambda>i. replicate n i) [0..<Suc k]"
+proof -
+  let ?X = "map (\<lambda>i. replicate n i @ [0]) [0..<Suc k]"
+  let ?P = "\<lambda>h. h \<le> Suc n
+              \<and> (\<forall>m. h \<le> m \<and> m < Suc n
+                  \<longrightarrow> (\<forall>c \<in> set ?X. c ! m = 0))"
+
+  have X_ne: "?X \<noteq> []" by simp
+  have X_len: "length ?X = Suc k" by simp
+  have upt_decomp: "[0..<Suc k] = 0 # [Suc 0..<Suc k]"
+    by (rule upt_conv_Cons) simp
+  have X_cons: "?X = (replicate n 0 @ [0])
+                     # map (\<lambda>i. replicate n i @ [0]) [Suc 0..<Suc k]"
+    by (subst upt_decomp) simp
+  have hd_X: "hd ?X = replicate n 0 @ [0]" using X_cons by simp
+  have height_X: "height ?X = Suc n"
+    using X_ne hd_X by simp
+
+  have set_X: "set ?X = (\<lambda>i. replicate n i @ [0]) ` set [0..<Suc k]"
+    by simp
+
+  have one_in: "replicate n (Suc 0) @ [0] \<in> set ?X"
+  proof -
+    have "Suc 0 < Suc k" using assms by linarith
+    hence "Suc 0 \<in> set [0..<Suc k]" by auto
+    thus ?thesis by force
+  qed
+
+  have P_n: "?P n"
+  proof (intro conjI allI impI)
+    show "n \<le> Suc n" by simp
+  next
+    fix m
+    assume mb: "n \<le> m \<and> m < Suc n"
+    hence m_eq: "m = n" by simp
+    show "\<forall>c \<in> set ?X. c ! m = 0"
+    proof
+      fix c assume c_in: "c \<in> set ?X"
+      have "set ?X = (\<lambda>i. replicate n i @ [0]) ` set [0..<Suc k]"
+        by simp
+      hence "c \<in> (\<lambda>i. replicate n i @ [0]) ` set [0..<Suc k]"
+        using c_in by simp
+      then obtain i where c_eq: "c = replicate n i @ [0]"
+        by blast
+      have "c ! m = (replicate n i @ [0]) ! n" using c_eq m_eq by simp
+      also have "\<dots> = [0] ! 0" by (simp add: nth_append)
+      finally show "c ! m = 0" by simp
+    qed
+  qed
+
+  have ge_n: "n \<le> h" if Ph: "?P h" for h
+  proof (rule ccontr)
+    assume "\<not> n \<le> h"
+    hence h_lt: "h < n" by simp
+    have h_in_range: "h \<le> h \<and> h < Suc n" using h_lt by simp
+    have all_zero: "\<forall>c \<in> set ?X. c ! h = 0"
+      using Ph h_in_range by blast
+    have nth_one: "(replicate n (Suc 0) @ [0]) ! h = Suc 0"
+      using h_lt by (simp add: nth_append)
+    note c1_eq = all_zero[THEN bspec, OF one_in]
+    show False using c1_eq nth_one by simp
+  qed
+
+  have least_eq: "(LEAST h. ?P h) = n"
+  proof (rule Least_equality)
+    show "?P n" by (rule P_n)
+  next
+    fix h' assume "?P h'"
+    thus "n \<le> h'" by (rule ge_n)
+  qed
+
+  have take_eq: "take n (replicate n i @ [0]) = replicate n i" for i
+    by simp
+
+  have "strip_zero_rows ?X = map (\<lambda>c. take n c) ?X"
+    unfolding strip_zero_rows_def Let_def
+    using X_ne height_X least_eq by simp
+  also have "\<dots> = map ((\<lambda>c. take n c) \<circ> (\<lambda>i. replicate n i @ [0])) [0..<Suc k]"
+    by (simp add: map_map)
+  also have "\<dots> = map (\<lambda>i. replicate n i) [0..<Suc k]"
+    using take_eq by (simp add: o_def)
+  finally show ?thesis .
+qed
+
+text \<open>
+  Strip is the identity on \<open>map (\<lambda>j. replicate n j) [0..<Suc k]\<close>
+  for \<open>k \<ge> 1\<close>: rows contain \<open>(0, 1, ..., k)\<close> which is non-zero,
+  so no row strips.
+\<close>
+
+lemma strip_zero_rows_no_zero_row:
+  assumes "1 \<le> k"
+  shows "strip_zero_rows (map (\<lambda>j. replicate n j) [0..<Suc k])
+       = map (\<lambda>j. replicate n j) [0..<Suc k]"
+proof -
+  let ?Y = "map (\<lambda>j. replicate n j) [0..<Suc k]"
+  let ?P = "\<lambda>h. h \<le> n
+              \<and> (\<forall>m. h \<le> m \<and> m < n
+                  \<longrightarrow> (\<forall>c \<in> set ?Y. c ! m = 0))"
+
+  have Y_ne: "?Y \<noteq> []" by simp
+  have upt_decomp: "[0..<Suc k] = 0 # [Suc 0..<Suc k]"
+    by (rule upt_conv_Cons) simp
+  have Y_cons: "?Y = replicate n 0
+                     # map (\<lambda>j. replicate n j) [Suc 0..<Suc k]"
+    by (subst upt_decomp) simp
+  have height_Y: "height ?Y = n" using Y_cons by simp
+
+  have P_n: "?P n" by simp
+
+  have ge_n: "n \<le> h" if Ph: "?P h" for h
+  proof (cases "n = 0")
+    case True thus ?thesis by simp
+  next
+    case False
+    show ?thesis
+    proof (rule ccontr)
+      assume "\<not> n \<le> h"
+      hence h_lt: "h < n" by simp
+      have h_in_range: "h \<le> h \<and> h < n" using h_lt by simp
+      have all_zero: "\<forall>c \<in> set ?Y. c ! h = 0"
+        using Ph h_in_range by blast
+      have one_in: "replicate n (Suc 0) \<in> set ?Y"
+      proof -
+        have "Suc 0 < Suc k" using assms by linarith
+        hence "Suc 0 \<in> set [0..<Suc k]" by auto
+        thus ?thesis by force
+      qed
+      have nth_one: "(replicate n (Suc 0)) ! h = Suc 0"
+        using h_lt by simp
+      note c_eq = all_zero[THEN bspec, OF one_in]
+      show False using c_eq nth_one by simp
+    qed
+  qed
+
+  have least_eq: "(LEAST h. ?P h) = n"
+  proof (rule Least_equality)
+    show "?P n" by (rule P_n)
+  next
+    fix h' assume "?P h'"
+    thus "n \<le> h'" by (rule ge_n)
+  qed
+
+  have take_n: "take n (replicate n j) = replicate n j" for j by simp
+
+  have "strip_zero_rows ?Y = map (\<lambda>c. take n c) ?Y"
+    unfolding strip_zero_rows_def Let_def
+    using Y_ne height_Y least_eq by simp
+  also have "\<dots> = map ((\<lambda>c. take n c) \<circ> (\<lambda>j. replicate n j)) [0..<Suc k]"
+    by (simp add: map_map)
+  also have "\<dots> = map (\<lambda>j. replicate n j) [0..<Suc k]"
+    using take_n by (simp add: o_def)
+  finally show ?thesis .
+qed
+
+text \<open>
+  Closed form of \<open>seed (Suc n) [k]\<close> for \<open>k \<ge> 1\<close>:
+  \<open>k+1\<close> columns, each \<open>replicate n j\<close> for \<open>j \<in> [0..k]\<close>.
+  (For \<open>k = 0\<close> the form would be \<open>[replicate n 0]\<close> which
+  strips to \<open>[[]]\<close>; that case is handled by \<open>seed_expansion_zero\<close>
+  below.)
+\<close>
+
+lemma seed_expansion_form:
+  assumes "1 \<le> k"
+  shows "(seed (Suc n))[k] = map (\<lambda>j. replicate n j) [0..<Suc k]"
+proof -
+  let ?A = "seed (Suc n)"
+  have ne: "?A \<noteq> []" by (rule seed_nonempty)
+  have b0: "b0_start ?A = Some 0" using b0_start_seed by simp
+  have G_eq: "G_block ?A = []" using b0 by (simp add: G_block_def)
+  have Bs_eq: "Bs_concat ?A k = map (\<lambda>i. replicate n i @ [0]) [0..<Suc k]"
+    by (rule Bs_concat_seed)
+  have "(seed (Suc n))[k]
+          = strip_zero_rows (G_block ?A @ Bs_concat ?A k)"
+    unfolding expansion_def using ne by simp
+  also have "\<dots> = strip_zero_rows (map (\<lambda>i. replicate n i @ [0]) [0..<Suc k])"
+    using G_eq Bs_eq by simp
+  also have "\<dots> = map (\<lambda>j. replicate n j) [0..<Suc k]"
+    by (rule strip_zero_rows_seed_form[OF assms])
+  finally show ?thesis .
+qed
+
+text \<open>
   Strip helper: when \<open>X = [replicate (Suc n) 0, replicate n 1 @ [0]]\<close>,
   the @{const strip_zero_rows} of \<open>X\<close> equals @{term "seed n"}.
 \<close>
@@ -1299,6 +1612,52 @@ proof -
     using seed_Suc_expand_one by simp
   also have "\<dots> = [[]]" by (rule seed_expansion_zero)
   also have "\<dots> = (seed (Suc m))[0]" using seed_expansion_zero by simp
+  finally show ?thesis .
+qed
+
+text \<open>
+  Structural identity \<open>(seed (Suc n) [Suc k])[0] = seed (Suc n) [k]\<close>
+  for any \<open>k \<ge> 0\<close>.  This is the strip-respecting reading of
+  Hunter's \<open>A[0]\<close>-induction step (cf. \<open>bug.md\<close> entry B-1).
+
+  Combined with \<open>bms_le_expand\<close> (in BMS_Lex) this yields the
+  expansion chain \<open>seed N [k] \<le>\<^sub>B seed N [k+1]\<close>, hence
+  \<open>k \<le> k' \<Longrightarrow> seed N [k] \<le>\<^sub>B seed N [k']\<close>.
+\<close>
+
+lemma seed_expansion_succ_zero:
+  shows "(seed (Suc n))[Suc k][0] = (seed (Suc n))[k]"
+proof (cases k)
+  case 0
+  thus ?thesis using seed_expansion_one_zero by simp
+next
+  case (Suc k')
+  hence k_ge: "1 \<le> k" by simp
+  hence suc_k_ge: "1 \<le> Suc k" by simp
+  let ?A = "seed (Suc n)"
+  let ?Yk  = "map (\<lambda>j. replicate n j) [0..<Suc k]"
+  let ?Ysk = "map (\<lambda>j. replicate n j) [0..<Suc (Suc k)]"
+  have A_Suc_k_eq: "?A[Suc k] = ?Ysk"
+    by (rule seed_expansion_form[OF suc_k_ge])
+  have A_k_eq: "?A[k] = ?Yk"
+    by (rule seed_expansion_form[OF k_ge])
+  have ne_A_Suc_k: "?A[Suc k] \<noteq> []" using A_Suc_k_eq by simp
+  have butlast_eq: "butlast ?Ysk = ?Yk"
+  proof -
+    have upt_split: "[0..<Suc (Suc k)] = [0..<Suc k] @ [Suc k]" by simp
+    have ysk_snoc: "?Ysk = ?Yk @ [replicate n (Suc k)]"
+      by (subst upt_split) simp
+    have "butlast ?Ysk = butlast (?Yk @ [replicate n (Suc k)])"
+      using ysk_snoc by simp
+    also have "\<dots> = ?Yk" by (simp add: butlast_append)
+    finally show ?thesis .
+  qed
+  have "?A[Suc k][0] = strip_zero_rows (butlast (?A[Suc k]))"
+    by (rule expansion_zero_eq[OF ne_A_Suc_k])
+  also have "\<dots> = strip_zero_rows (butlast ?Ysk)" using A_Suc_k_eq by simp
+  also have "\<dots> = strip_zero_rows ?Yk" using butlast_eq by simp
+  also have "\<dots> = ?Yk" by (rule strip_zero_rows_no_zero_row[OF k_ge])
+  also have "\<dots> = ?A[k]" using A_k_eq by simp
   finally show ?thesis .
 qed
 
