@@ -1,14 +1,9 @@
-v0.1.32/decompose seed_lex_implies_le_B via seed_descendants_total
+v0.1.33/seed_0_expansion: degenerate base for seed N=0
 
-- Factor seed_lex_implies_le_B into:
-  * seed_descendants_total (sorry): A, A' <=_B seed N implies A <=_B A'
-    or A' <=_B A (pure totality of <=_B on seed N's expansion tree)
-  * seed_lex_implies_le_B (proven from totality + bms_le_implies_lex +
-    arr_lex_irrefl/trans): the lex-implication is now a pure corollary
-- The open content is now strictly the totality claim
-  (Hunter's Lemma 2.3 closure-under-expansion argument), without the
-  lex-relation baggage
-- Sorry count unchanged (3); the open lemma is purer and easier to
-  attack incrementally
-- Update task.md ID 3 / 4 to reflect the new decomposition
-- Bump version v0.1.31 -> v0.1.32
+- Add seed_0_expansion: (seed 0)[k] = [[]] for any k
+- Proof: b0_start (seed 0) = None (height 0 leaves no parent
+  candidate), so expansion_no_b0_eq_zero collapses all k to k=0,
+  and seed_expansion_zero gives [[]]
+- This is the N=0 base case for the upcoming N-induction on
+  seed_descendants_total
+- Bump version v0.1.32 -> v0.1.33

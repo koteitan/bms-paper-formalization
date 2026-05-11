@@ -1605,6 +1605,30 @@ text \<open>
   @{thm seed_expansion_zero}.
 \<close>
 
+text \<open>
+  Degenerate base \<open>N = 0\<close>: every expansion of \<open>seed 0\<close> is
+  \<open>[[]]\<close>.  Follows from @{thm expansion_no_b0_eq_zero} since
+  \<open>b0_start (seed 0) = None\<close> (height 0 leaves no \<open>m\<^sub>0\<close>-parent
+  candidates).
+\<close>
+
+lemma seed_0_expansion:
+  shows "(seed 0)[k] = [[]]"
+proof -
+  have ne: "seed 0 \<noteq> []" by (rule seed_nonempty)
+  have b0: "b0_start (seed 0) = None"
+  proof -
+    have h: "height (seed 0) = 0" by (simp add: seed_def)
+    have "max_parent_level (seed 0) = None"
+      unfolding max_parent_level_def using ne h by (simp add: Let_def)
+    thus ?thesis by (simp add: b0_start_def)
+  qed
+  have "(seed 0)[k] = (seed 0)[0]"
+    using expansion_no_b0_eq_zero[OF ne b0] .
+  also have "\<dots> = [[]]" by (rule seed_expansion_zero)
+  finally show ?thesis .
+qed
+
 lemma seed_expansion_one_zero:
   shows "(seed (Suc m))[1][0] = (seed (Suc m))[0]"
 proof -

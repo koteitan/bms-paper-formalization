@@ -2,7 +2,7 @@
 
 # BMS Well-Orderedness Formal Verification
 
-**Version:** v0.1.32
+**Version:** v0.1.33
 
 A formal verification project of the well-orderedness proof of the **Bashicu Matrix System (BMS)** using the proof assistant **Isabelle/HOL**.
 
