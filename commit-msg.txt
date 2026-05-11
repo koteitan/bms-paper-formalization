@@ -1,9 +1,7 @@
-v0.1.35/arr_len_seed_expansion + strict seed_chain_lt_B_expansion
+v0.1.36/commit empty_col_expansion + reorder task.md by suspicion
 
-- Add arr_len_seed_expansion: arr_len ((seed (Suc n))[k]) = Suc k
-  uniformly for any k (k=0 via seed_expansion_zero, k>=1 via
-  seed_expansion_form)
-- Add seed_chain_lt_B_expansion: k < k' ==> seed (Suc n)[k] <_B
-  seed (Suc n)[k']. The strict version follows from the non-strict
-  chain plus the length-based distinctness
-- Bump version v0.1.34 -> v0.1.35
+- Stage empty_col_expansion in BMS_Defs.thy (v0.1.34 commit-msg
+  claimed it but the file change was left unstaged)
+- Reorder task.md table by 怪しさ (truth-risk) descending, add
+  怪しさ要因 column for each open task
+- Bump version v0.1.35 -> v0.1.36

@@ -1629,6 +1629,33 @@ proof -
   finally show ?thesis .
 qed
 
+text \<open>
+  Companion: \<open>[[]][k] = []\<close>.  The single-empty-column array
+  has \<open>b0_start = None\<close>, so its expansion is the strip of its
+  \<open>butlast\<close> = \<open>[]\<close>.
+\<close>
+
+lemma empty_col_expansion:
+  shows "[[]][k] = []"
+proof -
+  let ?A = "[[] :: nat list]"
+  have ne: "?A \<noteq> []" by simp
+  have b0: "b0_start ?A = None"
+  proof -
+    have h: "height ?A = 0" by simp
+    have "max_parent_level ?A = None"
+      unfolding max_parent_level_def using ne h by (simp add: Let_def)
+    thus ?thesis by (simp add: b0_start_def)
+  qed
+  have "?A[k] = ?A[0]"
+    using expansion_no_b0_eq_zero[OF ne b0] .
+  also have "\<dots> = strip_zero_rows (butlast ?A)"
+    by (rule expansion_zero_eq[OF ne])
+  also have "\<dots> = strip_zero_rows []" by simp
+  also have "\<dots> = []" by (simp add: strip_zero_rows_def)
+  finally show ?thesis .
+qed
+
 lemma seed_expansion_one_zero:
   shows "(seed (Suc m))[1][0] = (seed (Suc m))[0]"
 proof -
