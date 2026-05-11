@@ -1,9 +1,13 @@
-v0.1.33/seed_0_expansion: degenerate base for seed N=0
+v0.1.34/seed_0_descendants_total: N=0 base case closed
 
-- Add seed_0_expansion: (seed 0)[k] = [[]] for any k
-- Proof: b0_start (seed 0) = None (height 0 leaves no parent
-  candidate), so expansion_no_b0_eq_zero collapses all k to k=0,
-  and seed_expansion_zero gives [[]]
-- This is the N=0 base case for the upcoming N-induction on
-  seed_descendants_total
-- Bump version v0.1.32 -> v0.1.33
+- Add empty_col_expansion: [[]][k] = [] for any k
+- Add descendants_of_empty_col: A <=_B [[]] ==> A in {[[]], []}
+- Add descendants_of_seed_0: A <=_B seed 0 ==> A in {seed 0, [[]], []}
+- Add empty_le_empty_col: [] <=_B [[]]
+- Add empty_col_le_seed_0: [[]] <=_B seed 0
+- Add seed_0_descendants_total (proven, not sorry): N=0 base case
+  of seed_descendants_total. The 3-element chain
+  [] <=_B [[]] <=_B seed 0 enumerates all descendants
+- General N case (seed_descendants_total) still sorry; the N=0
+  case can now be cited from it
+- Bump version v0.1.33 -> v0.1.34

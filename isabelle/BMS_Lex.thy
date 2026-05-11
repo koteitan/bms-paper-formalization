@@ -964,11 +964,62 @@ text \<open>
 \<close>
 
 text \<open>
-  Seed-tree totality (open): every two descendants of \<open>seed N\<close> are
-  \<open>\<le>\<^sub>B\<close>-comparable.  This is the strict-totality content that
-  Hunter establishes inside the proof of Lemma 2.3 by closure-under-
-  expansion induction; with @{thm seed_chain_le_B_expansion} (the
-  chain along a single seed) and Hunter's "(\<gamma>)" cross-step
+  Degenerate base \<open>N = 0\<close>: enumerate descendants of \<open>seed 0\<close>.
+  Using @{thm seed_0_expansion} and @{thm empty_col_expansion},
+  the expansion ladder from \<open>seed 0\<close> is the 3-element chain
+  \<open>seed 0 \<rightarrow> [[]] \<rightarrow> []\<close>.
+\<close>
+
+lemma descendants_of_empty_col:
+  shows "A \<le>\<^sub>B [[]] \<Longrightarrow> A = [[]] \<or> A = []"
+proof (induct A "[[]] :: array" rule: bms_le.induct)
+  case bms_le_refl
+  show ?case by simp
+next
+  case (bms_le_step A n)
+  have "[[]][n] = []" by (rule empty_col_expansion)
+  with bms_le_step.hyps have "A \<le>\<^sub>B []" by simp
+  hence "A = []" by (rule bms_le_empty)
+  thus ?case by simp
+qed
+
+lemma descendants_of_seed_0:
+  shows "A \<le>\<^sub>B seed 0 \<Longrightarrow> A = seed 0 \<or> A = [[]] \<or> A = []"
+proof (induct A "seed 0" rule: bms_le.induct)
+  case bms_le_refl
+  show ?case by simp
+next
+  case (bms_le_step A n)
+  have "(seed 0)[n] = [[]]" by (rule seed_0_expansion)
+  with bms_le_step.hyps have "A \<le>\<^sub>B [[]]" by simp
+  hence "A = [[]] \<or> A = []" by (rule descendants_of_empty_col)
+  thus ?case by simp
+qed
+
+text \<open>
+  Chain elements for \<open>seed 0\<close>'s 3-element subtree.
+\<close>
+
+lemma empty_le_empty_col: "[] \<le>\<^sub>B ([[]] :: array)"
+proof -
+  have "[[]][0] = []" by (rule empty_col_expansion)
+  hence "[] \<le>\<^sub>B [[]][0]" using bms_le_refl by simp
+  thus ?thesis using bms_le_step by blast
+qed
+
+lemma empty_col_le_seed_0: "[[]] \<le>\<^sub>B seed 0"
+proof -
+  have "(seed 0)[0] = [[]]" by (rule seed_0_expansion)
+  hence "[[]] \<le>\<^sub>B (seed 0)[0]" using bms_le_refl by simp
+  thus ?thesis using bms_le_step by blast
+qed
+
+text \<open>
+  Seed-tree totality (open in general): every two descendants of
+  \<open>seed N\<close> are \<open>\<le>\<^sub>B\<close>-comparable.  This is the strict-totality
+  content that Hunter establishes inside the proof of Lemma 2.3 by
+  closure-under-expansion induction; with @{thm seed_chain_le_B_expansion}
+  (the chain along a single seed) and Hunter's "(\<gamma>)" cross-step
   lemma the argument decomposes into iterative comparisons within
   each \<open>(seed N)[k]\<close>-subtree.
 
@@ -977,11 +1028,32 @@ text \<open>
   (entry B-1).
 \<close>
 
+lemma seed_0_descendants_total:
+  assumes "A \<le>\<^sub>B seed 0" "A' \<le>\<^sub>B seed 0"
+  shows "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+proof -
+  have hA: "A = seed 0 \<or> A = [[]] \<or> A = []"
+    by (rule descendants_of_seed_0[OF assms(1)])
+  have hA': "A' = seed 0 \<or> A' = [[]] \<or> A' = []"
+    by (rule descendants_of_seed_0[OF assms(2)])
+  \<comment> \<open>Both lie in the chain \<open>[] \<le>\<^sub>B [[]] \<le>\<^sub>B seed 0\<close>; enumerate.\<close>
+  show ?thesis
+  proof -
+    have e_le_ec: "[] \<le>\<^sub>B ([[]] :: array)" by (rule empty_le_empty_col)
+    have ec_le_s0: "[[]] \<le>\<^sub>B seed 0" by (rule empty_col_le_seed_0)
+    have e_le_s0: "[] \<le>\<^sub>B seed 0" using e_le_ec ec_le_s0 bms_le_trans by blast
+    from hA hA' show ?thesis
+      using bms_le_refl e_le_ec ec_le_s0 e_le_s0 by metis
+  qed
+qed
+
 lemma seed_descendants_total:
   assumes "A \<le>\<^sub>B seed N" "A' \<le>\<^sub>B seed N"
   shows "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
   sorry  \<comment> \<open>Open: cross-branch totality within seed N's
-            expansion tree.  Hunter Lemma 2.3 closure argument.\<close>
+            expansion tree (general \<open>N\<close>).  Hunter Lemma 2.3
+            closure argument.  N = 0 case is
+            @{thm seed_0_descendants_total}.\<close>
 
 text \<open>
   \<open>seed_lex_implies_le_B\<close> reduces to totality via
