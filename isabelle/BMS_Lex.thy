@@ -118,6 +118,51 @@ proof -
 qed
 
 
+text \<open>
+  Expansion chain on seeds: \<open>seed N [k] \<le>\<^sub>B seed N [Suc k]\<close>.
+
+  The non-trivial case \<open>N = Suc n\<close> follows immediately from
+  @{thm seed_expansion_succ_zero}: \<open>(seed N [Suc k])[0] = seed N [k]\<close>
+  gives \<open>seed N [k] \<le>\<^sub>B seed N [Suc k]\<close> via @{thm bms_le_expand}.
+  The \<open>N = 0\<close> case is trivial since every \<open>seed 0 [k]\<close> stays at
+  \<open>[[]]\<close> (under our strip convention).
+\<close>
+
+lemma seed_step_le_B_succ:
+  shows "(seed (Suc n))[k] \<le>\<^sub>B (seed (Suc n))[Suc k]"
+proof -
+  have eq: "(seed (Suc n))[Suc k][0] = (seed (Suc n))[k]"
+    by (rule seed_expansion_succ_zero)
+  have "(seed (Suc n))[Suc k][0] \<le>\<^sub>B (seed (Suc n))[Suc k]"
+    by (rule bms_le_expand)
+  thus ?thesis using eq by simp
+qed
+
+text \<open>
+  Chain version: \<open>k \<le> k' \<Longrightarrow> seed (Suc n) [k] \<le>\<^sub>B seed (Suc n) [k']\<close>.
+\<close>
+
+lemma seed_chain_le_B_expansion_aux:
+  shows "(seed (Suc n))[k] \<le>\<^sub>B (seed (Suc n))[k + d]"
+proof (induct d)
+  case 0 show ?case using bms_le_refl by simp
+next
+  case (Suc d)
+  have step: "(seed (Suc n))[k + d] \<le>\<^sub>B (seed (Suc n))[Suc (k + d)]"
+    by (rule seed_step_le_B_succ)
+  have add_eq: "k + Suc d = Suc (k + d)" by simp
+  show ?case using Suc step add_eq bms_le_trans by metis
+qed
+
+lemma seed_chain_le_B_expansion:
+  assumes "k \<le> k'"
+  shows "(seed (Suc n))[k] \<le>\<^sub>B (seed (Suc n))[k']"
+proof -
+  obtain d where k'_eq: "k' = k + d" using assms le_Suc_ex by blast
+  show ?thesis using seed_chain_le_B_expansion_aux k'_eq by simp
+qed
+
+
 section \<open>Lexicographic order on columns and arrays\<close>
 
 text \<open>

@@ -1,16 +1,10 @@
-v0.1.30/seed_expansion_succ_zero structural identity proven
+v0.1.31/seed_chain_le_B_expansion from structural identity
 
-- Add bump_col_seed: general-i form of bump_col_seed_one
-- Add B0_block_seed, length_B0_block_seed, Bi_block_seed
-- Add Bs_concat_seed: closed form of Bs_concat (seed (Suc n)) k
-- Add strip_zero_rows_seed_form: strip of Bs_concat collapses
-  trailing all-zero row, exposes replicate n i per column
-- Add seed_expansion_form: seed (Suc n) [k] = map (replicate n) [0..<Suc k]
-  for k >= 1 (closed form)
-- Add strip_zero_rows_no_zero_row: strip is identity when rows
-  contain (0, 1, ..., k) with k >= 1
-- Add seed_expansion_succ_zero: (seed (Suc n) [Suc k])[0] = seed (Suc n) [k]
-  for any k. This is the strip-respecting reading of Hunter's
-  page-4 informal identity (cf. bug.md B-1), and is the foundation
-  for the seed-expansion chain in BMS_Lex
-- Bump version v0.1.29 -> v0.1.30
+- Add seed_step_le_B_succ: (seed (Suc n))[k] <=_B (seed (Suc n))[Suc k]
+  follows from seed_expansion_succ_zero + bms_le_expand
+- Add seed_chain_le_B_expansion_aux: by induction on the difference d,
+  derive (seed (Suc n))[k] <=_B (seed (Suc n))[k + d] using transitivity
+- Add seed_chain_le_B_expansion: k <= k' ==> seed (Suc n) [k] <=_B
+  seed (Suc n) [k'] (Hunter's expansion-chain property within a
+  single seed's expansion tree)
+- Bump version v0.1.30 -> v0.1.31
