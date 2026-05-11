@@ -1,13 +1,12 @@
-v0.1.28/restrict o_of_def to BMS arrays
+v0.1.29/seed_expansion_zero base lemmas + bug.md
 
-- Add A : BMS premise to o_of_def axiom
-- Unrestricted form was potentially inconsistent: arrays whose
-  m_ancestor structure cannot be satisfied by any stable_rep admit
-  no f, but the axiom unconditionally claimed existence
-- For A : BMS, every A admits a stable_rep (provable by induction
-  on BMS membership using stable_rep_extend), so the axiom is
-  satisfiable on the intended domain
-- Outside BMS, o_of A is unspecified; no proof reasons about it
-- Update o_le_via_bms_le and o_preserves to discharge the BMS
-  precondition via the already-available An_BMS = A[n] : BMS fact
-- Bump version v0.1.27 -> v0.1.28
+- Add seed_expansion_zero: (seed N)[0] = [[]] for any N (the single
+  all-zero column in butlast(seed N) strips to one empty column)
+- Add seed_expansion_one_zero: (seed (Suc m))[1][0] = (seed (Suc m))[0]
+  (base case k = 0 of the structural identity for seed expansion chain)
+- Add bug.md: tracker for Hunter paper errors found during the audit
+  - B-1: Lemma 2.3 proof's "A[0] = A without last column" is literally
+    inconsistent with the strip in Definition 1.1 (concrete counter:
+    seed N for N >= 1); workaround = use the strip-respecting identity
+    (A[k+1])[0] = A[k] instead
+- Bump version v0.1.28 -> v0.1.29

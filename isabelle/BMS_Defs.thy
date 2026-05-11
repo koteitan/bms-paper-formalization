@@ -1242,6 +1242,66 @@ proof -
     using ne X_eq strip_zero_rows_seed_X[where n = n] by simp
 qed
 
+text \<open>
+  \<open>seed N [0]\<close> collapses to a single empty column for every \<open>N\<close>.
+
+  Computation: \<open>butlast (seed N) = [replicate N 0]\<close>, a single
+  all-zero column.  \<open>strip_zero_rows\<close> strips every all-zero row,
+  yielding the single column of zero rows \<open>[[]]\<close>.
+\<close>
+
+lemma seed_expansion_zero:
+  shows "(seed N)[0] = [[]]"
+proof -
+  have ne: "seed N \<noteq> []" by (rule seed_nonempty)
+  have bl: "butlast (seed N) = [replicate N 0]"
+    by (simp add: seed_def)
+  let ?X = "[replicate N (0::nat)]"
+  have H: "height ?X = N" by simp
+  have keep0_cond: "(0::nat) \<le> N \<and>
+                    (\<forall>m. 0 \<le> m \<and> m < N \<longrightarrow> (\<forall>c \<in> set ?X. c ! m = 0))"
+    by simp
+  have least_eq: "(LEAST h. h \<le> N \<and>
+                     (\<forall>m. h \<le> m \<and> m < N \<longrightarrow> (\<forall>c \<in> set ?X. c ! m = 0))) = 0"
+    by (rule Least_equality, simp_all)
+  have strip_eq: "strip_zero_rows ?X = [[]]"
+  proof (cases "?X = []")
+    case True thus ?thesis by simp
+  next
+    case False
+    have "strip_zero_rows ?X
+            = map (\<lambda>c. take 0 c) ?X"
+      unfolding strip_zero_rows_def Let_def using False least_eq H by simp
+    also have "\<dots> = [[]]" by simp
+    finally show ?thesis .
+  qed
+  have "(seed N)[0] = strip_zero_rows (butlast (seed N))"
+    by (rule expansion_zero_eq[OF ne])
+  also have "\<dots> = strip_zero_rows ?X" using bl by simp
+  also have "\<dots> = [[]]" using strip_eq .
+  finally show ?thesis .
+qed
+
+text \<open>
+  Base case of the structural identity \<open>(seed N [Suc k])[0] = seed N [k]\<close>
+  for \<open>k = 0\<close> (with \<open>N \<ge> 1\<close>): \<open>(seed N [1])[0] = seed N [0]\<close>.
+
+  Both sides equal \<open>[[]]\<close>.  Combined with @{thm seed_Suc_expand_one}
+  giving \<open>seed (Suc m)[1] = seed m\<close>, this reduces to
+  \<open>(seed m)[0] = (seed (Suc m))[0]\<close>, which is immediate from
+  @{thm seed_expansion_zero}.
+\<close>
+
+lemma seed_expansion_one_zero:
+  shows "(seed (Suc m))[1][0] = (seed (Suc m))[0]"
+proof -
+  have "(seed (Suc m))[1][0] = (seed m)[0]"
+    using seed_Suc_expand_one by simp
+  also have "\<dots> = [[]]" by (rule seed_expansion_zero)
+  also have "\<dots> = (seed (Suc m))[0]" using seed_expansion_zero by simp
+  finally show ?thesis .
+qed
+
 inductive_set BMS :: "array set" where
   seed_in_BMS:   "seed n \<in> BMS"
 | expand_in_BMS: "A \<in> BMS \<Longrightarrow> A[n] \<in> BMS"
