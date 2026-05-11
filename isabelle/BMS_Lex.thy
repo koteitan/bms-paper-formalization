@@ -964,18 +964,59 @@ text \<open>
 \<close>
 
 text \<open>
-  Seed cross-branch totality: for descendants \<open>A, A'\<close> of the same
-  seed, lex order implies \<open>\<le>\<^sub>B\<close>.  This is the only remaining open
-  sorry for Corollary 2.4 backward; the BMS-level statement
-  @{term lex_implies_le_B} reduces to it via @{thm bms_pair_below_seed}.
+  Seed-tree totality (open): every two descendants of \<open>seed N\<close> are
+  \<open>\<le>\<^sub>B\<close>-comparable.  This is the strict-totality content that
+  Hunter establishes inside the proof of Lemma 2.3 by closure-under-
+  expansion induction; with @{thm seed_chain_le_B_expansion} (the
+  chain along a single seed) and Hunter's "(\<gamma>)" cross-step
+  lemma the argument decomposes into iterative comparisons within
+  each \<open>(seed N)[k]\<close>-subtree.
+
+  Note: in our (strip-faithful) reading some of Hunter's intermediate
+  identities require the workarounds documented in \<open>bug.md\<close>
+  (entry B-1).
+\<close>
+
+lemma seed_descendants_total:
+  assumes "A \<le>\<^sub>B seed N" "A' \<le>\<^sub>B seed N"
+  shows "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+  sorry  \<comment> \<open>Open: cross-branch totality within seed N's
+            expansion tree.  Hunter Lemma 2.3 closure argument.\<close>
+
+text \<open>
+  \<open>seed_lex_implies_le_B\<close> reduces to totality via
+  @{thm bms_le_implies_lex}: if \<open>A' \<le>\<^sub>B A\<close>, then either
+  \<open>A' = A\<close> or \<open>A' <\<^sub>l\<^sub>e\<^sub>x A\<close>, both contradicting
+  \<open>A <\<^sub>l\<^sub>e\<^sub>x A'\<close>.
 \<close>
 
 lemma seed_lex_implies_le_B:
   assumes "A \<le>\<^sub>B seed N" "A' \<le>\<^sub>B seed N" "A <\<^sub>l\<^sub>e\<^sub>x A'"
   shows "A \<le>\<^sub>B A'"
-  sorry  \<comment> \<open>Open. Hunter's key direction restricted to the
-            expansion-tree below a single seed.  Cross-branch totality
-            within the seed's expansion tree.\<close>
+proof -
+  have seed_BMS: "seed N \<in> BMS" by (rule seed_in_BMS)
+  have A_BMS: "A \<in> BMS" using bms_le_in_BMS[OF assms(1) seed_BMS] .
+  have tot: "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+    by (rule seed_descendants_total[OF assms(1,2)])
+  show ?thesis
+  proof (cases "A \<le>\<^sub>B A'")
+    case True thus ?thesis .
+  next
+    case False
+    hence A'_le_A: "A' \<le>\<^sub>B A" using tot by blast
+    from bms_le_implies_lex[OF A_BMS A'_le_A]
+    consider "A' = A" | "A' <\<^sub>l\<^sub>e\<^sub>x A" by blast
+    thus ?thesis
+    proof cases
+      case 1
+      thus ?thesis using assms(3) arr_lex_irrefl by auto
+    next
+      case 2
+      hence "A <\<^sub>l\<^sub>e\<^sub>x A" using assms(3) arr_lex_trans by metis
+      thus ?thesis using arr_lex_irrefl by simp
+    qed
+  qed
+qed
 
 lemma lex_implies_le_B:
   assumes "A \<in> BMS" "A' \<in> BMS" "A <\<^sub>l\<^sub>e\<^sub>x A'"

@@ -5,7 +5,7 @@
 > **メモ**: 番号 (ID) は一度付けたら変更しない。新規追加は末尾に追加し、
 > 完了・削除しても他の ID は再採番しない。
 
-現在 `sorry`: **3** (`seed_lex_implies_le_B`, `lemma_2_5_at_main` Some s, `stable_rep_extend_strict`)。
+現在 `sorry`: **3** (`seed_descendants_total`, `lemma_2_5_at_main` Some s, `stable_rep_extend_strict`)。
 
 公理一覧 (BMS_Stability.thy / BMS_WellOrdered.thy):
 - `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`: `<_o` の基本性質
@@ -21,8 +21,8 @@
 |---:|---|---|---|:---:|
 |  1 | Cor 2.4 backward | `seed_expansion_succ_zero`: `(seed (Suc n)[Suc k])[0] = seed (Suc n)[k]` (Hunter p.4 "A[0] = butlast A" の strip-faithful 版; bug.md B-1) | ✅ | — |
 |  2 | Cor 2.4 backward | `seed_chain_le_B_expansion`: `k ≤ k' ⟹ seed (Suc n)[k] ≤_B seed (Suc n)[k']` (1 から導出) | ✅ | — |
-|  3 | Cor 2.4 backward | `seed_lex_implies_le_B`: `A ≤_B seed N, A' ≤_B seed N, A <_lex A' ⟹ A ≤_B A'` (seed の展開木内部での cross-branch totality; Hunter (γ) `A[n] < A' ≤ A[n+1] ⟹ A[n] ≤_B A'[0]` 経由) | 2 完了, 詰めはまだ | 数h |
-|  4 | Cor 2.4 backward | `lex_implies_le_B` (`bms_pair_below_seed` + 3 で `seed N` に落とす形で導出済み) | ✅ | — |
+|  3 | Cor 2.4 backward | `seed_descendants_total`: `A ≤_B seed N ∧ A' ≤_B seed N ⟹ A ≤_B A' ∨ A' ≤_B A` (seed 展開木の totality; Hunter Lemma 2.3 closure 議論) | 未着手 (sorry のみ) | 数h |
+|  4 | Cor 2.4 backward | `seed_lex_implies_le_B` (3 + Cor 2.2 + arr_lex_irrefl/trans で導出); `lex_implies_le_B` (`bms_pair_below_seed` + 3 経由で導出済み) | ✅ | — |
 |  5 | Lemma 2.5 | 補助補題群整備 (m_parent / m_ancestor が strip / bumping / k-祖先と相互作用する性質) | 未着手 | 不明 |
 |  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から各 clause を順に 5 個の helper として独立化 | 5 待ち | 数h+ |
 |  7 | Lemma 2.5 | `lemma_2_5_at_main_some` 本体: `nat_less_induct` で 6 を組み立て | 6 待ち | 1h |
