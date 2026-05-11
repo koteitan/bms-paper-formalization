@@ -1635,6 +1635,96 @@ text \<open>
   \<open>butlast\<close> = \<open>[]\<close>.
 \<close>
 
+text \<open>
+  \<open>(seed 1)[k] = replicate (Suc k) []\<close>: a uniform closed form
+  combining the \<open>k = 0\<close> base (\<open>[[]] = replicate 1 []\<close>) and
+  the \<open>k \<ge> 1\<close> case of @{thm seed_expansion_form}
+  (\<open>map (\<lambda>j. replicate 0 j) [0..<Suc k] = replicate (Suc k) []\<close>).
+\<close>
+
+lemma seed_1_expansion:
+  shows "(seed 1)[k] = replicate (Suc k) []"
+proof (cases k)
+  case 0
+  have "(seed 1)[0] = [[]]" by (rule seed_expansion_zero)
+  also have "[[]] = replicate 1 []" by simp
+  finally show ?thesis using 0 by simp
+next
+  case (Suc k')
+  hence k_ge: "1 \<le> k" by simp
+  have form: "(seed (Suc 0))[k] = map (\<lambda>j. replicate 0 j) [0..<Suc k]"
+    by (rule seed_expansion_form[OF k_ge])
+  have aux: "map (\<lambda>j. replicate 0 j) [0..<n] = replicate n ([] :: nat list)" for n
+  proof (induct n)
+    case 0 show ?case by simp
+  next
+    case (Suc n)
+    have "map (\<lambda>j. replicate 0 j) [0..<Suc n]
+            = map (\<lambda>j. replicate 0 j) [0..<n] @ [replicate 0 n]" by simp
+    also have "\<dots> = replicate n [] @ [[]]" using Suc by simp
+    also have "\<dots> = replicate (Suc n) []"
+      by (simp add: replicate_append_same)
+    finally show ?case .
+  qed
+  show ?thesis using form aux by (simp add: replicate_append_same)
+qed
+
+text \<open>
+  Expansion of \<open>replicate (Suc k) []\<close>: collapses to
+  \<open>replicate k []\<close> regardless of \<open>m\<close> (height-0 array has
+  \<open>b0_start = None\<close>, so expansion is determined by
+  \<open>butlast\<close>).
+\<close>
+
+lemma replicate_empty_expansion:
+  shows "(replicate (Suc k) ([] :: nat list))[m] = replicate k []"
+proof -
+  let ?A = "replicate (Suc k) ([] :: nat list)"
+  have ne: "?A \<noteq> []" by simp
+  have b0: "b0_start ?A = None"
+  proof -
+    have h: "height ?A = 0" by simp
+    have "max_parent_level ?A = None"
+      unfolding max_parent_level_def using ne h by (simp add: Let_def)
+    thus ?thesis by (simp add: b0_start_def)
+  qed
+  have G_eq: "G_block ?A = butlast ?A"
+    using b0 by (simp add: G_block_def)
+  have bl: "butlast ?A = replicate k []"
+  proof -
+    have "?A = replicate k ([] :: nat list) @ [[]]"
+      by (simp add: replicate_append_same)
+    thus ?thesis by simp
+  qed
+  have Bs_empty: "Bs_concat ?A m = []"
+    unfolding Bs_concat_def using b0
+    by (simp add: Bi_block_def B0_block_def)
+  have "?A[m] = strip_zero_rows (G_block ?A @ Bs_concat ?A m)"
+    unfolding expansion_def using ne by simp
+  also have "\<dots> = strip_zero_rows (replicate k [])"
+    using G_eq bl Bs_empty by simp
+  also have "\<dots> = replicate k []"
+  proof (cases k)
+    case 0
+    thus ?thesis by (simp add: strip_zero_rows_def)
+  next
+    case (Suc k')
+    have ne_rk: "replicate k ([] :: nat list) \<noteq> []" using Suc by simp
+    have h_rk: "height (replicate k ([] :: nat list)) = 0" by simp
+    have least: "(LEAST h. h \<le> 0 \<and>
+                  (\<forall>m. h \<le> m \<and> m < 0 \<longrightarrow>
+                    (\<forall>c \<in> set (replicate k ([] :: nat list)). c ! m = 0))) = 0"
+      by simp
+    have "strip_zero_rows (replicate k ([] :: nat list))
+            = map (\<lambda>c. take 0 c) (replicate k [])"
+      unfolding strip_zero_rows_def Let_def
+      using ne_rk h_rk least by simp
+    also have "\<dots> = replicate k []" by (induct k) auto
+    finally show ?thesis .
+  qed
+  finally show ?thesis .
+qed
+
 lemma empty_col_expansion:
   shows "[[]][k] = []"
 proof -

@@ -1053,6 +1053,162 @@ proof -
 qed
 
 text \<open>
+  Degenerate case \<open>N = 1\<close>: descendants of \<open>seed 1\<close> are
+  the chain \<open>... \<le>\<^sub>B seed 1[0] \<le>\<^sub>B seed 1[1] \<le>\<^sub>B ... \<le>\<^sub>B seed 1\<close>
+  where each \<open>seed 1[k] = replicate (Suc k) []\<close>
+  (via @{thm seed_1_expansion}).  Because expansion of any
+  \<open>replicate (Suc k) []\<close> collapses to \<open>replicate k []\<close>
+  (via @{thm replicate_empty_expansion}), every descendant takes
+  the form \<open>replicate j []\<close>.
+\<close>
+
+lemma descendants_of_replicate_empty:
+  assumes "A \<le>\<^sub>B replicate (Suc k) ([] :: nat list)"
+  shows "\<exists>j \<le> Suc k. A = replicate j ([] :: nat list)"
+  using assms
+proof (induct k arbitrary: A)
+  case 0
+  have "A \<le>\<^sub>B [[]]" using "0.prems" by simp
+  hence "A = [[]] \<or> A = []" by (rule descendants_of_empty_col)
+  thus ?case
+  proof
+    assume "A = [[]]"
+    hence "A = replicate (Suc 0) []" by simp
+    thus ?thesis by blast
+  next
+    assume "A = []"
+    hence "A = replicate 0 ([] :: nat list)" by simp
+    thus ?thesis by blast
+  qed
+next
+  case (Suc k)
+  from Suc.prems show ?case
+  proof (cases rule: bms_le.cases)
+    case bms_le_refl
+    have "A = replicate (Suc (Suc k)) ([] :: nat list)" using bms_le_refl by simp
+    thus ?thesis by blast
+  next
+    case (bms_le_step n)
+    have eq: "(replicate (Suc (Suc k)) ([] :: nat list))[n]
+                = replicate (Suc k) []"
+      by (rule replicate_empty_expansion)
+    have le: "A \<le>\<^sub>B replicate (Suc k) ([] :: nat list)"
+      using bms_le_step eq by simp
+    have "\<exists>j \<le> Suc k. A = replicate j ([] :: nat list)"
+      by (rule Suc.hyps[OF le])
+    then obtain j where j_le: "j \<le> Suc k" and A_eq: "A = replicate j []"
+      by blast
+    have "j \<le> Suc (Suc k)" using j_le by simp
+    thus ?thesis using A_eq by blast
+  qed
+qed
+
+lemma descendants_of_seed_1:
+  shows "A \<le>\<^sub>B seed 1
+         \<Longrightarrow> A = seed 1 \<or> (\<exists>j. A = replicate j ([] :: nat list))"
+proof (induct A "seed 1" rule: bms_le.induct)
+  case bms_le_refl
+  show ?case by simp
+next
+  case (bms_le_step A n)
+  have "(seed 1)[n] = replicate (Suc n) []" by (rule seed_1_expansion)
+  with bms_le_step.hyps have "A \<le>\<^sub>B replicate (Suc n) []" by simp
+  hence "\<exists>j \<le> Suc n. A = replicate j ([] :: nat list)"
+    by (rule descendants_of_replicate_empty)
+  then obtain j where "A = replicate j ([] :: nat list)" by blast
+  thus ?case by blast
+qed
+
+lemma replicate_step_le_B:
+  shows "replicate k ([] :: nat list) \<le>\<^sub>B replicate (Suc k) []"
+proof -
+  have eq: "(replicate (Suc k) ([] :: nat list))[0] = replicate k []"
+    by (rule replicate_empty_expansion)
+  have "replicate k ([] :: nat list) \<le>\<^sub>B (replicate (Suc k) [])[0]"
+    using eq bms_le_refl by simp
+  thus ?thesis using bms_le_step by blast
+qed
+
+lemma replicate_chain_le_aux:
+  shows "replicate j ([] :: nat list) \<le>\<^sub>B replicate (j + d) []"
+proof (induct d)
+  case 0 show ?case using bms_le_refl by simp
+next
+  case (Suc d)
+  have step: "replicate (j + d) ([] :: nat list) \<le>\<^sub>B replicate (j + Suc d) []"
+  proof -
+    have "replicate (j + d) ([] :: nat list) \<le>\<^sub>B replicate (Suc (j + d)) []"
+      by (rule replicate_step_le_B)
+    moreover have "Suc (j + d) = j + Suc d" by simp
+    ultimately show ?thesis by metis
+  qed
+  show ?case using Suc step bms_le_trans by blast
+qed
+
+lemma replicate_chain_le:
+  assumes "j \<le> k"
+  shows "replicate j ([] :: nat list) \<le>\<^sub>B replicate k []"
+proof -
+  obtain d where k_eq: "k = j + d" using assms le_Suc_ex by blast
+  show ?thesis using replicate_chain_le_aux k_eq by simp
+qed
+
+lemma replicate_le_seed_1:
+  shows "replicate j ([] :: nat list) \<le>\<^sub>B seed 1"
+proof -
+  have "replicate (Suc j) ([] :: nat list) = (seed 1)[j]"
+    using seed_1_expansion by simp
+  hence step1: "replicate (Suc j) ([] :: nat list) \<le>\<^sub>B seed 1"
+    using bms_le_refl bms_le_step by metis
+  have step2: "replicate j ([] :: nat list) \<le>\<^sub>B replicate (Suc j) []"
+    by (rule replicate_step_le_B)
+  show ?thesis using step1 step2 bms_le_trans by blast
+qed
+
+lemma seed_1_descendants_total:
+  assumes "A \<le>\<^sub>B seed 1" "A' \<le>\<^sub>B seed 1"
+  shows "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+proof -
+  have hA: "A = seed 1 \<or> (\<exists>j. A = replicate j ([] :: nat list))"
+    by (rule descendants_of_seed_1[OF assms(1)])
+  have hA': "A' = seed 1 \<or> (\<exists>j'. A' = replicate j' ([] :: nat list))"
+    by (rule descendants_of_seed_1[OF assms(2)])
+  show ?thesis
+  proof (cases "A = seed 1")
+    case True
+    hence "A' \<le>\<^sub>B A" using assms(2) by simp
+    thus ?thesis by simp
+  next
+    case A_rep: False
+    show ?thesis
+    proof (cases "A' = seed 1")
+      case True
+      hence "A \<le>\<^sub>B A'" using assms(1) by simp
+      thus ?thesis by simp
+    next
+      case A'_rep: False
+      obtain j where j_eq: "A = replicate j ([] :: nat list)"
+        using hA A_rep by blast
+      obtain j' where j'_eq: "A' = replicate j' ([] :: nat list)"
+        using hA' A'_rep by blast
+      consider (le) "j \<le> j'" | (ge) "j' \<le> j" by linarith
+      thus ?thesis
+      proof cases
+        case le
+        hence "replicate j ([] :: nat list) \<le>\<^sub>B replicate j' []"
+          by (rule replicate_chain_le)
+        thus ?thesis using j_eq j'_eq by simp
+      next
+        case ge
+        hence "replicate j' ([] :: nat list) \<le>\<^sub>B replicate j []"
+          by (rule replicate_chain_le)
+        thus ?thesis using j_eq j'_eq by simp
+      qed
+    qed
+  qed
+qed
+
+text \<open>
   Seed-tree totality (open in general): every two descendants of
   \<open>seed N\<close> are \<open>\<le>\<^sub>B\<close>-comparable.  This is the strict-totality
   content that Hunter establishes inside the proof of Lemma 2.3 by

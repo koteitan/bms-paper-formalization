@@ -21,7 +21,7 @@
 
 | ID | Lemma | タスク | 怪しさ要因 | 状態 | 見込み |
 |---:|---|---|---|---|:---:|
-|  3 | Cor 2.4 backward | `seed_descendants_total` 一般 N: `A ≤_B seed N ∧ A' ≤_B seed N ⟹ A ≤_B A' ∨ A' ≤_B A` (Hunter Lemma 2.3 closure 議論). N=0 base ✅ | Hunter の論証は (α)(β)(γ) を使うが (α) は strip と矛盾 (bug.md B-1)。strip-faithful な再構成が必要で、Hunter の loose な議論をそのまま写せない | 一般 N 残 | 数h–数日 |
+|  3 | Cor 2.4 backward | `seed_descendants_total` 一般 N: `A ≤_B seed N ∧ A' ≤_B seed N ⟹ A ≤_B A' ∨ A' ≤_B A` (Hunter Lemma 2.3 closure 議論). N=0 ✅, N=1 ✅ (degenerate, chain enumerate) | Hunter の論証は (α)(β)(γ) を使うが (α) は strip と矛盾 (bug.md B-1)。strip-faithful な再構成が必要で、Hunter の loose な議論をそのまま写せない。N≥2 で genuine cross-branch | N≥2 残 | 数h–数日 |
 | 14 | Theorem 2.7 / `stable_rep_extend_strict` | `β` の構成と `g i <_o β` の検証 | `β` の存在は Hunter handwave。`f` の最大値 (= `f(last col)`) を `β` に取れるか具体 indexing が論文未明示 | 13 待ち | 半日 |
 | 13 | Theorem 2.7 / `stable_rep_extend_strict` | `g` が `stable_rep` を満たす証明 (Lemma 2.5 を本質的に使用) | Lemma 2.5 (i)-(v) の convention が Hunter の使い方と完全一致するか要検証。我々の `m_ancestor A m i j` の (j 早い側, i 後) と Hunter の (i 早い, j 後) で reverse が必要 | 12 待ち | 1日 |
 | 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 の Y' 反射値 | indexing (B_n と B_{n+1} の対応) と Lemma 2.6 への X, Y の渡し方が Hunter で省略気味 | 5-8 待ち | 数h |
