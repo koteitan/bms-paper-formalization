@@ -6,7 +6,7 @@
 > 完了・削除しても他の ID は再採番しない。
 
 現在 `sorry`: **3** (`lex_implies_le_B`, `lemma_2_5_at_main` Some s, `stable_rep_extend_strict`)。
-追加 axiom: `seed_stable_pair_exists` (BMS_Stability.thy)。
+追加 axiom: `sigma_pair_exists` (BMS_Stability.thy): `∃α β ∈ sigma_bound. ω_o <_o α <_o β ∧ ∀m. stable_lt m α β` — Hunter の σ-pair 存在条件に対応。
 `stable_rep_extend_strict` は `A ≠ []` を仮定として持つ (空配列では `o_of [] = bottom` で `β <_o o_of A` が偽になるため)。
 
 ## タスク
@@ -21,7 +21,7 @@
 |  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から各 clause を順に 5 個の helper として独立化 | 5 待ち | 数h+ |
 |  7 | Lemma 2.5 | `lemma_2_5_at_main_some` 本体: `nat_less_induct` で 6 を組み立て | 6 待ち | 1h |
 |  8 | Lemma 2.5 | 既存 `lemma_2_5_i` 〜 `lemma_2_5_v` projection が新証明と互換に動作することを確認 | 7 待ち | 30m |
-|  9 | Theorem 2.7 / `o_on_seed` | `Ord_t` の axiom 拡張: `seed_stable_pair_exists`: ∀n. ∃α β. α<_o β ∧ ∀m<n. stable_lt m α β | ✅ | — |
+|  9 | Theorem 2.7 / `o_on_seed` | `Ord_t` の axiom 拡張: `sigma_pair_exists`: ∃α β ∈ sigma_bound. ω_o<_o α<_o β ∧ ∀m. stable_lt m α β (Hunter σ-pair 存在) | ✅ | — |
 | 10 | Theorem 2.7 / `o_on_seed` | seed n の 2 列に対し `f 0 = α, f 1 = β` で `stable_rep` を構築 | ✅ | — |
 | 11 | Theorem 2.7 / `o_on_seed` | `m_ancestor (seed n) m 1 0` の `m ≥ n` ケース補強 (m_parent_seed 系拡張) | ✅ | — |
 | 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 で反射した値 | 5-8 待ち | 数h |

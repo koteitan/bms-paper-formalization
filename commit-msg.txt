@@ -1,9 +1,13 @@
-v0.1.26/refactor lex_implies_le_B via seed_lex_implies_le_B
+v0.1.27/strengthen sigma_pair_exists to Hunter's σ-pair condition
 
-- Introduce seed_lex_implies_le_B (sorry) restricting the open
-  direction of Cor 2.4 to descendants of a single seed
-- Discharge lex_implies_le_B by reducing to seed_lex_implies_le_B
-  through bms_pair_below_seed (common seed bound for A, A' in BMS)
-- Sorry count unchanged (3); the open statement is now strictly
-  narrower and matches Hunter's structural argument scope
-- Bump version v0.1.25 -> v0.1.26
+- Rename seed_stable_pair_exists -> sigma_pair_exists
+- Require alpha, beta in sigma_bound (so lemma_2_6 is applicable in
+  the inductive step of Theorem 2.7)
+- Require omega_o <_o alpha (matches Hunter's hypothesis on Lemma 2.6)
+- Strengthen to universal stability (forall m. stable_lt m alpha beta)
+  rather than per-n existence (matches Hunter's sigma definition;
+  single pair valid across all expansion levels)
+- Merge the previously separate omega_o declaration into the same
+  axiomatization block
+- Update o_on_seed obtain to extract the strengthened conjuncts
+- Bump version v0.1.26 -> v0.1.27

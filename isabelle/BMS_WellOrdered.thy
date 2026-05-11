@@ -87,8 +87,8 @@ text \<open>
   for \<open>m < n\<close> (proven by @{thm m_parent_seed_succ} for the
   positive case and @{thm m_ancestor_seed_top} for \<open>m \<ge> n\<close>).
   Hence we only need an \<open>\<alpha> <\<^sub>o \<beta>\<close> with \<open>stable_lt m \<alpha> \<beta>\<close>
-  for all \<open>m < n\<close>; this is supplied by axiom
-  @{thm seed_stable_pair_exists}.
+  for all \<open>m < n\<close>; this follows from the universal-stability
+  axiom @{thm sigma_pair_exists}.
 \<close>
 
 lemma m_ancestor_seed_only_1_0:
@@ -155,9 +155,13 @@ qed
 lemma o_on_seed:
   shows "\<exists>f. stable_rep (seed n) f"
 proof -
-  obtain \<alpha> \<beta> where lt: "\<alpha> <\<^sub>o \<beta>"
-                  and stab: "\<forall>m < n. stable_lt m \<alpha> \<beta>"
-    using seed_stable_pair_exists by blast
+  obtain \<alpha> \<beta> where
+        \<alpha>_in: "\<alpha> \<in> sigma_bound" and \<beta>_in: "\<beta> \<in> sigma_bound"
+    and \<omega>_lt: "\<omega>_o <\<^sub>o \<alpha>"
+    and lt: "\<alpha> <\<^sub>o \<beta>"
+    and stab_all: "\<forall>m. stable_lt m \<alpha> \<beta>"
+    using sigma_pair_exists by blast
+  have stab: "\<forall>m < n. stable_lt m \<alpha> \<beta>" using stab_all by simp
   let ?f = "\<lambda>i. if i = 0 then \<alpha> else \<beta>"
   have arr_len_2: "arr_len (seed n) = 2" by (rule length_seed)
   have ord_part: "\<forall>i < arr_len (seed n). \<forall>j < arr_len (seed n).

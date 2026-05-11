@@ -36,13 +36,21 @@ typedecl Ord_t
 axiomatization
   ord_lt :: "Ord_t \<Rightarrow> Ord_t \<Rightarrow> bool" (infix "<\<^sub>o" 50) and
   stable_lt :: "nat \<Rightarrow> Ord_t \<Rightarrow> Ord_t \<Rightarrow> bool" and
-  sigma_bound :: "Ord_t set"
+  sigma_bound :: "Ord_t set" and
+  \<omega>_o :: Ord_t
 where
   ord_lt_irrefl: "\<not> \<alpha> <\<^sub>o \<alpha>"  and
   ord_lt_trans:  "\<alpha> <\<^sub>o \<beta> \<Longrightarrow> \<beta> <\<^sub>o \<gamma> \<Longrightarrow> \<alpha> <\<^sub>o \<gamma>"  and
   ord_wf:        "wfP (<\<^sub>o)"  and
-  seed_stable_pair_exists:
-    "\<exists>\<alpha> \<beta>. \<alpha> <\<^sub>o \<beta> \<and> (\<forall>m < n. stable_lt m \<alpha> \<beta>)"
+  sigma_pair_exists:
+    \<comment> \<open>Hunter's \<open>\<sigma>\<close>-pair: there exist
+        \<open>\<alpha>, \<beta> \<in> \<sigma>\<close> with \<open>\<omega> <\<^sub>o \<alpha> <\<^sub>o \<beta>\<close>
+        and \<open>\<alpha> <\<^sub>m \<beta>\<close> at every stability level \<open>m\<close>.
+        Consistency: this is exactly the non-emptiness condition
+        Hunter establishes for \<open>\<sigma>\<close> via Kranakis 1982.\<close>
+    "\<exists>\<alpha> \<beta>. \<alpha> \<in> sigma_bound \<and> \<beta> \<in> sigma_bound
+            \<and> \<omega>_o <\<^sub>o \<alpha> \<and> \<alpha> <\<^sub>o \<beta>
+            \<and> (\<forall>m. stable_lt m \<alpha> \<beta>)"
 
 
 section \<open>Lemma 2.6 (Stability reflection)\<close>
@@ -96,9 +104,5 @@ axiomatization where
                     stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f \<delta>\<^sub>0) (f \<delta>\<^sub>1))
               \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<forall>m < n.
                     stable_lt m \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt m (f \<delta>\<^sub>0) \<alpha>)"
-
-(* omega_o is the abstract omega; placeholder constant for now. *)
-
-axiomatization \<omega>_o :: Ord_t
 
 end
