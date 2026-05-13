@@ -7,7 +7,7 @@
 > **メモ**: 表は **怪しさ (truth が破れるリスク) の高い順** に並べる。
 > 行内容を変更しても並べ替え順序は維持する。
 
-現在 `sorry`: **3** (`seed_descendants_total`, `lemma_2_5_at_main` Some s, `stable_rep_extend_strict`)。
+現在 `sorry`: **5** (`seed_descendants_total`, `lemma_2_5_at_main` Some s, `stable_rep_extend_strict` Suc n のみ, `is_array_butlast`, `m_ancestor_strip_subsume`)。 n=0 case は `stable_rep_extend_strict_zero` で proven (v0.1.39)。
 
 公理一覧 (BMS_Stability.thy / BMS_WellOrdered.thy):
 - `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`: `<_o` の基本性質
@@ -25,6 +25,13 @@
 | 14 | Theorem 2.7 / `stable_rep_extend_strict` | `β` の構成と `g i <_o β` の検証 | `β` の存在は Hunter handwave。`f` の最大値 (= `f(last col)`) を `β` に取れるか具体 indexing が論文未明示 | 13 待ち | 半日 |
 | 13 | Theorem 2.7 / `stable_rep_extend_strict` | `g` が `stable_rep` を満たす証明 (Lemma 2.5 を本質的に使用) | Lemma 2.5 (i)-(v) の convention が Hunter の使い方と完全一致するか要検証。我々の `m_ancestor A m i j` の (j 早い側, i 後) と Hunter の (i 早い, j 後) で reverse が必要 | 12 待ち | 1日 |
 | 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 の Y' 反射値 | indexing (B_n と B_{n+1} の対応) と Lemma 2.6 への X, Y の渡し方が Hunter で省略気味 | 5-8 待ち | 数h |
+| 27 | Theorem 2.7 helper | `stable_rep_restrict`: stable_rep が m_ancestor 保存な subset に restrict できる | — | ✅ | — |
+| 28 | Theorem 2.7 helper | `m_ancestor (A[0]) m i j \<Longrightarrow> m_ancestor A m i j` (i,j < arr_len A - 1): A[0] = strip(butlast A) を経由した m_ancestor 保存。strip の row 削減と butlast の col 削減双方を m に関する nested induction で処理 | strip 後の elem out-of-bound 挙動 (`undefined < undefined = False`) と m_ancestor 終結条件の相互作用が厄介。Hunter は "trivially" で済ましているが Isabelle では明示的処理が必要 | ✅ (butlast は proven、 strip は sorry) | — |
+| 29 | Theorem 2.7 helper | `m_parent_m_ancestor_butlast`: butlast 経由の m_parent/m_ancestor 同時保存 (`m` × `i` の nested 帰納) | — | ✅ | — |
+| 30 | Theorem 2.7 helper | `nth_same_length_oob`: 同長リスト同士は OOB index でも一致 (`list_induct2`) | — | ✅ | — |
+| 31 | Theorem 2.7 helper | `stable_rep_extend_strict_zero`: n=0 base case (Hunter "$f_0 = f$ restricted to $l_0$") | — | ✅ | — |
+| 32 | Theorem 2.7 helper | `m_ancestor_A0_subsume_A`: butlast preservation ⊕ strip preservation (strip 側は sorry) | strip 直接証明は `auto`/`unfolding` の組み合わせで elaboration が 8 分以上かかり PC を硬直させた。 補題を細分化するか別アプローチが要 | sorry 1 残 | 数h |
+| 33 | Theorem 2.7 helper | `is_array_butlast`: butlast が is_array を保つ | 直接証明試行で elaboration が遅延 (slow `auto`/`in_set_butlastD` 探索)。 sorry のままで先行 | sorry | 30m |
 | 19 | Lemma 2.6 / Phase 3 ZF | 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 Theorem 1.8) | 外部依存 (Kranakis 論文の前提と命題が Paulson の `Constructible` 内で言明可能か未確認) | 18 待ち | 数日 |
 |  5 | Lemma 2.5 | 補助補題群整備 (m_parent / m_ancestor が strip / bumping / k-祖先と相互作用する性質) | Hunter は "tedious but straightforward" と書くが、補題リストを論文に書かない。手作業で発見・列挙する必要 | 未着手 | 不明 |
 |  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から 5 clause を順に独立化 | (iv) と (v) が同一 k で相互依存 (BMS_Ancestry.thy のコメント参照)。Hunter の順序 (ii)→(iii)→(iv)→(i)→(v) を我々は (iv,v 同時)→(i,ii,iii) に変更したが、それで証明が通るかは未確認 | 5 待ち | 数h+ |

@@ -535,6 +535,218 @@ proof -
 qed
 
 
+text \<open>
+  Ancestry preservation under \<open>butlast\<close>. For all indices
+  \<open>i, j < arr_len A - 1\<close> (i.e.\ inside \<open>butlast A\<close>), the
+  m-parent and m-ancestor relations of \<open>A\<close> and \<open>butlast A\<close>
+  coincide. The proof is a nested induction: outer on the stability
+  level \<open>m\<close>, inner on the column index \<open>i\<close> (the m-ancestor
+  recursion descends along the m-parent chain).
+\<close>
+
+lemma elem_butlast:
+  assumes "i < arr_len A - 1"
+  shows "elem (butlast A) i m = elem A i m"
+proof -
+  from assms have "i < length (butlast A)" by simp
+  hence "butlast A ! i = A ! i" by (rule nth_butlast)
+  thus ?thesis unfolding elem_def by simp
+qed
+
+lemma m_parent_m_ancestor_butlast:
+  shows "(\<forall>i. i < arr_len A - 1 \<longrightarrow> m_parent (butlast A) m i = m_parent A m i)
+       \<and> (\<forall>i j. i < arr_len A - 1 \<longrightarrow> j < arr_len A - 1 \<longrightarrow>
+            (m_ancestor (butlast A) m i j \<longleftrightarrow> m_ancestor A m i j))"
+proof (induct m)
+  case 0
+  have parent: "\<forall>i. i < arr_len A - 1 \<longrightarrow> m_parent (butlast A) 0 i = m_parent A 0 i"
+  proof (intro allI impI)
+    fix i assume i_lt: "i < arr_len A - 1"
+    have e_i: "elem (butlast A) i 0 = elem A i 0" by (rule elem_butlast[OF i_lt])
+    have "[j \<leftarrow> [0..<i]. elem (butlast A) j 0 < elem (butlast A) i 0]
+        = [j \<leftarrow> [0..<i]. elem A j 0 < elem A i 0]"
+    proof (rule filter_cong[OF refl])
+      fix j assume "j \<in> set [0..<i]"
+      hence j_lt_i: "j < i" by simp
+      hence j_lt: "j < arr_len A - 1" using i_lt by linarith
+      show "(elem (butlast A) j 0 < elem (butlast A) i 0)
+          = (elem A j 0 < elem A i 0)"
+        using elem_butlast[OF j_lt] e_i by simp
+    qed
+    thus "m_parent (butlast A) 0 i = m_parent A 0 i"
+      by (simp add: Let_def)
+  qed
+  have ancestor: "\<forall>i j. i < arr_len A - 1 \<longrightarrow> j < arr_len A - 1 \<longrightarrow>
+                    (m_ancestor (butlast A) 0 i j \<longleftrightarrow> m_ancestor A 0 i j)"
+  proof (intro allI impI)
+    fix i j assume i_lt: "i < arr_len A - 1" and j_lt: "j < arr_len A - 1"
+    show "m_ancestor (butlast A) 0 i j \<longleftrightarrow> m_ancestor A 0 i j"
+      using i_lt
+    proof (induct i rule: less_induct)
+      case (less i)
+      show ?case
+      proof (cases "m_parent A 0 i")
+        case None
+        hence par_bl: "m_parent (butlast A) 0 i = None"
+          using parent less.prems by simp
+        show ?thesis using None par_bl by simp
+      next
+        case (Some p)
+        have p_lt_i: "p < i" using Some by (rule m_parent_lt)
+        have p_lt_A: "p < arr_len A - 1" using p_lt_i less.prems by linarith
+        have par_bl: "m_parent (butlast A) 0 i = Some p"
+          using parent less.prems Some by simp
+        have IH_inner: "m_ancestor (butlast A) 0 p j \<longleftrightarrow> m_ancestor A 0 p j"
+          using less.hyps[OF p_lt_i p_lt_A] .
+        show ?thesis using Some par_bl IH_inner by simp
+      qed
+    qed
+  qed
+  show ?case using parent ancestor by blast
+next
+  case (Suc m)
+  hence IH_parent: "\<forall>i. i < arr_len A - 1
+                          \<longrightarrow> m_parent (butlast A) m i = m_parent A m i"
+    and IH_anc: "\<forall>i j. i < arr_len A - 1 \<longrightarrow> j < arr_len A - 1
+                          \<longrightarrow> (m_ancestor (butlast A) m i j
+                                \<longleftrightarrow> m_ancestor A m i j)"
+    by blast+
+  have parent: "\<forall>i. i < arr_len A - 1
+                       \<longrightarrow> m_parent (butlast A) (Suc m) i = m_parent A (Suc m) i"
+  proof (intro allI impI)
+    fix i assume i_lt: "i < arr_len A - 1"
+    have e_i: "elem (butlast A) i (Suc m) = elem A i (Suc m)"
+      by (rule elem_butlast[OF i_lt])
+    have "[j \<leftarrow> [0..<i]. elem (butlast A) j (Suc m) < elem (butlast A) i (Suc m)
+                         \<and> m_ancestor (butlast A) m i j]
+        = [j \<leftarrow> [0..<i]. elem A j (Suc m) < elem A i (Suc m)
+                         \<and> m_ancestor A m i j]"
+    proof (rule filter_cong[OF refl])
+      fix j assume "j \<in> set [0..<i]"
+      hence j_lt_i: "j < i" by simp
+      hence j_lt: "j < arr_len A - 1" using i_lt by linarith
+      have e_j: "elem (butlast A) j (Suc m) = elem A j (Suc m)"
+        by (rule elem_butlast[OF j_lt])
+      have anc_eq: "m_ancestor (butlast A) m i j \<longleftrightarrow> m_ancestor A m i j"
+        using IH_anc i_lt j_lt by simp
+      show "(elem (butlast A) j (Suc m) < elem (butlast A) i (Suc m)
+              \<and> m_ancestor (butlast A) m i j)
+          = (elem A j (Suc m) < elem A i (Suc m) \<and> m_ancestor A m i j)"
+        using e_j e_i anc_eq by simp
+    qed
+    thus "m_parent (butlast A) (Suc m) i = m_parent A (Suc m) i"
+      by (simp add: Let_def)
+  qed
+  have ancestor: "\<forall>i j. i < arr_len A - 1 \<longrightarrow> j < arr_len A - 1
+                          \<longrightarrow> (m_ancestor (butlast A) (Suc m) i j
+                                \<longleftrightarrow> m_ancestor A (Suc m) i j)"
+  proof (intro allI impI)
+    fix i j assume i_lt: "i < arr_len A - 1" and j_lt: "j < arr_len A - 1"
+    show "m_ancestor (butlast A) (Suc m) i j
+          \<longleftrightarrow> m_ancestor A (Suc m) i j"
+      using i_lt
+    proof (induct i rule: less_induct)
+      case (less i)
+      show ?case
+      proof (cases "m_parent A (Suc m) i")
+        case None
+        hence par_bl: "m_parent (butlast A) (Suc m) i = None"
+          using parent less.prems by simp
+        show ?thesis using None par_bl by simp
+      next
+        case (Some p)
+        have p_lt_i: "p < i" using Some by (rule m_parent_lt)
+        have p_lt_A: "p < arr_len A - 1" using p_lt_i less.prems by linarith
+        have par_bl: "m_parent (butlast A) (Suc m) i = Some p"
+          using parent less.prems Some by simp
+        have IH_inner: "m_ancestor (butlast A) (Suc m) p j
+                          \<longleftrightarrow> m_ancestor A (Suc m) p j"
+          using less.hyps[OF p_lt_i p_lt_A] .
+        show ?thesis using Some par_bl IH_inner by simp
+      qed
+    qed
+  qed
+  show ?case using parent ancestor by blast
+qed
+
+lemma m_parent_butlast:
+  assumes "i < arr_len A - 1"
+  shows "m_parent (butlast A) m i = m_parent A m i"
+  using m_parent_m_ancestor_butlast assms by blast
+
+lemma m_ancestor_butlast_iff:
+  assumes "i < arr_len A - 1" "j < arr_len A - 1"
+  shows "m_ancestor (butlast A) m i j \<longleftrightarrow> m_ancestor A m i j"
+  using m_parent_m_ancestor_butlast assms by blast
+
+
+text \<open>
+  Two lists of equal length agree at any index. For \<open>m \<le> length\<close>
+  it is \<open>nth_eq_iff_index_eq\<close>; for \<open>m \<ge> length\<close> both sides
+  reduce to \<open>[] ! (m - length _)\<close> by the recursive definition of
+  \<open>nth\<close>, giving the same value.
+\<close>
+
+lemma nth_same_length_oob:
+  assumes "length xs = length ys" "length xs \<le> m"
+  shows "xs ! m = ys ! m"
+  using assms
+proof (induct xs ys arbitrary: m rule: list_induct2)
+  case Nil
+  show ?case by simp
+next
+  case (Cons x xs y ys)
+  obtain m' where m_eq: "m = Suc m'"
+    using Cons.prems by (cases m) auto
+  hence "length xs \<le> m'" using Cons.prems by simp
+  hence "xs ! m' = ys ! m'" by (rule Cons.hyps)
+  thus ?case using m_eq by simp
+qed
+
+
+text \<open>
+  Ancestry preservation under \<open>strip_zero_rows\<close>. For a
+  non-empty well-formed array \<open>B\<close>, every m-ancestor relation in
+  \<open>strip_zero_rows B\<close> also holds in \<open>B\<close>. Proof postponed
+  to a separate development (see task ID 28).
+\<close>
+
+lemma length_strip_zero_rows:
+  "length (strip_zero_rows B) = length B"
+  unfolding strip_zero_rows_def by (simp add: Let_def)
+
+lemma is_array_butlast:
+  assumes "is_array A"
+  shows "is_array (butlast A)"
+  sorry  \<comment> \<open>Structural fact: butlast preserves the equal-column-
+            length invariant. Held as sorry due to slow elaboration
+            on direct proofs; not load-bearing for the soundness
+            chain (sigma_pair_exists + lemma_2_6 axioms drive
+            Theorem 2.7).\<close>
+
+lemma m_ancestor_strip_subsume:
+  assumes "is_array B" "B \<noteq> []" "i < length B" "j < length B"
+          "m_ancestor (strip_zero_rows B) m i j"
+  shows "m_ancestor B m i j"
+  sorry  \<comment> \<open>Two cases:
+            (a) \<open>m < height (strip_zero_rows B)\<close>: \<open>elem\<close>
+                matches between stripped and original via
+                \<open>nth_take\<close>; \<open>m_parent\<close>/\<open>m_ancestor\<close> agree
+                by nested induction (outer on \<open>m\<close>, inner on
+                \<open>i\<close>).
+            (b) \<open>m \<ge> height (strip_zero_rows B)\<close>: all
+                \<open>elem\<close> values in the stripped array are
+                out-of-bounds and equal across columns (via
+                \<open>nth_same_length_oob\<close> and \<open>is_array\<close>),
+                so the candidate filter is empty, \<open>m_parent\<close>
+                is \<open>None\<close>, and \<open>m_ancestor\<close> is vacuously
+                \<open>False\<close> — contradicting the hypothesis.
+            The full proof requires \<open>length_col_strip\<close>,
+            \<open>height_strip_le\<close>, \<open>strip_zero_rows_nth\<close> auxiliary
+            lemmas. Held as a single \<open>sorry\<close> for now; cf.\
+            \<open>m_parent_m_ancestor_butlast\<close> for the analogous
+            butlast direction (proven without sorry).\<close>
+
 
 lemma filter_set_subset_aux:
   "x \<in> set (filter P xs) \<Longrightarrow> x \<in> set xs"

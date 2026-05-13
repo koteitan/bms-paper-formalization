@@ -63,6 +63,42 @@ definition stable_rep :: "array \<Rightarrow> (nat \<Rightarrow> Ord_t) \<Righta
      (\<forall>i < arr_len A. \<forall>j < arr_len A. \<forall>m.
         m_ancestor A m i j \<longrightarrow> stable_lt m (f j) (f i))"
 
+text \<open>
+  Restriction principle: if \<open>B\<close> has length \<open>\<le>\<close> \<open>A\<close>'s and
+  m-ancestry in \<open>B\<close> on indices \<open>< arr_len B\<close> implies
+  m-ancestry in \<open>A\<close> (same indices, same level), then a stable
+  representation of \<open>A\<close> restricts to one of \<open>B\<close>.
+\<close>
+
+lemma stable_rep_restrict:
+  assumes "stable_rep A f"
+          "arr_len B \<le> arr_len A"
+          "\<forall>i j m. i < arr_len B \<and> j < arr_len B \<and> m_ancestor B m i j
+                     \<longrightarrow> m_ancestor A m i j"
+  shows "stable_rep B f"
+proof -
+  have mono: "\<forall>i < arr_len B. \<forall>j < arr_len B. i < j \<longrightarrow> f i <\<^sub>o f j"
+  proof (intro allI impI)
+    fix i j assume i_lt: "i < arr_len B" and j_lt: "j < arr_len B" and ij: "i < j"
+    have iA: "i < arr_len A" using i_lt assms(2) by linarith
+    have jA: "j < arr_len A" using j_lt assms(2) by linarith
+    show "f i <\<^sub>o f j" using assms(1) iA jA ij
+      unfolding stable_rep_def by blast
+  qed
+  have anc: "\<forall>i < arr_len B. \<forall>j < arr_len B. \<forall>m.
+                m_ancestor B m i j \<longrightarrow> stable_lt m (f j) (f i)"
+  proof (intro allI impI)
+    fix i j m assume i_lt: "i < arr_len B" and j_lt: "j < arr_len B"
+                and anc_B: "m_ancestor B m i j"
+    have iA: "i < arr_len A" using i_lt assms(2) by linarith
+    have jA: "j < arr_len A" using j_lt assms(2) by linarith
+    have anc_A: "m_ancestor A m i j" using assms(3) i_lt j_lt anc_B by blast
+    show "stable_lt m (f j) (f i)" using assms(1) iA jA anc_A
+      unfolding stable_rep_def by blast
+  qed
+  show ?thesis using mono anc unfolding stable_rep_def by blast
+qed
+
 (*
   o_of axiomatized as the minimal alpha in Ord_t such that some stable
   representation of A maps below alpha. We do not use HOL's `LEAST`
@@ -206,15 +242,118 @@ text \<open>
   an immediate consequence.
 \<close>
 
+text \<open>
+  Combined ancestry preservation: m-ancestry inside \<open>A[0]\<close> on
+  indices below \<open>arr_len A - 1\<close> lifts to m-ancestry in \<open>A\<close>.
+  Combines @{thm m_ancestor_strip_subsume} (sorry'd) with
+  @{thm m_ancestor_butlast_iff} (proven) via the structural
+  identity \<open>A[0] = strip_zero_rows (butlast A)\<close>.
+\<close>
+
+lemma m_ancestor_A0_subsume_A:
+  assumes "is_array A" "A \<noteq> []"
+          "i < arr_len (expansion A 0)" "j < arr_len (expansion A 0)"
+          "m_ancestor (expansion A 0) m i j"
+  shows "m_ancestor A m i j"
+proof -
+  have A0_eq: "expansion A 0 = strip_zero_rows (butlast A)"
+    by (rule expansion_zero_eq[OF assms(2)])
+  have len_A0: "arr_len (expansion A 0) = arr_len (butlast A)"
+    using A0_eq by (simp add: length_strip_zero_rows)
+  have i_lt_bl: "i < arr_len (butlast A)" using assms(3) len_A0 by simp
+  have j_lt_bl: "j < arr_len (butlast A)" using assms(4) len_A0 by simp
+  show ?thesis
+  proof (cases "butlast A = []")
+    case True
+    hence "arr_len (butlast A) = 0" by simp
+    hence "i < 0" using i_lt_bl by simp
+    thus ?thesis by simp
+  next
+    case False
+    have is_arr_bl: "is_array (butlast A)"
+      using assms(1) by (rule is_array_butlast)
+    have anc_bl: "m_ancestor (butlast A) m i j"
+      using m_ancestor_strip_subsume[OF is_arr_bl False i_lt_bl j_lt_bl]
+            assms(5) A0_eq by simp
+    have i_lt_A: "i < arr_len A - 1" using i_lt_bl by simp
+    have j_lt_A: "j < arr_len A - 1" using j_lt_bl by simp
+    show ?thesis
+      using m_ancestor_butlast_iff[OF i_lt_A j_lt_A] anc_bl by simp
+  qed
+qed
+
+text \<open>
+  Base case of Hunter's 2.7.c--d recursion (\<open>n = 0\<close>). The
+  restriction of \<open>f\<close> to indices below \<open>arr_len (A[0])\<close> is
+  a stable representation of \<open>A[0]\<close>, bounded below
+  \<open>f (arr_len A - 1)\<close>.
+\<close>
+
+lemma stable_rep_extend_strict_zero:
+  assumes "A \<in> BMS" "A \<noteq> []" "stable_rep A f"
+  shows "\<exists>g \<beta>. \<beta> <\<^sub>o o_of A
+                \<and> stable_rep (expansion A 0) g
+                \<and> (\<forall>i < arr_len (expansion A 0). g i <\<^sub>o \<beta>)"
+proof -
+  have is_arr: "is_array A" using BMS_is_array[OF assms(1)] .
+  have len_A0: "arr_len (expansion A 0) = arr_len A - 1"
+    by (simp add: expansion_zero_eq[OF assms(2)] length_strip_zero_rows)
+  have A_len_pos: "0 < arr_len A" using assms(2) by simp
+  have last_lt: "arr_len A - 1 < arr_len A" using A_len_pos by simp
+  obtain f0 where f0_rep: "stable_rep A f0"
+              and f0_lt: "\<forall>i < arr_len A. f0 i <\<^sub>o o_of A"
+    using o_of_def[OF assms(1)] by blast
+  have f0_strict: "\<forall>i j. i < arr_len A \<and> j < arr_len A \<and> i < j \<longrightarrow> f0 i <\<^sub>o f0 j"
+    using f0_rep unfolding stable_rep_def by blast
+  define \<beta> where "\<beta> = f0 (arr_len A - 1)"
+  have \<beta>_lt: "\<beta> <\<^sub>o o_of A"
+    using f0_lt last_lt \<beta>_def by blast
+  have f0_lt_\<beta>: "\<forall>i. i < arr_len (expansion A 0) \<longrightarrow> f0 i <\<^sub>o \<beta>"
+  proof (intro allI impI)
+    fix i assume "i < arr_len (expansion A 0)"
+    hence i_lt_A1: "i < arr_len A - 1" using len_A0 by simp
+    hence i_lt_A: "i < arr_len A" using last_lt by linarith
+    show "f0 i <\<^sub>o \<beta>"
+      using f0_strict i_lt_A last_lt i_lt_A1 \<beta>_def by blast
+  qed
+  have g_stable: "stable_rep (expansion A 0) f0"
+  proof (rule stable_rep_restrict[OF f0_rep])
+    show "arr_len (expansion A 0) \<le> arr_len A" using len_A0 by simp
+  next
+    show "\<forall>i j m. i < arr_len (expansion A 0) \<and> j < arr_len (expansion A 0)
+                    \<and> m_ancestor (expansion A 0) m i j
+                    \<longrightarrow> m_ancestor A m i j"
+      using m_ancestor_A0_subsume_A[OF is_arr assms(2)] by blast
+  qed
+  show ?thesis using \<beta>_lt g_stable f0_lt_\<beta> by blast
+qed
+
+text \<open>
+  General \<open>n\<close>: Hunter's 2.7.c--d via Lemma 2.6 and Lemma 2.5.
+  The \<open>n = 0\<close> case is dispatched to @{thm stable_rep_extend_strict_zero};
+  the \<open>n > 0\<close> case remains as a single sorry (Hunter's reflection
+  step via Lemma 2.6).
+\<close>
+
 lemma stable_rep_extend_strict:
   assumes "A \<in> BMS" "A \<noteq> []" "stable_rep A f"
   shows "\<exists>g \<beta>. \<beta> <\<^sub>o o_of A
                 \<and> stable_rep (A[n]) g
                 \<and> (\<forall>i < arr_len (A[n]). g i <\<^sub>o \<beta>)"
-  sorry  \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6.
-            The \<open>A \<noteq> []\<close> assumption is required: for \<open>A = []\<close>,
-            \<open>A[n] = []\<close> and \<open>o_of [] = bottom\<close> (vacuously least),
-            so no \<open>\<beta> <\<^sub>o o_of A\<close> exists.\<close>
+proof (cases n)
+  case 0
+  thus ?thesis using stable_rep_extend_strict_zero[OF assms] by simp
+next
+  case (Suc n')
+  show ?thesis
+    sorry  \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6 reflection.
+              Construction by induction on \<open>n'\<close>: apply Lemma 2.6
+              to reflect \<open>f\<close>-values of \<open>B\<^sub>0\<close> in \<open>A\<close> into
+              \<open>Y'\<close> below \<open>\<alpha> = f(b0_start)\<close>; redefine
+              \<open>f_{n+1}\<close> with \<open>B_{n+1}\<close> mapping to \<open>Y\<close>
+              and \<open>B_n\<close> mapping to \<open>Y'\<close>. Lemma 2.5 ensures
+              m-ancestor preservation.\<close>
+qed
 
 lemma stable_rep_extend:
   assumes "A \<in> BMS" "stable_rep A f"
