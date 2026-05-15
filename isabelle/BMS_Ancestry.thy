@@ -287,6 +287,40 @@ text \<open>
   elem strictly increases (at ascending row).
 \<close>
 
+text \<open>
+  Same block index \<open>t\<close>, different column indices \<open>j, i\<close>
+  in \<open>B_t\<close> (both ascending at row \<open>k\<close>): the strict
+  inequality \<open>(A!(s+j))!k < (A!(s+i))!k\<close> propagates to
+  \<open>elem (A[n]) (idx_B t j) k < elem (A[n]) (idx_B t i) k\<close>.
+\<close>
+
+lemma elem_expansion_B_lt_same_block:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and t_le: "t \<le> n"
+      and j_lt: "j < l1 A" and i_lt: "i < l1 A"
+      and asc_j: "ascends A j k"
+      and asc_i: "ascends A i k"
+      and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and j_len: "k < length (A ! (s + j))"
+      and i_len: "k < length (A ! (s + i))"
+      and base_lt: "(A ! (s + j)) ! k < (A ! (s + i)) ! k"
+  shows "elem (expansion A n) (idx_B_in_expansion A t j) k
+       < elem (expansion A n) (idx_B_in_expansion A t i) k"
+proof -
+  have bump_j: "elem (expansion A n) (idx_B_in_expansion A t j) k
+              = (bump_col A j t) ! k"
+    using elem_expansion_B_via_bump[OF A_ne t_le j_lt k_lt_keep] .
+  have bump_i: "elem (expansion A n) (idx_B_in_expansion A t i) k
+              = (bump_col A i t) ! k"
+    using elem_expansion_B_via_bump[OF A_ne t_le i_lt k_lt_keep] .
+  have val_j: "(bump_col A j t) ! k = (A ! (s + j)) ! k + t * delta A k"
+    using bump_col_nth_general[OF b0 j_len] asc_j by simp
+  have val_i: "(bump_col A i t) ! k = (A ! (s + i)) ! k + t * delta A k"
+    using bump_col_nth_general[OF b0 i_len] asc_i by simp
+  show ?thesis using bump_j bump_i val_j val_i base_lt by simp
+qed
+
 lemma elem_expansion_B_lt_step_same_j:
   assumes A_ne: "A \<noteq> []"
       and b0: "b0_start A = Some s"
