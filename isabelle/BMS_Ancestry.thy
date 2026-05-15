@@ -73,6 +73,163 @@ lemma l1_zero_of_no_b0:
   shows "l1 A = 0"
   using assms by (simp add: l1_def B0_block_def)
 
+text \<open>
+  Column count of \<open>A[n]\<close> in \<open>l0\<close>/\<open>l1\<close> notation:
+  projection of @{thm arr_len_expansion}.
+\<close>
+
+lemma arr_len_expansion_l01:
+  assumes "A \<noteq> []"
+  shows "arr_len (expansion A n) = l0 A + Suc n * l1 A"
+  using arr_len_expansion[OF assms] unfolding l0_def l1_def by simp
+
+text \<open>
+  Pre-strip indexing of \<open>A[n]\<close>: for indices in the
+  \<open>G_block\<close> range \<open>[0, l0)\<close>, the pre-strip column equals
+  the corresponding \<open>G_block A\<close> column.
+\<close>
+
+lemma pre_strip_nth_G:
+  assumes "i < l0 A"
+  shows "(G_block A @ Bs_concat A n) ! i = G_block A ! i"
+  using assms unfolding l0_def by (simp add: nth_append)
+
+text \<open>
+  Block indexing of @{const Bs_concat}: the \<open>(t * l1 + j)\<close>-th
+  column equals the \<open>j\<close>-th column of \<open>Bi_block A t\<close>
+  (for \<open>t \<le> n\<close>, \<open>j < l1\<close>). Induction on \<open>n\<close>
+  via @{thm Bs_concat_Suc} and @{thm length_Bs_concat}.
+\<close>
+
+lemma Bs_concat_nth_block:
+  assumes "t \<le> n" and "j < l1 A"
+  shows "Bs_concat A n ! (t * l1 A + j) = Bi_block A t ! j"
+  using assms
+proof (induct n arbitrary: t)
+  case 0
+  hence t_eq: "t = 0" by simp
+  have "Bs_concat A 0 = Bi_block A 0" by (simp add: Bs_concat_def)
+  thus ?case using t_eq by simp
+next
+  case (Suc n)
+  show ?case
+  proof (cases "t \<le> n")
+    case True
+    have len_Bs: "length (Bs_concat A n) = Suc n * l1 A"
+      using length_Bs_concat unfolding l1_def by simp
+    have idx_lt: "t * l1 A + j < length (Bs_concat A n)"
+    proof -
+      have "t * l1 A + j < t * l1 A + l1 A" using Suc.prems(2) by simp
+      also have "\<dots> = (Suc t) * l1 A" by simp
+      also have "\<dots> \<le> (Suc n) * l1 A" using True by simp
+      finally show ?thesis using len_Bs by simp
+    qed
+    have "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
+      by (rule Bs_concat_Suc)
+    hence "Bs_concat A (Suc n) ! (t * l1 A + j) = Bs_concat A n ! (t * l1 A + j)"
+      using idx_lt by (simp add: nth_append)
+    also have "\<dots> = Bi_block A t ! j"
+      using Suc.hyps[OF True Suc.prems(2)] .
+    finally show ?thesis .
+  next
+    case False
+    hence t_eq: "t = Suc n" using Suc.prems(1) by linarith
+    have len_Bs: "length (Bs_concat A n) = Suc n * l1 A"
+      using length_Bs_concat unfolding l1_def by simp
+    have idx_eq: "t * l1 A + j = Suc n * l1 A + j" using t_eq by simp
+    have idx_ge: "Suc n * l1 A \<le> Suc n * l1 A + j" by simp
+    have "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
+      by (rule Bs_concat_Suc)
+    hence "Bs_concat A (Suc n) ! (Suc n * l1 A + j)
+         = Bi_block A (Suc n) ! ((Suc n * l1 A + j) - length (Bs_concat A n))"
+      using idx_ge len_Bs by (simp add: nth_append)
+    also have "(Suc n * l1 A + j) - length (Bs_concat A n) = j"
+      using len_Bs by simp
+    finally show ?thesis using t_eq idx_eq by simp
+  qed
+qed
+
+text \<open>
+  Pre-strip indexing for \<open>B_t\<close> block in the expansion of
+  \<open>A[n]\<close>: the column at \<open>idx_B_in_expansion A t j\<close>
+  (where \<open>t \<le> n\<close>, \<open>j < l1\<close>) equals
+  \<open>Bi_block A t ! j\<close>.
+\<close>
+
+lemma pre_strip_nth_B:
+  assumes "t \<le> n" and "j < l1 A"
+  shows "(G_block A @ Bs_concat A n) ! (idx_B_in_expansion A t j)
+       = Bi_block A t ! j"
+proof -
+  have idx_eq: "idx_B_in_expansion A t j = l0 A + (t * l1 A + j)"
+    unfolding idx_B_in_expansion_def by simp
+  have l0_eq: "l0 A = length (G_block A)" unfolding l0_def by simp
+  have "(G_block A @ Bs_concat A n) ! (idx_B_in_expansion A t j)
+      = Bs_concat A n ! (t * l1 A + j)"
+    using idx_eq l0_eq by (simp add: nth_append)
+  also have "\<dots> = Bi_block A t ! j"
+    using assms by (rule Bs_concat_nth_block)
+  finally show ?thesis .
+qed
+
+text \<open>
+  Elem values in the expansion \<open>A[n]\<close> on row \<open>m\<close> below
+  the strip cutoff: G-block range reduces to \<open>G_block A\<close>,
+  B-block range reduces to \<open>Bi_block A t\<close>.
+\<close>
+
+lemma elem_expansion_G_lt_keep:
+  assumes A_ne: "A \<noteq> []"
+      and i_lt: "i < l0 A"
+      and m_lt: "m < keep_of (G_block A @ Bs_concat A n)"
+  shows "elem (expansion A n) i m = elem (G_block A) i m"
+proof -
+  let ?P = "G_block A @ Bs_concat A n"
+  have exp_eq: "expansion A n = strip_zero_rows ?P"
+    using A_ne unfolding expansion_def by simp
+  have arr_len_pre: "arr_len ?P = l0 A + Suc n * l1 A"
+    by (simp add: l0_def l1_def length_Bs_concat)
+  have i_lt_pre: "i < arr_len ?P"
+    using i_lt arr_len_pre by simp
+  have pre_ne: "?P \<noteq> []" using i_lt_pre by auto
+  have elem_strip: "elem (strip_zero_rows ?P) i m = elem ?P i m"
+    using pre_ne i_lt_pre m_lt by (rule elem_strip_lt_keep)
+  have nth_pre: "?P ! i = G_block A ! i"
+    using i_lt by (rule pre_strip_nth_G)
+  show ?thesis using exp_eq elem_strip nth_pre unfolding elem_def by simp
+qed
+
+lemma elem_expansion_B_lt_keep:
+  assumes A_ne: "A \<noteq> []"
+      and t_le: "t \<le> n" and j_lt: "j < l1 A"
+      and m_lt: "m < keep_of (G_block A @ Bs_concat A n)"
+  shows "elem (expansion A n) (idx_B_in_expansion A t j) m
+       = elem (Bi_block A t) j m"
+proof -
+  let ?P = "G_block A @ Bs_concat A n"
+  let ?i = "idx_B_in_expansion A t j"
+  have exp_eq: "expansion A n = strip_zero_rows ?P"
+    using A_ne unfolding expansion_def by simp
+  have arr_len_pre: "arr_len ?P = l0 A + Suc n * l1 A"
+    by (simp add: l0_def l1_def length_Bs_concat)
+  have idx_eq: "?i = l0 A + (t * l1 A + j)"
+    unfolding idx_B_in_expansion_def by simp
+  have i_lt_pre: "?i < arr_len ?P"
+  proof -
+    have "t * l1 A + j < (Suc t) * l1 A" using j_lt by simp
+    also have "\<dots> \<le> Suc n * l1 A" using t_le by simp
+    finally have "t * l1 A + j < Suc n * l1 A" .
+    thus ?thesis using idx_eq arr_len_pre by simp
+  qed
+  have pre_ne: "?P \<noteq> []" using i_lt_pre by auto
+  have elem_strip: "elem (strip_zero_rows ?P) ?i m = elem ?P ?i m"
+    using pre_ne i_lt_pre m_lt by (rule elem_strip_lt_keep)
+  have nth_pre: "?P ! ?i = Bi_block A t ! j"
+    using t_le j_lt by (rule pre_strip_nth_B)
+  show ?thesis using exp_eq elem_strip nth_pre unfolding elem_def by simp
+qed
+
+
 lemma max_parent_level_None_imp_b0_start_None:
   "max_parent_level A = None \<Longrightarrow> b0_start A = None"
   by (simp add: b0_start_def)

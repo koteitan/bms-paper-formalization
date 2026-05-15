@@ -1075,6 +1075,19 @@ text \<open>
   \<open>m\<^sub>0\<close>-parent of \<open>C\<close>.
 \<close>
 
+text \<open>
+  Pointwise formula for \<open>bump_col\<close>: the \<open>m\<close>-th entry of
+  \<open>bump_col A d i\<close> is \<open>(A!(s+d))!m + i*delta A m\<close> on
+  ascending rows, or \<open>(A!(s+d))!m\<close> otherwise.
+\<close>
+
+lemma bump_col_nth_general:
+  assumes b0: "b0_start A = Some s"
+      and m_lt: "m < length (A ! (s + d))"
+  shows "(bump_col A d i) ! m
+       = (A ! (s + d)) ! m + (if ascends A d m then i * delta A m else 0)"
+  unfolding bump_col_def Let_def using b0 m_lt by simp
+
 lemma bump_col_value_lt_m0:
   assumes b0: "b0_start A = Some s"
       and mp: "max_parent_level A = Some m\<^sub>0"
