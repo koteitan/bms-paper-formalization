@@ -245,7 +245,7 @@ text \<open>
 text \<open>
   Combined ancestry preservation: m-ancestry inside \<open>A[0]\<close> on
   indices below \<open>arr_len A - 1\<close> lifts to m-ancestry in \<open>A\<close>.
-  Combines @{thm m_ancestor_strip_subsume} (sorry'd) with
+  Combines @{thm m_ancestor_strip_subsume} (proven) with
   @{thm m_ancestor_butlast_iff} (proven) via the structural
   identity \<open>A[0] = strip_zero_rows (butlast A)\<close>.
 \<close>
@@ -335,24 +335,70 @@ text \<open>
   step via Lemma 2.6).
 \<close>
 
+text \<open>
+  Minimality of \<open>o_of\<close> applied to an expansion: extracted from
+  @{thm o_of_def} via @{thm expand_in_BMS}.
+\<close>
+
+lemma o_of_expansion_minimal:
+  assumes A_BMS: "A \<in> BMS"
+  shows "(\<exists>g. stable_rep (expansion A n) g
+              \<and> (\<forall>i < arr_len (expansion A n). g i <\<^sub>o \<beta>))
+       \<longrightarrow> o_of (expansion A n) = \<beta> \<or> o_of (expansion A n) <\<^sub>o \<beta>"
+proof -
+  have An_BMS: "expansion A n \<in> BMS" using A_BMS by (rule expand_in_BMS)
+  from o_of_def[OF An_BMS] obtain f where
+    "stable_rep (expansion A n) f"
+    "\<forall>i < arr_len (expansion A n). f i <\<^sub>o o_of (expansion A n)"
+    "\<forall>\<beta>. (\<exists>g. stable_rep (expansion A n) g
+                \<and> (\<forall>i < arr_len (expansion A n). g i <\<^sub>o \<beta>))
+          \<longrightarrow> o_of (expansion A n) = \<beta> \<or> o_of (expansion A n) <\<^sub>o \<beta>"
+    by blast
+  thus ?thesis by blast
+qed
+
 lemma stable_rep_extend_strict:
-  assumes "A \<in> BMS" "A \<noteq> []" "stable_rep A f"
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []" and f_rep: "stable_rep A f"
   shows "\<exists>g \<beta>. \<beta> <\<^sub>o o_of A
                 \<and> stable_rep (A[n]) g
                 \<and> (\<forall>i < arr_len (A[n]). g i <\<^sub>o \<beta>)"
-proof (cases n)
+proof (induct n)
   case 0
-  thus ?thesis using stable_rep_extend_strict_zero[OF assms] by simp
+  show ?case using stable_rep_extend_strict_zero[OF assms] by simp
 next
   case (Suc n')
-  show ?thesis
-    sorry  \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6 reflection.
-              Construction by induction on \<open>n'\<close>: apply Lemma 2.6
-              to reflect \<open>f\<close>-values of \<open>B\<^sub>0\<close> in \<open>A\<close> into
-              \<open>Y'\<close> below \<open>\<alpha> = f(b0_start)\<close>; redefine
-              \<open>f_{n+1}\<close> with \<open>B_{n+1}\<close> mapping to \<open>Y\<close>
-              and \<open>B_n\<close> mapping to \<open>Y'\<close>. Lemma 2.5 ensures
-              m-ancestor preservation.\<close>
+  from Suc.hyps obtain g_n \<beta>_n where
+        \<beta>_n_lt:  "\<beta>_n <\<^sub>o o_of A"
+    and g_n_rep: "stable_rep (A[n']) g_n"
+    and g_n_lt:  "\<forall>i < arr_len (A[n']). g_n i <\<^sub>o \<beta>_n"
+    by blast
+  show ?case
+  proof (cases "b0_start A")
+    case None
+    \<comment> \<open>\<open>b0_start A = None\<close>: all \<open>B_i\<close> blocks are empty so
+        \<open>A[Suc n'] = A[n'] = A[0]\<close>; reuse \<open>g_n\<close>, \<open>\<beta>_n\<close>.\<close>
+    have eq1: "expansion A (Suc n') = expansion A 0"
+      using expansion_no_b0_eq_zero[OF A_ne None, of "Suc n'"] .
+    have eq2: "expansion A n' = expansion A 0"
+      using expansion_no_b0_eq_zero[OF A_ne None, of n'] .
+    have eq: "expansion A (Suc n') = expansion A n'"
+      using eq1 eq2 by simp
+    show ?thesis
+      using \<beta>_n_lt g_n_rep g_n_lt eq by metis
+  next
+    case (Some s)
+    \<comment> \<open>Hunter's 2.7.c--d: given the level-\<open>n'\<close> stable rep
+        \<open>g_n\<close> with bound \<open>\<beta>_n <\<^sub>o o_of A\<close>, apply Lemma 2.6
+        to construct \<open>g_{Suc n'}\<close> for \<open>A[Suc n']\<close>.
+        The columns of \<open>A[Suc n']\<close> decompose as
+        \<open>G_block @ Bs_concat A (Suc n')\<close> followed by strip;
+        reuse \<open>g_n\<close>-values on the columns that already appear
+        in \<open>A[n']\<close>, and define new values on the freshly added
+        \<open>Bi_block A (Suc n')\<close> columns via Lemma 2.6's
+        bijection.  Lemma 2.5 ensures m-ancestor
+        preservation between levels.\<close>
+    show ?thesis sorry
+  qed
 qed
 
 lemma stable_rep_extend:

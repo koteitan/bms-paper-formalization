@@ -207,6 +207,64 @@ proof -
 qed
 
 text \<open>
+  \<open>n = 0\<close> base case (independent of \<open>b0_start A\<close>):
+  clauses (i), (ii) are trivially reflexive; (iii), (v) have
+  vacuous premises (\<open>n > 0\<close> / \<open>n_1 < 0\<close>); (iv) is by
+  classification of \<open>m_parent\<close>'s value into \<open>G\<close>- vs
+  \<open>B_0\<close>-range.
+\<close>
+
+lemma lemma_2_5_at_n_zero:
+  assumes A_ne: "A \<noteq> []"
+  shows "lemma_2_5_at A 0 k"
+proof -
+  have ci: "lemma_2_5_i_clause A 0 k"
+    unfolding lemma_2_5_i_clause_def by simp
+  have cii: "lemma_2_5_ii_clause A 0 k"
+    unfolding lemma_2_5_ii_clause_def by simp
+  have ciii: "lemma_2_5_iii_clause A 0 k"
+    unfolding lemma_2_5_iii_clause_def by simp
+  have cv: "lemma_2_5_v_clause A 0 k"
+    unfolding lemma_2_5_v_clause_def by simp
+  have civ: "lemma_2_5_iv_clause A 0 k"
+    unfolding lemma_2_5_iv_clause_def
+  proof (intro allI impI)
+    fix i assume i_cond: "0 < i \<and> i < l1 A"
+    let ?idx = "idx_B_in_expansion A 0 i"
+    show "m_parent (expansion A 0) k ?idx = None \<or>
+          (\<exists>p. m_parent (expansion A 0) k ?idx = Some p \<and>
+               ((\<exists>j<l1 A. p = idx_B_in_expansion A 0 j) \<or>
+                (\<exists>j<l0 A. p = idx_G A j)))"
+    proof (cases "m_parent (expansion A 0) k ?idx")
+      case None
+      thus ?thesis by simp
+    next
+      case (Some p)
+      have p_lt: "p < ?idx" using Some by (rule m_parent_lt)
+      have idx_eq: "?idx = l0 A + i" by (simp add: idx_B_in_expansion_def)
+      have p_lt_arr: "p < l0 A + l1 A"
+        using p_lt idx_eq i_cond by linarith
+      show ?thesis
+      proof (cases "p < l0 A")
+        case True
+        have "p = idx_G A p" by (simp add: idx_G_def)
+        thus ?thesis using Some True by blast
+      next
+        case False
+        let ?j = "p - l0 A"
+        have j_lt: "?j < l1 A" using p_lt_arr False by simp
+        have "p = idx_B_in_expansion A 0 ?j"
+          using False by (simp add: idx_B_in_expansion_def)
+        thus ?thesis using Some j_lt by blast
+      qed
+    qed
+  qed
+  show ?thesis
+    unfolding lemma_2_5_at_def
+    using ci cii ciii civ cv by blast
+qed
+
+text \<open>
   The substantive case: \<open>b0_start A = Some s\<close>. This is Hunter's
   ``relatively straightforward, but tedious'' simultaneous induction
   on \<open>k\<close>. The proof in the paper proceeds within the inductive
@@ -224,13 +282,21 @@ lemma lemma_2_5_at_main:
   fixes A :: array
   assumes "A \<in> BMS" "A \<noteq> []"
   shows "lemma_2_5_at A n k"
-proof (cases "b0_start A")
-  case None
-  show ?thesis by (rule lemma_2_5_at_no_b0[OF assms(2) None])
+proof (cases n)
+  case 0
+  show ?thesis using lemma_2_5_at_n_zero[OF assms(2)] \<open>n = 0\<close> by simp
 next
-  case (Some s)
-  \<comment> \<open>Hunter's simultaneous induction on \<open>k\<close> in the substantive case.\<close>
-  show ?thesis sorry
+  case (Suc n')
+  show ?thesis
+  proof (cases "b0_start A")
+    case None
+    show ?thesis by (rule lemma_2_5_at_no_b0[OF assms(2) None])
+  next
+    case (Some s)
+    \<comment> \<open>Hunter's simultaneous induction on \<open>k\<close> in the substantive case
+        \<open>n \<ge> 1 \<and> b0_start A = Some s\<close>.\<close>
+    show ?thesis sorry
+  qed
 qed
 
 

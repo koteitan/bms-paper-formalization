@@ -715,37 +715,304 @@ lemma length_strip_zero_rows:
   "length (strip_zero_rows B) = length B"
   unfolding strip_zero_rows_def by (simp add: Let_def)
 
+definition keep_of :: "array \<Rightarrow> nat" where
+  "keep_of A = (LEAST h. h \<le> height A \<and>
+                  (\<forall>m. h \<le> m \<and> m < height A
+                        \<longrightarrow> (\<forall>c \<in> set A. c ! m = 0)))"
+
+lemma keep_of_le_height: "keep_of A \<le> height A"
+proof -
+  let ?P = "\<lambda>h. h \<le> height A
+              \<and> (\<forall>m. h \<le> m \<and> m < height A \<longrightarrow> (\<forall>c \<in> set A. c ! m = 0))"
+  have wit: "?P (height A)" by simp
+  hence "(LEAST h. ?P h) \<le> height A" by (rule Least_le)
+  thus ?thesis unfolding keep_of_def by simp
+qed
+
+lemma keep_of_row_zero:
+  assumes "keep_of A \<le> m" "m < height A" "c \<in> set A"
+  shows "c ! m = 0"
+proof -
+  have wit: "(height A \<le> height A)
+             \<and> (\<forall>m. height A \<le> m \<and> m < height A
+                      \<longrightarrow> (\<forall>c \<in> set A. c ! m = 0))"
+    by simp
+  hence "(keep_of A \<le> height A)
+       \<and> (\<forall>m. keep_of A \<le> m \<and> m < height A
+                \<longrightarrow> (\<forall>c \<in> set A. c ! m = 0))"
+    unfolding keep_of_def by (rule LeastI)
+  thus ?thesis using assms by blast
+qed
+
+lemma strip_zero_rows_eq_map_take:
+  assumes "A \<noteq> []"
+  shows "strip_zero_rows A = map (\<lambda>c. take (keep_of A) c) A"
+  using assms unfolding strip_zero_rows_def keep_of_def by (simp add: Let_def)
+
+lemma length_col_arr:
+  assumes is_arr: "is_array A" and A_ne: "A \<noteq> []" and i_lt: "i < arr_len A"
+  shows "length (A ! i) = height A"
+proof -
+  have "A ! i \<in> set A" using i_lt by (rule nth_mem)
+  moreover from is_arr have "\<forall>c \<in> set A. length c = height A"
+    unfolding is_array_def by blast
+  ultimately show ?thesis by blast
+qed
+
+lemma length_col_strip:
+  assumes is_arr: "is_array A" and A_ne: "A \<noteq> []" and i_lt: "i < arr_len A"
+  shows "length ((strip_zero_rows A) ! i) = keep_of A"
+proof -
+  let ?k = "keep_of A"
+  let ?H = "height A"
+  have strip_eq: "strip_zero_rows A = map (\<lambda>c. take ?k c) A"
+    using A_ne by (rule strip_zero_rows_eq_map_take)
+  hence col_i: "(strip_zero_rows A) ! i = take ?k (A ! i)"
+    using i_lt by simp
+  have len_col: "length (A ! i) = ?H"
+    using is_arr A_ne i_lt by (rule length_col_arr)
+  from col_i have "length ((strip_zero_rows A) ! i) = min ?k (length (A ! i))"
+    by simp
+  also have "\<dots> = min ?k ?H" using len_col by simp
+  also have "\<dots> = ?k" using keep_of_le_height by simp
+  finally show ?thesis .
+qed
+
+lemma elem_strip_lt_keep:
+  assumes A_ne: "A \<noteq> []" and i_lt: "i < arr_len A" and m_lt: "m < keep_of A"
+  shows "elem (strip_zero_rows A) i m = elem A i m"
+proof -
+  have "strip_zero_rows A = map (\<lambda>c. take (keep_of A) c) A"
+    using A_ne by (rule strip_zero_rows_eq_map_take)
+  hence "(strip_zero_rows A) ! i = take (keep_of A) (A ! i)"
+    using i_lt by simp
+  hence "((strip_zero_rows A) ! i) ! m = (take (keep_of A) (A ! i)) ! m"
+    by simp
+  also have "\<dots> = (A ! i) ! m" using m_lt by simp
+  finally show ?thesis unfolding elem_def .
+qed
+
+lemma elem_strip_lt_iff:
+  assumes is_arr: "is_array A"
+      and i_lt: "i < arr_len A" and j_lt: "j < arr_len A"
+  shows "(elem (strip_zero_rows A) j m < elem (strip_zero_rows A) i m)
+       \<longleftrightarrow> (elem A j m < elem A i m)"
+proof (cases "A = []")
+  case True
+  hence "strip_zero_rows A = A" by (simp add: strip_zero_rows_def)
+  thus ?thesis by simp
+next
+  case A_ne: False
+  show ?thesis
+  proof (cases "m < keep_of A")
+    case True
+    have e_i: "elem (strip_zero_rows A) i m = elem A i m"
+      using A_ne i_lt True by (rule elem_strip_lt_keep)
+    have e_j: "elem (strip_zero_rows A) j m = elem A j m"
+      using A_ne j_lt True by (rule elem_strip_lt_keep)
+    show ?thesis using e_i e_j by simp
+  next
+    case False
+    hence k_le_m: "keep_of A \<le> m" by simp
+    have len_strip_i: "length ((strip_zero_rows A) ! i) = keep_of A"
+      using is_arr A_ne i_lt by (rule length_col_strip)
+    have len_strip_j: "length ((strip_zero_rows A) ! j) = keep_of A"
+      using is_arr A_ne j_lt by (rule length_col_strip)
+    have strip_eq: "elem (strip_zero_rows A) j m = elem (strip_zero_rows A) i m"
+      unfolding elem_def
+    proof -
+      from len_strip_i len_strip_j
+      have eq_len: "length ((strip_zero_rows A) ! j) = length ((strip_zero_rows A) ! i)"
+        by simp
+      from k_le_m len_strip_j
+      have m_ge: "length ((strip_zero_rows A) ! j) \<le> m" by simp
+      show "((strip_zero_rows A) ! j) ! m = ((strip_zero_rows A) ! i) ! m"
+        using eq_len m_ge by (rule nth_same_length_oob)
+    qed
+    have orig_eq: "elem A j m = elem A i m"
+    proof (cases "m < height A")
+      case True
+      have ci: "A ! i \<in> set A" using i_lt by (rule nth_mem)
+      have cj: "A ! j \<in> set A" using j_lt by (rule nth_mem)
+      have zi: "(A ! i) ! m = 0"
+        using k_le_m True ci by (rule keep_of_row_zero)
+      have zj: "(A ! j) ! m = 0"
+        using k_le_m True cj by (rule keep_of_row_zero)
+      show ?thesis unfolding elem_def using zi zj by simp
+    next
+      case False
+      hence H_le_m: "height A \<le> m" by simp
+      have len_i: "length (A ! i) = height A"
+        using is_arr A_ne i_lt by (rule length_col_arr)
+      have len_j: "length (A ! j) = height A"
+        using is_arr A_ne j_lt by (rule length_col_arr)
+      show ?thesis unfolding elem_def
+      proof -
+        from len_i len_j have eq_len: "length (A ! j) = length (A ! i)" by simp
+        from H_le_m len_j have m_ge: "length (A ! j) \<le> m" by simp
+        show "(A ! j) ! m = (A ! i) ! m"
+          using eq_len m_ge by (rule nth_same_length_oob)
+      qed
+    qed
+    show ?thesis using strip_eq orig_eq by simp
+  qed
+qed
+
 lemma is_array_butlast:
   assumes "is_array A"
   shows "is_array (butlast A)"
-  sorry  \<comment> \<open>Structural fact: butlast preserves the equal-column-
-            length invariant. Held as sorry due to slow elaboration
-            on direct proofs; not load-bearing for the soundness
-            chain (sigma_pair_exists + lemma_2_6 axioms drive
-            Theorem 2.7).\<close>
+proof (cases "butlast A = []")
+  case True
+  thus ?thesis by (simp add: is_array_def)
+next
+  case False
+  hence A_ne: "A \<noteq> []" by auto
+  let ?H = "height A"
+  have all_A: "\<forall>c \<in> set A. length c = ?H"
+    using assms unfolding is_array_def by blast
+  have hd_eq: "hd (butlast A) = hd A"
+    using A_ne False by (metis append_butlast_last_id hd_append2)
+  hence H_eq: "height (butlast A) = ?H" using A_ne False by simp
+  have all_bl: "\<forall>c \<in> set (butlast A). length c = ?H"
+    using all_A by (meson in_set_butlastD)
+  show ?thesis unfolding is_array_def
+    using all_bl H_eq False by auto
+qed
+
+lemma m_parent_m_ancestor_strip:
+  assumes is_arr: "is_array A"
+  shows "(\<forall>i. i < arr_len A
+              \<longrightarrow> m_parent (strip_zero_rows A) m i = m_parent A m i)
+       \<and> (\<forall>i j. i < arr_len A \<longrightarrow> j < arr_len A \<longrightarrow>
+            (m_ancestor (strip_zero_rows A) m i j \<longleftrightarrow> m_ancestor A m i j))"
+proof (induct m)
+  case 0
+  have parent: "\<forall>i. i < arr_len A
+                     \<longrightarrow> m_parent (strip_zero_rows A) 0 i = m_parent A 0 i"
+  proof (intro allI impI)
+    fix i assume i_lt: "i < arr_len A"
+    have "[j \<leftarrow> [0..<i].
+              elem (strip_zero_rows A) j 0 < elem (strip_zero_rows A) i 0]
+        = [j \<leftarrow> [0..<i]. elem A j 0 < elem A i 0]"
+    proof (rule filter_cong[OF refl])
+      fix j assume "j \<in> set [0..<i]"
+      hence j_lt_i: "j < i" by simp
+      hence jA: "j < arr_len A" using i_lt by linarith
+      show "(elem (strip_zero_rows A) j 0 < elem (strip_zero_rows A) i 0)
+          = (elem A j 0 < elem A i 0)"
+        using is_arr i_lt jA by (rule elem_strip_lt_iff)
+    qed
+    thus "m_parent (strip_zero_rows A) 0 i = m_parent A 0 i"
+      by (simp add: Let_def)
+  qed
+  have ancestor: "\<forall>i j. i < arr_len A \<longrightarrow> j < arr_len A \<longrightarrow>
+                    (m_ancestor (strip_zero_rows A) 0 i j \<longleftrightarrow> m_ancestor A 0 i j)"
+  proof (intro allI impI)
+    fix i j assume i_lt: "i < arr_len A" and j_lt: "j < arr_len A"
+    show "m_ancestor (strip_zero_rows A) 0 i j \<longleftrightarrow> m_ancestor A 0 i j"
+      using i_lt
+    proof (induct i rule: less_induct)
+      case (less i)
+      show ?case
+      proof (cases "m_parent A 0 i")
+        case None
+        hence par_str: "m_parent (strip_zero_rows A) 0 i = None"
+          using parent less.prems by simp
+        show ?thesis using None par_str by simp
+      next
+        case (Some p)
+        have p_lt_i: "p < i" using Some by (rule m_parent_lt)
+        have p_lt_A: "p < arr_len A" using p_lt_i less.prems by linarith
+        have par_str: "m_parent (strip_zero_rows A) 0 i = Some p"
+          using parent less.prems Some by simp
+        have IH_inner: "m_ancestor (strip_zero_rows A) 0 p j
+                          \<longleftrightarrow> m_ancestor A 0 p j"
+          using less.hyps[OF p_lt_i p_lt_A] .
+        show ?thesis using Some par_str IH_inner by simp
+      qed
+    qed
+  qed
+  show ?case using parent ancestor by blast
+next
+  case (Suc m)
+  hence IH_parent:
+      "\<forall>i. i < arr_len A
+            \<longrightarrow> m_parent (strip_zero_rows A) m i = m_parent A m i"
+    and IH_anc:
+      "\<forall>i j. i < arr_len A \<longrightarrow> j < arr_len A
+              \<longrightarrow> (m_ancestor (strip_zero_rows A) m i j
+                    \<longleftrightarrow> m_ancestor A m i j)"
+    by blast+
+  have parent: "\<forall>i. i < arr_len A
+                     \<longrightarrow> m_parent (strip_zero_rows A) (Suc m) i
+                          = m_parent A (Suc m) i"
+  proof (intro allI impI)
+    fix i assume i_lt: "i < arr_len A"
+    have "[j \<leftarrow> [0..<i].
+              elem (strip_zero_rows A) j (Suc m)
+                < elem (strip_zero_rows A) i (Suc m)
+              \<and> m_ancestor (strip_zero_rows A) m i j]
+        = [j \<leftarrow> [0..<i].
+              elem A j (Suc m) < elem A i (Suc m)
+              \<and> m_ancestor A m i j]"
+    proof (rule filter_cong[OF refl])
+      fix j assume "j \<in> set [0..<i]"
+      hence j_lt_i: "j < i" by simp
+      hence jA: "j < arr_len A" using i_lt by linarith
+      have elem_eq: "(elem (strip_zero_rows A) j (Suc m)
+                        < elem (strip_zero_rows A) i (Suc m))
+                  = (elem A j (Suc m) < elem A i (Suc m))"
+        using is_arr i_lt jA by (rule elem_strip_lt_iff)
+      have anc_eq: "m_ancestor (strip_zero_rows A) m i j
+                      \<longleftrightarrow> m_ancestor A m i j"
+        using IH_anc i_lt jA by simp
+      show "(elem (strip_zero_rows A) j (Suc m)
+              < elem (strip_zero_rows A) i (Suc m)
+              \<and> m_ancestor (strip_zero_rows A) m i j)
+          = (elem A j (Suc m) < elem A i (Suc m)
+              \<and> m_ancestor A m i j)"
+        using elem_eq anc_eq by simp
+    qed
+    thus "m_parent (strip_zero_rows A) (Suc m) i = m_parent A (Suc m) i"
+      by (simp add: Let_def)
+  qed
+  have ancestor: "\<forall>i j. i < arr_len A \<longrightarrow> j < arr_len A
+                          \<longrightarrow> (m_ancestor (strip_zero_rows A) (Suc m) i j
+                                \<longleftrightarrow> m_ancestor A (Suc m) i j)"
+  proof (intro allI impI)
+    fix i j assume i_lt: "i < arr_len A" and j_lt: "j < arr_len A"
+    show "m_ancestor (strip_zero_rows A) (Suc m) i j
+          \<longleftrightarrow> m_ancestor A (Suc m) i j"
+      using i_lt
+    proof (induct i rule: less_induct)
+      case (less i)
+      show ?case
+      proof (cases "m_parent A (Suc m) i")
+        case None
+        hence par_str: "m_parent (strip_zero_rows A) (Suc m) i = None"
+          using parent less.prems by simp
+        show ?thesis using None par_str by simp
+      next
+        case (Some p)
+        have p_lt_i: "p < i" using Some by (rule m_parent_lt)
+        have p_lt_A: "p < arr_len A" using p_lt_i less.prems by linarith
+        have par_str: "m_parent (strip_zero_rows A) (Suc m) i = Some p"
+          using parent less.prems Some by simp
+        have IH_inner: "m_ancestor (strip_zero_rows A) (Suc m) p j
+                          \<longleftrightarrow> m_ancestor A (Suc m) p j"
+          using less.hyps[OF p_lt_i p_lt_A] .
+        show ?thesis using Some par_str IH_inner by simp
+      qed
+    qed
+  qed
+  show ?case using parent ancestor by blast
+qed
 
 lemma m_ancestor_strip_subsume:
   assumes "is_array B" "B \<noteq> []" "i < length B" "j < length B"
           "m_ancestor (strip_zero_rows B) m i j"
   shows "m_ancestor B m i j"
-  sorry  \<comment> \<open>Two cases:
-            (a) \<open>m < height (strip_zero_rows B)\<close>: \<open>elem\<close>
-                matches between stripped and original via
-                \<open>nth_take\<close>; \<open>m_parent\<close>/\<open>m_ancestor\<close> agree
-                by nested induction (outer on \<open>m\<close>, inner on
-                \<open>i\<close>).
-            (b) \<open>m \<ge> height (strip_zero_rows B)\<close>: all
-                \<open>elem\<close> values in the stripped array are
-                out-of-bounds and equal across columns (via
-                \<open>nth_same_length_oob\<close> and \<open>is_array\<close>),
-                so the candidate filter is empty, \<open>m_parent\<close>
-                is \<open>None\<close>, and \<open>m_ancestor\<close> is vacuously
-                \<open>False\<close> — contradicting the hypothesis.
-            The full proof requires \<open>length_col_strip\<close>,
-            \<open>height_strip_le\<close>, \<open>strip_zero_rows_nth\<close> auxiliary
-            lemmas. Held as a single \<open>sorry\<close> for now; cf.\
-            \<open>m_parent_m_ancestor_butlast\<close> for the analogous
-            butlast direction (proven without sorry).\<close>
+  using m_parent_m_ancestor_strip[OF assms(1)] assms(3-5) by blast
 
 
 lemma filter_set_subset_aux:
@@ -915,6 +1182,10 @@ lemma Bi_block_nth:
   shows "Bi_block A i ! d = bump_col A d i"
   unfolding Bi_block_def Let_def using assms by simp
 
+lemma Bs_concat_Suc:
+  "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
+  by (simp add: Bs_concat_def)
+
 lemma length_Bs_concat:
   "length (Bs_concat A n) = Suc n * length (B0_block A)"
 proof (induct n)
@@ -922,9 +1193,91 @@ proof (induct n)
   show ?case by (simp add: Bs_concat_def length_Bi_block)
 next
   case (Suc n)
-  have step: "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
-    by (simp add: Bs_concat_def)
-  show ?case using step Suc length_Bi_block by simp
+  show ?case using Bs_concat_Suc Suc length_Bi_block by simp
+qed
+
+text \<open>
+  Column count of an expansion: \<open>A[n]\<close> has
+  \<open>length (G_block A) + Suc n * length (B0_block A)\<close> columns
+  (because \<open>strip_zero_rows\<close> preserves column count).
+\<close>
+
+lemma arr_len_expansion:
+  assumes A_ne: "A \<noteq> []"
+  shows "arr_len (A[n]) = length (G_block A) + Suc n * length (B0_block A)"
+proof -
+  have "A[n] = strip_zero_rows (G_block A @ Bs_concat A n)"
+    using A_ne unfolding expansion_def by simp
+  hence "arr_len (A[n]) = length (G_block A @ Bs_concat A n)"
+    by (simp add: length_strip_zero_rows)
+  also have "\<dots> = length (G_block A) + length (Bs_concat A n)"
+    by simp
+  also have "\<dots> = length (G_block A) + Suc n * length (B0_block A)"
+    by (simp add: length_Bs_concat)
+  finally show ?thesis .
+qed
+
+lemma arr_len_expansion_Suc:
+  assumes A_ne: "A \<noteq> []"
+  shows "arr_len (A[Suc n]) = arr_len (A[n]) + length (B0_block A)"
+  using arr_len_expansion[OF A_ne, of "Suc n"]
+        arr_len_expansion[OF A_ne, of n]
+  by simp
+
+text \<open>
+  At the pre-strip level, the columns of \<open>A[Suc n]\<close>'s underlying
+  array agree with those of \<open>A[n]\<close>'s on the shared index range
+  (i.e.\ for \<open>i < arr_len (A[n])\<close>). After strip the lengths of
+  individual columns may differ but column-indexing is preserved.
+\<close>
+
+lemma b0_start_lt_last:
+  assumes "b0_start A = Some s"
+  shows "s < last_col_idx A"
+proof -
+  obtain m\<^sub>0 where mp_eq: "max_parent_level A = Some m\<^sub>0"
+                and par_eq: "m_parent A m\<^sub>0 (last_col_idx A) = Some s"
+    using assms unfolding b0_start_def
+    by (cases "max_parent_level A") auto
+  show ?thesis using par_eq by (rule m_parent_lt)
+qed
+
+lemma l1_pos_of_some:
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+  shows "0 < length (B0_block A)"
+proof -
+  have s_lt: "s < last_col_idx A" using b0 by (rule b0_start_lt_last)
+  have last_lt: "last_col_idx A < length A" using A_ne by (cases A) auto
+  have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+    using b0 by (simp add: B0_block_def)
+  have len_drop: "length (drop s A) = length A - s"
+    by simp
+  have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+    using B0_form by simp
+  also have "\<dots> = last_col_idx A - s"
+    using s_lt last_lt by simp
+  finally show ?thesis using s_lt by simp
+qed
+
+lemma pre_strip_expansion_prefix:
+  assumes A_ne: "A \<noteq> []" and i_lt: "i < arr_len (expansion A n)"
+  shows "(G_block A @ Bs_concat A (Suc n)) ! i = (G_block A @ Bs_concat A n) ! i"
+proof -
+  have len_eq: "arr_len (expansion A n) = length (G_block A @ Bs_concat A n)"
+  proof -
+    have "expansion A n = strip_zero_rows (G_block A @ Bs_concat A n)"
+      using A_ne unfolding expansion_def by simp
+    thus ?thesis by (simp add: length_strip_zero_rows)
+  qed
+  have i_lt_pre: "i < length (G_block A @ Bs_concat A n)"
+    using i_lt len_eq by simp
+  have decomp: "G_block A @ Bs_concat A (Suc n)
+              = (G_block A @ Bs_concat A n) @ Bi_block A (Suc n)"
+    by (simp add: Bs_concat_Suc)
+  have step: "((G_block A @ Bs_concat A n) @ Bi_block A (Suc n)) ! i
+             = (G_block A @ Bs_concat A n) ! i"
+    by (rule nth_append_left[OF i_lt_pre]) (* nth_append_left: n < length xs ⟹ (xs @ ys) ! n = xs ! n *)
+  show ?thesis using decomp step by simp
 qed
 
 lemma Bs_concat_take_l1:

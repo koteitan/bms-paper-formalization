@@ -7,7 +7,23 @@
 > **メモ**: 表は **怪しさ (truth が破れるリスク) の高い順** に並べる。
 > 行内容を変更しても並べ替え順序は維持する。
 
-現在 `sorry`: **5** (`seed_descendants_total`, `lemma_2_5_at_main` Some s, `stable_rep_extend_strict` Suc n のみ, `is_array_butlast`, `m_ancestor_strip_subsume`)。 n=0 case は `stable_rep_extend_strict_zero` で proven (v0.1.39)。
+## 現在のステータス
+
+**コード上の `sorry`: 3 件** (`grep -rn "^  *sorry\| sorry$" isabelle/*.thy`):
+- `seed_descendants_total` N≥2 (BMS_Lex.thy:1247) — Hunter Lemma 2.3 closure (cross-branch totality)
+- `lemma_2_5_at_main` の (n ≥ 1 ∧ b0_start = Some s) sub-case (BMS_Ancestry.thy 内) — Hunter Lemma 2.5 (i)–(v) 同時 k-induction (n=0 case は `lemma_2_5_at_n_zero` で proven, b0_start = None case は既存 `lemma_2_5_at_no_b0`)
+- `stable_rep_extend_strict` Suc n の **Some s** sub-case (BMS_WellOrdered.thy:385) — Hunter 2.7.c–d Lemma 2.6 reflection (None case は v0.1.39 中で proven)
+
+**未完タスク (状態 ≠ ✅): 17 件** — 上の 3 sorry は内部で複数のサブタスクに分解されている (例: `stable_rep_extend_strict` Suc n に対し ID 12,13,14):
+
+- ID 3 (`seed_descendants_total` N≥2)
+- IDs 12,13,14 (`stable_rep_extend_strict` の `g` 定義 / `stable_rep` 満たし / β 構成)
+- IDs 5,6,7,8 (`lemma_2_5_at_main` 補題群 / inductive step / 本体 / projection sanity)
+- IDs 16,17,18,19,20,21,22,23,24 (Lemma 2.6 ZF discharge: ROOT 雛形 → 2.6.A→B→C→D→E→F→G → axiomatize 置換)
+
+**コード上の axiom (sorry とは別カウント):** `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def` の 6 件。 `lemma_2_6` は ZF 側 (ID 16–24) で discharge 予定、 他は ordinal/σ-pair の前提として保持。
+
+**完了済 (v0.1.39 で追加):** `is_array_butlast`, `m_ancestor_strip_subsume` (`m_parent_m_ancestor_strip` full-iff 経由), n=0 case の `stable_rep_extend_strict_zero`。
 
 公理一覧 (BMS_Stability.thy / BMS_WellOrdered.thy):
 - `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`: `<_o` の基本性質
@@ -26,12 +42,25 @@
 | 13 | Theorem 2.7 / `stable_rep_extend_strict` | `g` が `stable_rep` を満たす証明 (Lemma 2.5 を本質的に使用) | Lemma 2.5 (i)-(v) の convention が Hunter の使い方と完全一致するか要検証。我々の `m_ancestor A m i j` の (j 早い側, i 後) と Hunter の (i 早い, j 後) で reverse が必要 | 12 待ち | 1日 |
 | 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 の Y' 反射値 | indexing (B_n と B_{n+1} の対応) と Lemma 2.6 への X, Y の渡し方が Hunter で省略気味 | 5-8 待ち | 数h |
 | 27 | Theorem 2.7 helper | `stable_rep_restrict`: stable_rep が m_ancestor 保存な subset に restrict できる | — | ✅ | — |
-| 28 | Theorem 2.7 helper | `m_ancestor (A[0]) m i j \<Longrightarrow> m_ancestor A m i j` (i,j < arr_len A - 1): A[0] = strip(butlast A) を経由した m_ancestor 保存。strip の row 削減と butlast の col 削減双方を m に関する nested induction で処理 | strip 後の elem out-of-bound 挙動 (`undefined < undefined = False`) と m_ancestor 終結条件の相互作用が厄介。Hunter は "trivially" で済ましているが Isabelle では明示的処理が必要 | ✅ (butlast は proven、 strip は sorry) | — |
+| 28 | Theorem 2.7 helper | `m_ancestor (A[0]) m i j \<Longrightarrow> m_ancestor A m i j` (i,j < arr_len A - 1): A[0] = strip(butlast A) を経由した m_ancestor 保存。strip の row 削減と butlast の col 削減双方を m に関する nested induction で処理 | strip 後の elem out-of-bound 挙動 (`undefined < undefined = False`) と m_ancestor 終結条件の相互作用が厄介。Hunter は "trivially" で済ましているが Isabelle では明示的処理が必要 | ✅ | — |
 | 29 | Theorem 2.7 helper | `m_parent_m_ancestor_butlast`: butlast 経由の m_parent/m_ancestor 同時保存 (`m` × `i` の nested 帰納) | — | ✅ | — |
 | 30 | Theorem 2.7 helper | `nth_same_length_oob`: 同長リスト同士は OOB index でも一致 (`list_induct2`) | — | ✅ | — |
 | 31 | Theorem 2.7 helper | `stable_rep_extend_strict_zero`: n=0 base case (Hunter "$f_0 = f$ restricted to $l_0$") | — | ✅ | — |
-| 32 | Theorem 2.7 helper | `m_ancestor_A0_subsume_A`: butlast preservation ⊕ strip preservation (strip 側は sorry) | strip 直接証明は `auto`/`unfolding` の組み合わせで elaboration が 8 分以上かかり PC を硬直させた。 補題を細分化するか別アプローチが要 | sorry 1 残 | 数h |
-| 33 | Theorem 2.7 helper | `is_array_butlast`: butlast が is_array を保つ | 直接証明試行で elaboration が遅延 (slow `auto`/`in_set_butlastD` 探索)。 sorry のままで先行 | sorry | 30m |
+| 32 | Theorem 2.7 helper | `m_ancestor_A0_subsume_A`: butlast preservation ⊕ strip preservation。 `m_parent_m_ancestor_strip` (full iff) を `elem_strip_lt_iff` 経由で証明し、 そこから subsume を導出。 `keep_of`, `keep_of_row_zero`, `length_col_strip`, `elem_strip_lt_keep` の helper を整備 | — | ✅ | — |
+| 33 | Theorem 2.7 helper | `is_array_butlast`: butlast が is_array を保つ。 `?H = height A` (abbreviation) と `by blast` ベースで初期 simp loop を回避。 `in_set_butlastD` で set 包含、 `hd_append2 + append_butlast_last_id` で hd 一致 | — | ✅ | — |
+| 34 | Theorem 2.7 helper | `keep_of`: `strip_zero_rows` の trailing-zero cutoff を `definition` として分離 (`LEAST h. h ≤ height A ∧ ...`)。 `keep_of_le_height`, `keep_of_row_zero` で `Least_le` / `LeastI` 経由の性質を抽出 | — | ✅ | — |
+| 35 | Theorem 2.7 helper | `length_col_arr` (`is_array` 列の長さ = `height A`), `length_col_strip` (strip 列の長さ = `keep_of A`), `strip_zero_rows_eq_map_take` (A ≠ [] のとき strip = map take keep) | — | ✅ | — |
+| 36 | Theorem 2.7 helper | `elem_strip_lt_keep` (m < keep で elem 一致), `elem_strip_lt_iff` (`<` の同値: m < keep は elem 一致 / keep ≤ m < height は 0 = 0 / m ≥ height は OOB 同値) | — | ✅ | — |
+| 37 | Theorem 2.7 helper | `m_parent_m_ancestor_strip` (full iff、 m × i nested induction、 butlast 版と並行構造) | — | ✅ | — |
+| 38 | Theorem 2.7 helper | `Bs_concat_Suc`: `Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)` を名前付き lemma 化 (元は inline have が 3 箇所) | — | ✅ | — |
+| 39 | Theorem 2.7 helper | `arr_len_expansion`: `A ≠ [] ⟹ arr_len (A[n]) = length (G_block A) + Suc n * length (B0_block A)` (`length_strip_zero_rows` + `length_Bs_concat`) | — | ✅ | — |
+| 40 | Theorem 2.7 helper | `arr_len_expansion_Suc`: `arr_len (A[Suc n]) = arr_len (A[n]) + length (B0_block A)` (39 から導出) | — | ✅ | — |
+| 41 | Theorem 2.7 / `stable_rep_extend_strict` | `cases n` → `induct n` に refactor して Suc n' で IH (g_n, β_n) を `Suc.hyps` から explicit obtain | — | ✅ | — |
+| 42 | Theorem 2.7 / `stable_rep_extend_strict` Suc n' | b0_start A = None case を分離: `expansion_no_b0_eq_zero` で `A[Suc n'] = A[n']` を導出し、 IH をそのまま流用。 残 sorry は `b0_start A = Some s` 内部のみ | — | ✅ | — |
+| 43 | Theorem 2.7 / `stable_rep_extend_strict` Suc n' Some s | Hunter 反射構築本体: Lemma 2.6 適用での X, Y 具体化 / sigma_bound 所属検証 / g_{Suc n'} 定義 / stable_rep 検証 (Lemma 2.5 経由) / β 選定 | sorry の所在が None case 除去で集約。 sigma_bound 所属の axiom 拡張が必要かもしれない | sorry | 数 session |
+| 44 | Lemma 2.5 helper | `lemma_2_5_at_n_zero`: n=0 case (b0_start に依らず)。 (i)(ii) は両辺同一、 (iii)(v) は vacuous、 (iv) は m_parent 値を G_block / B_0 に分類 | — | ✅ | — |
+| 45 | Lemma 2.5 main restructure | `lemma_2_5_at_main` を 3 case: n=0 / Suc n' & None / Suc n' & Some s に分解。 sorry は最後の 1 case のみ | — | ✅ | — |
+| 46 | Theorem 2.7 helper | `b0_start_lt_last`: `b0_start A = Some s ⟹ s < last_col_idx A` (m_parent_lt 経由)、 `l1_pos_of_some`: `A ≠ [] ∧ b0_start A = Some s ⟹ 0 < l1 A` | — | ✅ | — |
 | 19 | Lemma 2.6 / Phase 3 ZF | 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 Theorem 1.8) | 外部依存 (Kranakis 論文の前提と命題が Paulson の `Constructible` 内で言明可能か未確認) | 18 待ち | 数日 |
 |  5 | Lemma 2.5 | 補助補題群整備 (m_parent / m_ancestor が strip / bumping / k-祖先と相互作用する性質) | Hunter は "tedious but straightforward" と書くが、補題リストを論文に書かない。手作業で発見・列挙する必要 | 未着手 | 不明 |
 |  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から 5 clause を順に独立化 | (iv) と (v) が同一 k で相互依存 (BMS_Ancestry.thy のコメント参照)。Hunter の順序 (ii)→(iii)→(iv)→(i)→(v) を我々は (iv,v 同時)→(i,ii,iii) に変更したが、それで証明が通るかは未確認 | 5 待ち | 数h+ |

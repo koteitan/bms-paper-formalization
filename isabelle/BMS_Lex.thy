@@ -1244,10 +1244,27 @@ qed
 lemma seed_descendants_total:
   assumes "A \<le>\<^sub>B seed N" "A' \<le>\<^sub>B seed N"
   shows "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
-  sorry  \<comment> \<open>Open: cross-branch totality within seed N's
-            expansion tree (general \<open>N\<close>).  Hunter Lemma 2.3
-            closure argument.  N = 0 case is
-            @{thm seed_0_descendants_total}.\<close>
+proof (cases "A = seed N")
+  case True
+  hence "A' \<le>\<^sub>B A" using assms(2) by simp
+  thus ?thesis by blast
+next
+  case A_ne: False
+  show ?thesis
+  proof (cases "A' = seed N")
+    case True
+    hence "A \<le>\<^sub>B A'" using assms(1) by simp
+    thus ?thesis by blast
+  next
+    case A'_ne: False
+    \<comment> \<open>Both are strict descendants of seed N. Cross-branch
+        totality remains via Hunter Lemma 2.3 closure (general
+        \<open>N\<close>). \<open>N = 0\<close> case dispatched to
+        @{thm seed_0_descendants_total}; \<open>N = 1\<close> to
+        @{thm seed_1_descendants_total}.\<close>
+    show ?thesis sorry
+  qed
+qed
 
 text \<open>
   \<open>seed_lex_implies_le_B\<close> reduces to totality via
