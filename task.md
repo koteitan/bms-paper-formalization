@@ -10,7 +10,7 @@
 ## 現在のステータス
 
 **コード上の `sorry`: 3 件** (`grep -rn "^  *sorry\| sorry$" isabelle/*.thy`):
-- `seed_descendants_total` N≥2 (BMS_Lex.thy:1247) — Hunter Lemma 2.3 closure (cross-branch totality)
+- `seed_descendants_total` の (N ≥ 2 ∧ A, A' 両者 strict descendants) sub-case (BMS_Lex.thy 内) — Hunter Lemma 2.3 closure (N=0/1 case は `seed_{0,1}_descendants_total` で dispatch、 A または A' = seed N の trivial case も dispatch)
 - `lemma_2_5_at_main` の (n ≥ 1 ∧ b0_start = Some s) sub-case (BMS_Ancestry.thy 内) — Hunter Lemma 2.5 (i)–(v) 同時 k-induction (n=0 case は `lemma_2_5_at_n_zero` で proven, b0_start = None case は既存 `lemma_2_5_at_no_b0`)
 - `stable_rep_extend_strict` Suc n の **Some s** sub-case (BMS_WellOrdered.thy:385) — Hunter 2.7.c–d Lemma 2.6 reflection (None case は v0.1.39 中で proven)
 
@@ -61,6 +61,8 @@
 | 44 | Lemma 2.5 helper | `lemma_2_5_at_n_zero`: n=0 case (b0_start に依らず)。 (i)(ii) は両辺同一、 (iii)(v) は vacuous、 (iv) は m_parent 値を G_block / B_0 に分類 | — | ✅ | — |
 | 45 | Lemma 2.5 main restructure | `lemma_2_5_at_main` を 3 case: n=0 / Suc n' & None / Suc n' & Some s に分解。 sorry は最後の 1 case のみ | — | ✅ | — |
 | 46 | Theorem 2.7 helper | `b0_start_lt_last`: `b0_start A = Some s ⟹ s < last_col_idx A` (m_parent_lt 経由)、 `l1_pos_of_some`: `A ≠ [] ∧ b0_start A = Some s ⟹ 0 < l1 A` | — | ✅ | — |
+| 47 | Cor 2.4 helper | `bms_lt_imp_le_expansion`: `A <_B B ⟹ ∃n. A ≤_B expansion B n` (bms_le.cases で bms_le_refl 枝を排除)。 strict descendant をひと expansion step に decompose する基礎 | — | ✅ | — |
+| 48 | Cor 2.4 / `seed_descendants_total` 残 case | (N ≥ 2) sub-case を分離: N=0/1 case を `seed_{0,1}_descendants_total` で dispatch、 sorry を N ≥ 2 のみに更に narrow | — | ✅ | — |
 | 19 | Lemma 2.6 / Phase 3 ZF | 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 Theorem 1.8) | 外部依存 (Kranakis 論文の前提と命題が Paulson の `Constructible` 内で言明可能か未確認) | 18 待ち | 数日 |
 |  5 | Lemma 2.5 | 補助補題群整備 (m_parent / m_ancestor が strip / bumping / k-祖先と相互作用する性質) | Hunter は "tedious but straightforward" と書くが、補題リストを論文に書かない。手作業で発見・列挙する必要 | 未着手 | 不明 |
 |  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から 5 clause を順に独立化 | (iv) と (v) が同一 k で相互依存 (BMS_Ancestry.thy のコメント参照)。Hunter の順序 (ii)→(iii)→(iv)→(i)→(v) を我々は (iv,v 同時)→(i,ii,iii) に変更したが、それで証明が通るかは未確認 | 5 待ち | 数h+ |

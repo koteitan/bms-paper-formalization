@@ -46,6 +46,23 @@ qed
 lemma bms_le_expand: "A[n] \<le>\<^sub>B A"
   by (rule bms_le.bms_le_step[OF bms_le.bms_le_refl])
 
+text \<open>
+  Strict descent decomposes via an expansion: \<open>A <\<^sub>B B \<Longrightarrow>
+  \<exists>n. A \<le>\<^sub>B B[n]\<close>. Direct from the inductive shape of
+  \<open>bms_le\<close>: the \<open>bms_le_refl\<close> constructor gives \<open>A = B\<close>
+  contradicting strictness, so the witness must come from
+  \<open>bms_le_step\<close>.
+\<close>
+
+lemma bms_lt_imp_le_expansion:
+  assumes "A <\<^sub>B B"
+  shows "\<exists>n. A \<le>\<^sub>B expansion B n"
+proof -
+  have le: "A \<le>\<^sub>B B" using assms unfolding bms_lt_def by simp
+  have ne: "A \<noteq> B" using assms unfolding bms_lt_def by simp
+  show ?thesis using le ne by (cases rule: bms_le.cases) blast+
+qed
+
 
 text \<open>
   Seed chain: \<open>seed n \<le>\<^sub>B seed (Suc n)\<close> via @{thm seed_Suc_expand_one}
@@ -1257,12 +1274,36 @@ next
     thus ?thesis by blast
   next
     case A'_ne: False
-    \<comment> \<open>Both are strict descendants of seed N. Cross-branch
-        totality remains via Hunter Lemma 2.3 closure (general
-        \<open>N\<close>). \<open>N = 0\<close> case dispatched to
-        @{thm seed_0_descendants_total}; \<open>N = 1\<close> to
-        @{thm seed_1_descendants_total}.\<close>
-    show ?thesis sorry
+    \<comment> \<open>Both are strict descendants of seed N.
+        \<open>N = 0\<close> / \<open>N = 1\<close> dispatched to
+        @{thm seed_0_descendants_total} /
+        @{thm seed_1_descendants_total};
+        \<open>N \<ge> 2\<close> remains as Hunter Lemma 2.3 closure.\<close>
+    show ?thesis
+    proof (cases "N \<le> 1")
+      case True
+      consider "N = 0" | "N = 1" using True by linarith
+      thus ?thesis
+      proof cases
+        case 1
+        have a1: "A \<le>\<^sub>B seed 0" using assms(1) \<open>N = 0\<close> by simp
+        have a2: "A' \<le>\<^sub>B seed 0" using assms(2) \<open>N = 0\<close> by simp
+        show ?thesis by (rule seed_0_descendants_total[OF a1 a2])
+      next
+        case 2
+        have a1: "A \<le>\<^sub>B seed 1" using assms(1) \<open>N = 1\<close> by simp
+        have a2: "A' \<le>\<^sub>B seed 1" using assms(2) \<open>N = 1\<close> by simp
+        show ?thesis by (rule seed_1_descendants_total[OF a1 a2])
+      qed
+    next
+      case False
+      hence "2 \<le> N" by simp
+      \<comment> \<open>\<open>N \<ge> 2\<close>: Hunter Lemma 2.3 closure via
+          \<open>seed_chain_le_B_expansion\<close> + cross-branch
+          comparison. The strip-faithful reconstruction is the
+          open work.\<close>
+      show ?thesis sorry
+    qed
   qed
 qed
 
