@@ -199,6 +199,20 @@ proof -
   show ?thesis using exp_eq elem_strip nth_pre unfolding elem_def by simp
 qed
 
+text \<open>
+  Elem of \<open>Bi_block A t\<close> at column \<open>j\<close> and row \<open>m\<close>
+  equals \<open>bump_col A j t ! m\<close>.
+\<close>
+
+lemma elem_Bi_block_via_bump_col:
+  assumes "j < l1 A"
+  shows "elem (Bi_block A t) j m = (bump_col A j t) ! m"
+proof -
+  have "Bi_block A t ! j = bump_col A j t"
+    using assms unfolding l1_def by (rule Bi_block_nth)
+  thus ?thesis unfolding elem_def by simp
+qed
+
 lemma elem_expansion_B_lt_keep:
   assumes A_ne: "A \<noteq> []"
       and t_le: "t \<le> n" and j_lt: "j < l1 A"
@@ -227,6 +241,80 @@ proof -
   have nth_pre: "?P ! ?i = Bi_block A t ! j"
     using t_le j_lt by (rule pre_strip_nth_B)
   show ?thesis using exp_eq elem_strip nth_pre unfolding elem_def by simp
+qed
+
+text \<open>
+  Composed: elem of \<open>A[n]\<close> at \<open>idx_B_in_expansion A t j\<close>
+  directly equals \<open>(bump_col A j t) ! m\<close> (below the strip
+  cutoff).
+\<close>
+
+text \<open>
+  Classification helpers for clause (iv)'s disjunction: an index
+  \<open>p\<close> in the G range (\<open>p < l0\<close>) or in the B_n range
+  (\<open>l0 + n*l1 \<le> p < l0 + n*l1 + l1\<close>) witnesses the
+  corresponding disjunct.
+\<close>
+
+lemma clause_iv_G_case:
+  assumes "p < l0 A"
+  shows "\<exists>j < l0 A. p = idx_G A j"
+  using assms by (auto simp: idx_G_def)
+
+lemma clause_iv_B_n_case:
+  assumes "l0 A + n * l1 A \<le> p"
+      and "p < l0 A + n * l1 A + l1 A"
+  shows "\<exists>j < l1 A. p = idx_B_in_expansion A n j"
+proof -
+  let ?j = "p - (l0 A + n * l1 A)"
+  have j_lt: "?j < l1 A" using assms by simp
+  have p_eq: "p = idx_B_in_expansion A n ?j"
+    using assms(1) by (simp add: idx_B_in_expansion_def)
+  show ?thesis using j_lt p_eq by blast
+qed
+
+lemma elem_expansion_B_via_bump:
+  assumes A_ne: "A \<noteq> []"
+      and t_le: "t \<le> n" and j_lt: "j < l1 A"
+      and m_lt: "m < keep_of (G_block A @ Bs_concat A n)"
+  shows "elem (expansion A n) (idx_B_in_expansion A t j) m
+       = (bump_col A j t) ! m"
+  using elem_expansion_B_lt_keep[OF A_ne t_le j_lt m_lt]
+        elem_Bi_block_via_bump_col[OF j_lt] by simp
+
+text \<open>
+  Same B-column index \<open>j\<close>, different block index \<open>t < t'\<close>:
+  elem strictly increases (at ascending row).
+\<close>
+
+lemma elem_expansion_B_lt_step_same_j:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and j_lt: "j < l1 A"
+      and t_lt: "t < t'" and t'_le: "t' \<le> n"
+      and asc: "ascends A j k"
+      and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and k_lt_len: "k < length (A ! (s + j))"
+  shows "elem (expansion A n) (idx_B_in_expansion A t j) k
+       < elem (expansion A n) (idx_B_in_expansion A t' j) k"
+proof -
+  have t_le: "t \<le> n" using t_lt t'_le by linarith
+  have bump_t: "elem (expansion A n) (idx_B_in_expansion A t j) k
+              = (bump_col A j t) ! k"
+    using elem_expansion_B_via_bump[OF A_ne t_le j_lt k_lt_keep] .
+  have bump_t': "elem (expansion A n) (idx_B_in_expansion A t' j) k
+              = (bump_col A j t') ! k"
+    using elem_expansion_B_via_bump[OF A_ne t'_le j_lt k_lt_keep] .
+  obtain m\<^sub>0 where mp_eq: "max_parent_level A = Some m\<^sub>0"
+    using asc unfolding ascends_def using b0
+    by (cases "max_parent_level A") auto
+  have k_lt_m0: "k < m\<^sub>0"
+    using asc unfolding ascends_def using b0 mp_eq by simp
+  have delta_pos: "0 < delta A k"
+    using b0 mp_eq k_lt_m0 by (rule delta_pos_of_lt_m0)
+  have "(bump_col A j t) ! k < (bump_col A j t') ! k"
+    using b0 asc delta_pos t_lt k_lt_len by (rule bump_col_lt_step)
+  thus ?thesis using bump_t bump_t' by simp
 qed
 
 

@@ -1088,6 +1088,55 @@ lemma bump_col_nth_general:
        = (A ! (s + d)) ! m + (if ascends A d m then i * delta A m else 0)"
   unfolding bump_col_def Let_def using b0 m_lt by simp
 
+text \<open>
+  Strict monotonicity of \<open>bump_col A d _\<close> in the multiplier
+  at ascending rows (when \<open>delta A k > 0\<close>): \<open>i < i' \<Longrightarrow>
+  bump_col A d i ! k < bump_col A d i' ! k\<close>.
+\<close>
+
+text \<open>
+  At any row \<open>m < m\<^sub>0\<close>, \<open>delta A m > 0\<close>: the chain
+  \<open>m_ancestor A m (last) s\<close> (from @{thm m_ancestor_mono})
+  forces \<open>elem A s m < elem A (last) m\<close>
+  (@{thm m_ancestor_elem_lt}).
+\<close>
+
+lemma delta_pos_of_lt_m0:
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and m_lt: "m < m\<^sub>0"
+  shows "0 < delta A m"
+proof -
+  have parent: "m_parent A m\<^sub>0 (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  have m0_anc: "m_ancestor A m\<^sub>0 (last_col_idx A) s"
+    using parent by simp
+  have m_anc: "m_ancestor A m (last_col_idx A) s"
+    using m_ancestor_mono[OF less_imp_le_nat[OF m_lt] m0_anc] .
+  have base_lt: "elem A s m < elem A (last_col_idx A) m"
+    using m_ancestor_elem_lt[OF m_anc] .
+  have delta_eq: "delta A m = elem A (last_col_idx A) m - elem A s m"
+    unfolding delta_def using b0 by simp
+  show ?thesis using delta_eq base_lt by simp
+qed
+
+lemma bump_col_lt_step:
+  assumes b0: "b0_start A = Some s"
+      and asc: "ascends A d k"
+      and delta_pos: "0 < delta A k"
+      and i_lt: "i < i'"
+      and len_k: "k < length (A ! (s + d))"
+  shows "(bump_col A d i) ! k < (bump_col A d i') ! k"
+proof -
+  have bi: "(bump_col A d i) ! k = (A ! (s + d)) ! k + i * delta A k"
+    using bump_col_nth_general[OF b0 len_k] asc by simp
+  have bi': "(bump_col A d i') ! k = (A ! (s + d)) ! k + i' * delta A k"
+    using bump_col_nth_general[OF b0 len_k] asc by simp
+  have "i * delta A k < i' * delta A k"
+    using i_lt delta_pos by simp
+  thus ?thesis using bi bi' by simp
+qed
+
 lemma bump_col_value_lt_m0:
   assumes b0: "b0_start A = Some s"
       and mp: "max_parent_level A = Some m\<^sub>0"
