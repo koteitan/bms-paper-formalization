@@ -836,7 +836,32 @@ next
         show ?thesis
         proof (cases k)
           case 0
-          show ?thesis sorry
+          \<comment> \<open>Base \<open>k = 0\<close> with \<open>i < j\<close> requires \<open>l1 A \<ge> 2\<close>
+              (from \<open>i < j < l1\<close>). Split further on \<open>max_parent_level\<close>
+              to use uniform bumping (\<open>k=0 < t\<close>) or no bumping
+              (\<open>t=0\<close>, no ascending).\<close>
+          show ?thesis
+          proof (cases "max_parent_level A")
+            case None
+            have "b0_start A = None" using None unfolding b0_start_def by simp
+            with Some show ?thesis by simp
+          next
+            case (Some t)
+            show ?thesis
+            proof (cases "0 < t")
+              case True
+              \<comment> \<open>\<open>k=0 < t\<close>: all B_0 cols ascending at row 0 via
+                  @{thm BMS_all_B0_ascending_below_t}, uniform bumping.
+                  \<open>\<sigma>\<close>-equivariance + chain induction.\<close>
+              show ?thesis sorry
+            next
+              case False
+              hence t_eq: "t = 0" by simp
+              \<comment> \<open>\<open>t = 0\<close>: \<open>k=0 \<ge> t\<close>, no ascending, no bumping.
+                  Elem values invariant via @{thm elem_expansion_B_eq_orig_k_ge_t}.\<close>
+              show ?thesis sorry
+            qed
+          qed
         next
           case (Suc k')
           \<comment> \<open>IH gives full \<open>lemma_2_5_at A n k'\<close>.
