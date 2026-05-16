@@ -681,6 +681,92 @@ proof (intro allI impI)
     by simp
 qed
 
+text \<open>
+  Step lemma for clause (ii): assumes IH (= full lemma_2_5_at at k' < k)
+  and proves clause (ii) at level k. Per dependency matrix, (ii) at k
+  uses only IH (no other clause at same k).
+\<close>
+
+lemma lemma_2_5_ii_clause_step:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+  shows "lemma_2_5_ii_clause A n k"
+proof (cases n)
+  case 0
+  \<comment> \<open>\<open>n = 0\<close>: \<open>idx_B(0, j) = idx_B(0, j)\<close> on both sides; the
+      equivalence is reflexivity. Dispatch via @{thm lemma_2_5_at_n_zero}.\<close>
+  show ?thesis
+    using lemma_2_5_at_n_zero[OF A_ne, of k] \<open>n = 0\<close>
+    unfolding lemma_2_5_at_def by simp
+next
+  case (Suc n')
+  show ?thesis
+  proof (cases "b0_start A")
+    case None
+    \<comment> \<open>\<open>b0_start A = None\<close>: \<open>l1 A = 0\<close>, all clause (ii)
+        universals vacuous. Dispatch via @{thm lemma_2_5_at_no_b0}.\<close>
+    show ?thesis
+      using lemma_2_5_at_no_b0[OF A_ne None, of n k]
+      unfolding lemma_2_5_at_def by simp
+  next
+    case (Some s)
+    \<comment> \<open>Substantive case: \<open>n \<ge> 1 \<and> b0_start A = Some s\<close>.
+        Per dependency matrix, (ii) at \<open>k\<close> uses only IH
+        (no other clause at same \<open>k\<close>).\<close>
+    show ?thesis
+      unfolding lemma_2_5_ii_clause_def
+    proof (intro allI impI)
+      fix i j
+      assume H: "i < l1 A \<and> j < l1 A"
+      hence i_lt: "i < l1 A" and j_lt: "j < l1 A" by simp+
+      show "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_B_in_expansion A 0 i)
+          \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_B_in_expansion A n i)"
+      proof (cases "i < j")
+        case False
+        \<comment> \<open>\<open>i \<ge> j\<close>: by @{thm m_ancestor_target_lt}, a chain
+            \<open>m_ancestor _ _ src target\<close> requires \<open>target < src\<close>.
+            Here \<open>target = idx_B(_, i)\<close>, \<open>src = idx_B(_, j)\<close>;
+            \<open>idx_B\<close> is monotone in its 2nd argument, so \<open>i \<ge> j\<close>
+            gives \<open>target \<ge> src\<close>, contradicting the chain.\<close>
+        have not_lt: "\<not> i < j" using False .
+        have lhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                              (idx_B_in_expansion A 0 i)"
+        proof
+          assume "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                       (idx_B_in_expansion A 0 i)"
+          hence "idx_B_in_expansion A 0 i < idx_B_in_expansion A 0 j"
+            by (rule m_ancestor_target_lt)
+          thus False unfolding idx_B_in_expansion_def using not_lt by simp
+        qed
+        have rhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                              (idx_B_in_expansion A n i)"
+        proof
+          assume "m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                       (idx_B_in_expansion A n i)"
+          hence "idx_B_in_expansion A n i < idx_B_in_expansion A n j"
+            by (rule m_ancestor_target_lt)
+          thus False unfolding idx_B_in_expansion_def using not_lt by simp
+        qed
+        show ?thesis using lhs_F rhs_F by blast
+      next
+        case True
+        hence i_lt_j: "i < j" .
+        \<comment> \<open>\<open>i < j\<close>: substantive case. Split on \<open>k = 0\<close>
+            (base, no IH) vs \<open>k = Suc k'\<close> (use IH at \<open>k'\<close>).\<close>
+        show ?thesis
+        proof (cases k)
+          case 0
+          show ?thesis sorry
+        next
+          case (Suc k')
+          show ?thesis sorry
+        qed
+      qed
+    qed
+  qed
+qed
+
 lemma lemma_2_5_at_main:
   fixes A :: array
   assumes "A \<in> BMS" "A \<noteq> []"

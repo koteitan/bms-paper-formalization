@@ -399,6 +399,32 @@ text \<open>
   the m-parent chain.
 \<close>
 
+text \<open>
+  An m-ancestor's column index is strictly smaller. Follows from
+  the m-parent chain decreasing strictly in column index (each step
+  uses @{thm m_parent_lt}).
+\<close>
+
+lemma m_ancestor_target_lt:
+  "m_ancestor A m i j \<Longrightarrow> j < i"
+proof (induct i arbitrary: j rule: nat_less_induct)
+  fix i j assume IH: "\<forall>k<i. \<forall>j'. m_ancestor A m k j' \<longrightarrow> j' < k"
+  assume H: "m_ancestor A m i j"
+  obtain p where mp: "m_parent A m i = Some p"
+              and case_p: "p = j \<or> m_ancestor A m p j"
+    using H by (cases "m_parent A m i") auto
+  have p_lt_i: "p < i" using mp m_parent_lt by simp
+  show "j < i"
+  proof (cases "p = j")
+    case True thus ?thesis using p_lt_i by simp
+  next
+    case False
+    hence "m_ancestor A m p j" using case_p by simp
+    hence "j < p" using IH p_lt_i by blast
+    thus ?thesis using p_lt_i by simp
+  qed
+qed
+
 lemma m_ancestor_elem_lt:
   "m_ancestor A m i j \<Longrightarrow> elem A j m < elem A i m"
 proof (induct i arbitrary: j rule: nat_less_induct)
