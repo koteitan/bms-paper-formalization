@@ -12,7 +12,7 @@
 - `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:1355)
 - `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:1362)
 - `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1421)
-- `lemma_2_5_iv_clause_step` 全体 (BMS_Ancestry.thy:1441) — Hunter (iv): m_parent image structure
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:1493) — Hunter (iv): m_parent image structure (n=0 proven inline)
 - `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:1451) — Hunter (i): G-column target
 - `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:1462) — Hunter (v): block n_1 ↔ n_1+1 transition
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
@@ -23,7 +23,8 @@
 
 ## Hunter Lemma 2.5 (i)-(v) 同時 k-induction
 
-- ✅ `lemma_2_5_at_main` assembly (5 step lemma 経由、 sorry 化解除)
+- 🚨 `lemma_2_5_at_main` (5 step lemma assembly は本体 sorry 解除済、 ただし step lemma 群が sorry)
+  - ✅ assembly 本体: `nat_less_induct` on k + Hunter 順 ((ii)→(iii)→(iv)→(i)→(v)) で step lemma を呼ぶ
   - ✅ scaffold restructure: `nat_less_induct` on k 化 [ID 45, 62]
   - ✅ `lemma_2_5_at_n_zero`: n=0 base [ID 44]
   - ✅ `lemma_2_5_at_no_b0`: b0_start=None case
@@ -45,7 +46,9 @@
   - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
     - ✅ scaffold: 5-way case split (n=0/None/k≥m_0 proven) [ID 71]
     - 🚨 k<m_0: (ii) at same k 経由
-  - 🚨 (iv) step lemma (`lemma_2_5_iv_clause_step` stub、 sorry; ID 66-69 で構造解析済)
+  - 🚨 (iv) step lemma (`lemma_2_5_iv_clause_step`)
+    - ✅ n=0 case proven inline (block 0 = only B-block, positions trivially split G + block 0)
+    - 🚨 n>0 case: BMS structural property要 (block n partial cand 存在保証)
   - 🚨 (v) step lemma (`lemma_2_5_v_clause_step` stub、 sorry)
   - 🚨 (古い) [ID 5] 補助補題群整備 → 現 helpers で代替
   - 🚨 (古い) [ID 6] `lemma_2_5_at_inductive_step`: 5 clause 独立化 → (ii)(iii) で進行中

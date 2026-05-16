@@ -1,14 +1,7 @@
-v0.1.37/seed_1_descendants_total: N=1 case closed
+(iv) clause_step n=0 case proven + matrix updated to match linear implementation
 
-- Add seed_1_expansion: (seed 1)[k] = replicate (Suc k) []
-- Add replicate_empty_expansion: (replicate (Suc k) [])[m] = replicate k []
-- Add descendants_of_replicate_empty: descendants of replicate (Suc k) []
-  are replicate j [] for j <= Suc k
-- Add descendants_of_seed_1: A <=_B seed 1 implies A = seed 1 or
-  A = replicate j [] for some j
-- Add replicate_step_le_B, replicate_chain_le, replicate_le_seed_1:
-  chain seed 1 >=_B replicate (Suc k) [] >=_B replicate k [] >=_B ...
-- Add seed_1_descendants_total (proven): N=1 case of seed_descendants_total
-  by enumeration. Together with seed_0_descendants_total this closes
-  N<=1 cases; N>=2 remains for general seed_descendants_total
-- Bump version v0.1.36 -> v0.1.37
+- Prove `lemma_2_5_iv_clause_step` n=0 case inline: when n=0, block 0 is the only B-block, so any m_parent target `< idx_B 0 i = l_0 + i` is necessarily a G-col or a block-0 B-col (case proof exhibits the disjunctive structure directly)
+- Suc n' case remains sorry (BMS structural property required)
+- Demote `lemma_2_5_at_main` in task.md from ✅ to 🚨 (step lemmas still carry sorry; assembly body extracted as a ✅ child)
+- Rewrite important-lemma.md matrix and implementation-order table to the current linear signature ((ii)→(iii)→(iv)→(i)→(v), no joint lemma); note that (iv) at k being (v)-independent is unverified (still sorry)
+- Sorry count unchanged at 10 (split only, net 0)

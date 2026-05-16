@@ -1438,7 +1438,60 @@ lemma lemma_2_5_iv_clause_step:
       and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
       and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
   shows "lemma_2_5_iv_clause A n k"
-  sorry
+proof (cases n)
+  case 0
+  \<comment> \<open>\<open>n = 0\<close>: block 0 is the only B-block, so positions
+      \<open>< idx_B(0, i) = l_0 + i\<close> are either G-cols (\<open>< l_0\<close>)
+      or block-0 B-cols (\<open>l_0 \<le> ... < l_0 + i\<close>). Either way,
+      the disjunctive structure is satisfied.\<close>
+  show ?thesis
+    unfolding lemma_2_5_iv_clause_def
+  proof (intro allI impI)
+    fix i assume h: "0 < i \<and> i < l1 A"
+    hence i_pos: "0 < i" and i_lt: "i < l1 A" by simp+
+    let ?tgt = "idx_B_in_expansion A n i"
+    have tgt_eq: "?tgt = l0 A + i"
+      using \<open>n = 0\<close> unfolding idx_B_in_expansion_def by simp
+    show "m_parent (A[n]) k ?tgt = None
+        \<or> (\<exists>p. m_parent (A[n]) k ?tgt = Some p
+               \<and> ((\<exists>j<l1 A. p = idx_B_in_expansion A n j)
+                  \<or> (\<exists>j<l0 A. p = idx_G A j)))"
+    proof (cases "m_parent (A[n]) k ?tgt")
+      case None thus ?thesis by simp
+    next
+      case (Some p)
+      have p_lt: "p < ?tgt" using Some by (rule m_parent_lt)
+      hence p_lt_b: "p < l0 A + i" using tgt_eq by simp
+      show ?thesis
+      proof (cases "p < l0 A")
+        case True
+        \<comment> \<open>\<open>p < l_0\<close>: G-col. \<open>idx_G A p = p\<close>.\<close>
+        have "p = idx_G A p" unfolding idx_G_def by simp
+        thus ?thesis using Some True by blast
+      next
+        case False
+        hence p_ge: "l0 A \<le> p" by simp
+        define j where "j = p - l0 A"
+        have p_eq: "p = l0 A + j" using p_ge j_def by simp
+        have j_lt_i: "j < i"
+          using p_eq p_lt_b by simp
+        hence j_lt_l1: "j < l1 A" using i_lt by linarith
+        have p_as_idxB: "p = idx_B_in_expansion A n j"
+          using p_eq \<open>n = 0\<close> unfolding idx_B_in_expansion_def by simp
+        show ?thesis using Some j_lt_l1 p_as_idxB by blast
+      qed
+    qed
+  qed
+next
+  case (Suc n')
+  \<comment> \<open>\<open>n \<ge> 1\<close>: substantive case. Requires BMS structural
+      property that block-\<open>n\<close> partial cand exists when any
+      earlier-block cand is available (or that earlier-block
+      cands are excluded for other structural reasons). Left
+      as sorry pending @{thm BMS_all_B0_ascending_below_t}
+      inductive case and additional infrastructure.\<close>
+  show ?thesis sorry
+qed
 
 lemma lemma_2_5_i_clause_step:
   fixes A :: array
