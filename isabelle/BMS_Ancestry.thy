@@ -332,6 +332,56 @@ lemma elem_expansion_B_via_bump:
         elem_Bi_block_via_bump_col[OF j_lt] by simp
 
 text \<open>
+  Strict-less invariance across blocks at level \<open>k < t\<close>: by
+  @{thm bump_col_uniform_k_lt_t} the bump amount at row \<open>k\<close>
+  is uniform across all B_0 columns, so strict-less comparison
+  between any two B-block columns at level \<open>k\<close> is invariant
+  in the block index. Resolves the \<open>\<sigma>\<close>-equivariance issue for
+  clause (ii) at levels \<open>k < t\<close>.
+\<close>
+
+lemma elem_expansion_B_lt_invariant_in_block:
+  assumes A_BMS: "A \<in> BMS"
+      and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_lt: "k < t"
+      and a_le: "a \<le> n"
+      and a'_le: "a' \<le> n"
+      and x_lt: "x < l1 A"
+      and y_lt: "y < l1 A"
+      and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and x_col_len: "k < length (A ! (s + x))"
+      and y_col_len: "k < length (A ! (s + y))"
+  shows "(elem (expansion A n) (idx_B_in_expansion A a y) k
+        < elem (expansion A n) (idx_B_in_expansion A a x) k)
+       \<longleftrightarrow>
+         (elem (expansion A n) (idx_B_in_expansion A a' y) k
+        < elem (expansion A n) (idx_B_in_expansion A a' x) k)"
+proof -
+  have x_b0: "x < length (B0_block A)" using x_lt unfolding l1_def by simp
+  have y_b0: "y < length (B0_block A)" using y_lt unfolding l1_def by simp
+  have bx_a: "elem (expansion A n) (idx_B_in_expansion A a x) k
+            = (A ! (s + x)) ! k + a * delta A k"
+    using elem_expansion_B_via_bump[OF A_ne a_le x_lt k_lt_keep]
+          bump_col_uniform_k_lt_t[OF A_BMS b0 mp k_lt x_b0 x_col_len] by simp
+  have by_a: "elem (expansion A n) (idx_B_in_expansion A a y) k
+            = (A ! (s + y)) ! k + a * delta A k"
+    using elem_expansion_B_via_bump[OF A_ne a_le y_lt k_lt_keep]
+          bump_col_uniform_k_lt_t[OF A_BMS b0 mp k_lt y_b0 y_col_len] by simp
+  have bx_a': "elem (expansion A n) (idx_B_in_expansion A a' x) k
+             = (A ! (s + x)) ! k + a' * delta A k"
+    using elem_expansion_B_via_bump[OF A_ne a'_le x_lt k_lt_keep]
+          bump_col_uniform_k_lt_t[OF A_BMS b0 mp k_lt x_b0 x_col_len] by simp
+  have by_a': "elem (expansion A n) (idx_B_in_expansion A a' y) k
+             = (A ! (s + y)) ! k + a' * delta A k"
+    using elem_expansion_B_via_bump[OF A_ne a'_le y_lt k_lt_keep]
+          bump_col_uniform_k_lt_t[OF A_BMS b0 mp k_lt y_b0 y_col_len] by simp
+  show ?thesis
+    using bx_a by_a bx_a' by_a' by simp
+qed
+
+text \<open>
   Same B-column index \<open>j\<close>, different block index \<open>t < t'\<close>:
   elem strictly increases (at ascending row).
 \<close>
@@ -771,6 +821,62 @@ next
             using IH \<open>k = Suc k'\<close> by simp
           show ?thesis sorry
         qed
+      qed
+    qed
+  qed
+qed
+
+text \<open>
+  Step lemma for clause (iii): assumes IH (= full lemma_2_5_at at k' < k)
+  AND clause (ii) at same level k (per dependency matrix).
+\<close>
+
+lemma lemma_2_5_iii_clause_step:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+  shows "lemma_2_5_iii_clause A n k"
+proof (cases n)
+  case 0
+  \<comment> \<open>\<open>n = 0\<close>: clause (iii) premise requires \<open>n > 0\<close>, vacuous.\<close>
+  show ?thesis using \<open>n = 0\<close>
+    unfolding lemma_2_5_iii_clause_def by simp
+next
+  case (Suc n')
+  show ?thesis
+  proof (cases "b0_start A")
+    case None
+    \<comment> \<open>\<open>b0_start = None\<close>: \<open>max_parent_level A = None\<close> by
+        @{thm b0_start_None_imp_max_parent_level_None}, clause (iii)'s
+        premise demands \<open>max_parent_level A = Some _\<close>, vacuous.\<close>
+    show ?thesis
+      using lemma_2_5_at_no_b0[OF A_ne None, of n k]
+      unfolding lemma_2_5_at_def by simp
+  next
+    case (Some s)
+    \<comment> \<open>Substantive case. Per matrix, (iii) at \<open>k\<close> uses
+        IH (at \<open>k'<k\<close>) and (ii) at same \<open>k\<close>. Sub-cases on
+        \<open>max_parent_level\<close> and \<open>k\<close> vs \<open>m\<^sub>0\<close>.\<close>
+    show ?thesis
+    proof (cases "max_parent_level A")
+      case None
+      show ?thesis unfolding lemma_2_5_iii_clause_def using None by simp
+    next
+      case (Some m\<^sub>0)
+      \<comment> \<open>Substantive: split on \<open>k < m\<^sub>0\<close> (active) vs
+          \<open>k \<ge> m\<^sub>0\<close> (vacuous via @{thm lemma_2_5_iii_clause_when_k_ge_m0}).\<close>
+      show ?thesis
+      proof (cases "k < m\<^sub>0")
+        case False
+        have all_ge: "\<forall>m'. max_parent_level A = Some m' \<longrightarrow> m' \<le> k"
+          using Some False by simp
+        show ?thesis by (rule lemma_2_5_iii_clause_when_k_ge_m0[OF all_ge])
+      next
+        case True
+        \<comment> \<open>Truly substantive: \<open>k < m\<^sub>0\<close>. Hunter's proof uses
+            (ii) at k for chain translation, plus IH for chain at k-1.\<close>
+        show ?thesis sorry
       qed
     qed
   qed

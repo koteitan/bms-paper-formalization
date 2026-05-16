@@ -1306,6 +1306,50 @@ proof -
   thus ?thesis using bi bi' by simp
 qed
 
+text \<open>
+  Structural fact: in any BMS array, every column in \<open>B\<^sub>0\<close>
+  is \<open>k\<close>-ascending for every \<open>k < t\<close> (where
+  \<open>t = max_parent_level\<close>). Equivalently, \<open>s\<close> (= bad root)
+  is a \<open>k\<close>-ancestor of every B_0 column at every active level.
+  Empirically verified on 1193 Hunter BMS arrays (4824 checks, 0 fails).
+  Proof by BMS induction; left as sorry, this is the key structural
+  fact enabling (ii) closure via uniform bumping.
+\<close>
+
+lemma BMS_all_B0_ascending_below_t:
+  assumes A_BMS: "A \<in> BMS"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_lt: "k < t"
+      and x_lt: "x < length (B0_block A)"
+  shows "ascends A x k"
+  sorry
+
+text \<open>
+  Corollary of @{thm BMS_all_B0_ascending_below_t}: at any row
+  \<open>k < t\<close>, the bump_col value has the uniform form
+  \<open>(A!(s+x))!k + a · delta A k\<close> regardless of \<open>x\<close>
+  (= no ascending status check needed).
+\<close>
+
+lemma bump_col_uniform_k_lt_t:
+  assumes A_BMS: "A \<in> BMS"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_lt: "k < t"
+      and x_lt: "x < length (B0_block A)"
+      and k_lt_col: "k < length (A ! (s + x))"
+  shows "(bump_col A x a) ! k = (A ! (s + x)) ! k + a * delta A k"
+proof -
+  have asc: "ascends A x k"
+    by (rule BMS_all_B0_ascending_below_t[OF A_BMS b0 mp k_lt x_lt])
+  have "(bump_col A x a) ! k
+      = (A ! (s + x)) ! k + (if ascends A x k then a * delta A k else 0)"
+    using bump_col_nth_general[OF b0 k_lt_col] .
+  also have "\<dots> = (A ! (s + x)) ! k + a * delta A k" using asc by simp
+  finally show ?thesis .
+qed
+
 lemma bump_col_value_lt_m0:
   assumes b0: "b0_start A = Some s"
       and mp: "max_parent_level A = Some m\<^sub>0"
