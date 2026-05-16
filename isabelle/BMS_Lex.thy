@@ -1258,54 +1258,138 @@ proof -
   qed
 qed
 
-lemma seed_descendants_total:
-  assumes "A \<le>\<^sub>B seed N" "A' \<le>\<^sub>B seed N"
-  shows "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
-proof (cases "A = seed N")
-  case True
-  hence "A' \<le>\<^sub>B A" using assms(2) by simp
-  thus ?thesis by blast
-next
-  case A_ne: False
-  show ?thesis
-  proof (cases "A' = seed N")
-    case True
-    hence "A \<le>\<^sub>B A'" using assms(1) by simp
-    thus ?thesis by blast
-  next
-    case A'_ne: False
-    \<comment> \<open>Both are strict descendants of seed N.
-        \<open>N = 0\<close> / \<open>N = 1\<close> dispatched to
-        @{thm seed_0_descendants_total} /
-        @{thm seed_1_descendants_total};
-        \<open>N \<ge> 2\<close> remains as Hunter Lemma 2.3 closure.\<close>
-    show ?thesis
-    proof (cases "N \<le> 1")
+text \<open>
+  Strong induction on \<open>N\<close>: for the substantive case
+  (\<open>N \<ge> 2\<close>, both \<open>A, A'\<close> strict descendants), we
+  apply @{thm bms_lt_imp_le_expansion} to obtain \<open>k, k'\<close>
+  with \<open>A \<le>\<^sub>B (seed N)[k]\<close> and
+  \<open>A' \<le>\<^sub>B (seed N)[k']\<close>. WLOG \<open>k \<le> k'\<close>;
+  @{thm seed_chain_le_B_expansion} gives both
+  \<open>A, A' \<le>\<^sub>B (seed N)[k']\<close>. Cases on \<open>k'\<close>:
+  \<open>k' = 0\<close> reduces to descendants of \<open>[[]]\<close>
+  (@{thm descendants_of_empty_col}); \<open>k' = 1\<close> reduces to
+  descendants of \<open>seed (N - 1)\<close> via
+  @{thm seed_Suc_expand_one} and the IH at \<open>N - 1\<close>;
+  \<open>k' \<ge> 2\<close> sorried.
+\<close>
+
+lemma seed_descendants_total_strong:
+  shows "\<forall>A A'. A \<le>\<^sub>B seed N \<and> A' \<le>\<^sub>B seed N
+                 \<longrightarrow> A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+proof (induct N rule: nat_less_induct)
+  case (1 N)
+  have IH: "\<And>M A A'. M < N \<Longrightarrow> A \<le>\<^sub>B seed M \<Longrightarrow> A' \<le>\<^sub>B seed M
+              \<Longrightarrow> A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+    using 1 by blast
+  show ?case
+  proof (intro allI impI)
+    fix A A' assume H: "A \<le>\<^sub>B seed N \<and> A' \<le>\<^sub>B seed N"
+    have aH: "A \<le>\<^sub>B seed N" and a'H: "A' \<le>\<^sub>B seed N" using H by simp+
+    show "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+    proof (cases "A = seed N")
       case True
-      consider "N = 0" | "N = 1" using True by linarith
-      thus ?thesis
-      proof cases
-        case 1
-        have a1: "A \<le>\<^sub>B seed 0" using assms(1) \<open>N = 0\<close> by simp
-        have a2: "A' \<le>\<^sub>B seed 0" using assms(2) \<open>N = 0\<close> by simp
-        show ?thesis by (rule seed_0_descendants_total[OF a1 a2])
-      next
-        case 2
-        have a1: "A \<le>\<^sub>B seed 1" using assms(1) \<open>N = 1\<close> by simp
-        have a2: "A' \<le>\<^sub>B seed 1" using assms(2) \<open>N = 1\<close> by simp
-        show ?thesis by (rule seed_1_descendants_total[OF a1 a2])
-      qed
+      hence "A' \<le>\<^sub>B A" using a'H by simp
+      thus ?thesis by blast
     next
-      case False
-      hence "2 \<le> N" by simp
-      \<comment> \<open>\<open>N \<ge> 2\<close>: Hunter Lemma 2.3 closure via
-          \<open>seed_chain_le_B_expansion\<close> + cross-branch
-          comparison. The strip-faithful reconstruction is the
-          open work.\<close>
-      show ?thesis sorry
+      case A_ne: False
+      show ?thesis
+      proof (cases "A' = seed N")
+        case True
+        hence "A \<le>\<^sub>B A'" using aH by simp
+        thus ?thesis by blast
+      next
+        case A'_ne: False
+        show ?thesis
+        proof (cases "N \<le> 1")
+          case True
+          consider "N = 0" | "N = 1" using True by linarith
+          thus ?thesis
+          proof cases
+            case 1
+            have a1: "A \<le>\<^sub>B seed 0" using aH \<open>N = 0\<close> by simp
+            have a2: "A' \<le>\<^sub>B seed 0" using a'H \<open>N = 0\<close> by simp
+            show ?thesis by (rule seed_0_descendants_total[OF a1 a2])
+          next
+            case 2
+            have a1: "A \<le>\<^sub>B seed 1" using aH \<open>N = 1\<close> by simp
+            have a2: "A' \<le>\<^sub>B seed 1" using a'H \<open>N = 1\<close> by simp
+            show ?thesis by (rule seed_1_descendants_total[OF a1 a2])
+          qed
+        next
+          case False
+          hence N_ge: "2 \<le> N" by simp
+          then obtain N' where N_eq: "N = Suc N'" and N'_ge: "1 \<le> N'"
+            by (cases N) auto
+          have A_lt: "A <\<^sub>B seed N" using aH A_ne unfolding bms_lt_def by blast
+          have A'_lt: "A' <\<^sub>B seed N" using a'H A'_ne unfolding bms_lt_def by blast
+          obtain k where Ak: "A \<le>\<^sub>B (seed N)[k]"
+            using bms_lt_imp_le_expansion[OF A_lt] by blast
+          obtain k' where A'k': "A' \<le>\<^sub>B (seed N)[k']"
+            using bms_lt_imp_le_expansion[OF A'_lt] by blast
+          \<comment> \<open>WLOG \<open>k \<le> k'\<close> via case analysis (polymorphic in B, B').\<close>
+          have key: "\<And>k k' B B'. k \<le> k' \<Longrightarrow> B \<le>\<^sub>B (seed N)[k]
+                       \<Longrightarrow> B' \<le>\<^sub>B (seed N)[k']
+                       \<Longrightarrow> B \<le>\<^sub>B B' \<or> B' \<le>\<^sub>B B"
+          proof -
+            fix k k' :: nat
+            fix B B' :: array
+            assume k_le: "k \<le> k'" and Bk: "B \<le>\<^sub>B (seed N)[k]"
+                            and B'k': "B' \<le>\<^sub>B (seed N)[k']"
+            have step: "(seed N)[k] \<le>\<^sub>B (seed N)[k']"
+              using N_eq seed_chain_le_B_expansion k_le by simp
+            have B_le_k': "B \<le>\<^sub>B (seed N)[k']"
+              using Bk step bms_le_trans by blast
+            show "B \<le>\<^sub>B B' \<or> B' \<le>\<^sub>B B"
+            proof (cases k')
+              case 0
+              have empty_eq: "(seed N)[0] = [[]]" by (rule seed_expansion_zero)
+              have B_le_e: "B \<le>\<^sub>B [[]]" using B_le_k' \<open>k' = 0\<close> empty_eq by simp
+              have B'_le_e: "B' \<le>\<^sub>B [[]]" using B'k' \<open>k' = 0\<close> empty_eq by simp
+              have B_in: "B = [[]] \<or> B = []"
+                by (rule descendants_of_empty_col[OF B_le_e])
+              have B'_in: "B' = [[]] \<or> B' = []"
+                by (rule descendants_of_empty_col[OF B'_le_e])
+              have e_le_ec: "[] \<le>\<^sub>B ([[]] :: array)" by (rule empty_le_empty_col)
+              from B_in B'_in show ?thesis
+                using e_le_ec bms_le_refl by metis
+            next
+              case (Suc k'')
+              show ?thesis
+              proof (cases k'')
+                case 0
+                have seed_eq: "(seed N)[1] = seed N'"
+                  using N_eq seed_Suc_expand_one by simp
+                have B_le_s: "B \<le>\<^sub>B seed N'"
+                  using B_le_k' \<open>k' = Suc k''\<close> \<open>k'' = 0\<close> seed_eq by simp
+                have B'_le_s: "B' \<le>\<^sub>B seed N'"
+                  using B'k' \<open>k' = Suc k''\<close> \<open>k'' = 0\<close> seed_eq by simp
+                show ?thesis using IH[OF _ B_le_s B'_le_s] N_eq by simp
+              next
+                case (Suc k''')
+                show ?thesis sorry
+              qed
+            qed
+          qed
+          show ?thesis
+          proof (cases "k \<le> k'")
+            case True
+            show ?thesis using key[OF True Ak A'k'] .
+          next
+            case False
+            hence k'_le: "k' \<le> k" by linarith
+            have "A' \<le>\<^sub>B A \<or> A \<le>\<^sub>B A'" using key[OF k'_le A'k' Ak] .
+            thus ?thesis by blast
+          qed
+        qed
+      qed
     qed
   qed
 qed
+
+corollary seed_descendants_total:
+  assumes "A \<le>\<^sub>B seed N" "A' \<le>\<^sub>B seed N"
+  shows "A \<le>\<^sub>B A' \<or> A' \<le>\<^sub>B A"
+  using seed_descendants_total_strong assms by blast
 
 text \<open>
   \<open>seed_lex_implies_le_B\<close> reduces to totality via
