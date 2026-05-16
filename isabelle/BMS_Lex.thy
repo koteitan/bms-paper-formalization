@@ -1392,6 +1392,21 @@ corollary seed_descendants_total:
   using seed_descendants_total_strong assms by blast
 
 text \<open>
+  Descendants of any BMS array are pairwise lex-comparable
+  (= \<open>=\<close> or \<open><\<^sub>l\<^sub>e\<^sub>x\<close> in either direction).
+  Combines @{thm bms_le_implies_lex} (one-direction conversion)
+  with @{thm arr_lex_total} (total order on arrays).
+  Helper purpose: provides the lex-side totality input needed
+  to attack the k' \<ge> 2 sub-case of \<open>seed_descendants_total_strong\<close>
+  (the missing direction would convert lex back to \<open>\<le>\<^sub>B\<close>).
+\<close>
+
+lemma bms_descendants_lex_total:
+  assumes "C \<in> BMS" "B \<le>\<^sub>B C" "B' \<le>\<^sub>B C"
+  shows "B = B' \<or> B <\<^sub>l\<^sub>e\<^sub>x B' \<or> B' <\<^sub>l\<^sub>e\<^sub>x B"
+  using arr_lex_total by blast
+
+text \<open>
   \<open>seed_lex_implies_le_B\<close> reduces to totality via
   @{thm bms_le_implies_lex}: if \<open>A' \<le>\<^sub>B A\<close>, then either
   \<open>A' = A\<close> or \<open>A' <\<^sub>l\<^sub>e\<^sub>x A\<close>, both contradicting
