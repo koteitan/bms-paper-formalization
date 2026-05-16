@@ -1236,6 +1236,7 @@ qed
 lemma Bs_concat_zero: "A \<noteq> [] \<Longrightarrow> Bs_concat A 0 = B0_block A"
   unfolding Bs_concat_def using Bi_block_zero by simp
 
+
 lemma length_Bi_block: "length (Bi_block A i) = length (B0_block A)"
   unfolding Bi_block_def Let_def by simp
 
@@ -1243,6 +1244,60 @@ lemma Bi_block_nth:
   assumes "d < length (B0_block A)"
   shows "Bi_block A i ! d = bump_col A d i"
   unfolding Bi_block_def Let_def using assms by simp
+
+text \<open>
+  When \<open>max_parent_level A = Some 0\<close> (no ascending rows),
+  all \<open>Bi_block A i\<close> equal \<open>B0_block A\<close>: bumping
+  is the identity at every row.
+  Helper purpose: fills the \<open>m_0 = 0\<close> sub-case of
+  \<open>lemma_2_5_at_main\<close>'s sorry by reducing all B-blocks to B0.
+\<close>
+
+lemma Bi_block_eq_B0_when_m0_zero:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some 0"
+  shows "Bi_block A i = B0_block A"
+proof -
+  have len_eq: "length (Bi_block A i) = length (B0_block A)"
+    by (rule length_Bi_block)
+  have not_asc: "\<And>d m. \<not> ascends A d m"
+    unfolding ascends_def using b0 mp by simp
+  have entry_eq: "\<And>d. d < length (B0_block A)
+                       \<Longrightarrow> Bi_block A i ! d = Bi_block A 0 ! d"
+  proof -
+    fix d assume d_lt: "d < length (B0_block A)"
+    have bi_d: "Bi_block A i ! d = bump_col A d i"
+      using d_lt by (rule Bi_block_nth)
+    have b0_d: "Bi_block A 0 ! d = bump_col A d 0"
+      using d_lt by (rule Bi_block_nth)
+    have len_col: "length (bump_col A d i) = length (A ! (s + d))"
+      unfolding bump_col_def Let_def using b0 by simp
+    have len_col0: "length (bump_col A d 0) = length (A ! (s + d))"
+      unfolding bump_col_def Let_def using b0 by simp
+    have pointwise: "\<And>m. m < length (A ! (s + d))
+                         \<Longrightarrow> (bump_col A d i) ! m = (bump_col A d 0) ! m"
+    proof -
+      fix m assume m_lt: "m < length (A ! (s + d))"
+      have "(bump_col A d i) ! m = (A ! (s + d)) ! m"
+        using bump_col_nth_general[OF b0 m_lt] not_asc by simp
+      moreover have "(bump_col A d 0) ! m = (A ! (s + d)) ! m"
+        using bump_col_nth_general[OF b0 m_lt] not_asc by simp
+      ultimately show "(bump_col A d i) ! m = (bump_col A d 0) ! m"
+        by simp
+    qed
+    have "bump_col A d i = bump_col A d 0"
+      using len_col len_col0 pointwise nth_equalityI by metis
+    thus "Bi_block A i ! d = Bi_block A 0 ! d" using bi_d b0_d by simp
+  qed
+  have len_eq_b0: "length (Bi_block A 0) = length (B0_block A)"
+    using Bi_block_zero[OF A_ne] by simp
+  have "Bi_block A i = Bi_block A 0"
+    using nth_equalityI[where xs = "Bi_block A i" and ys = "Bi_block A 0"]
+          len_eq len_eq_b0 entry_eq by simp
+  also have "\<dots> = B0_block A" using Bi_block_zero[OF A_ne] .
+  finally show ?thesis .
+qed
 
 lemma Bs_concat_Suc:
   "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
