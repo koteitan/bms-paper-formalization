@@ -77,6 +77,8 @@
 | 60 | Cor 2.4 helper (sub) | `bms_descendants_lex_total`: descendants of any BMS array は lex-total、 `descendant_of_seed_lex_le`: 任意 descendant of seed N は = or <_lex seed N (bms_le_implies_lex 経由) | — | ✅ | — |
 | 61 | Theorem 2.7 helper | `stable_rep_imp_strict_mono` + `stable_rep_imp_ancestor_stable`: stable_rep_def の 2 component (strict mono と m-ancestor stable_lt 保存) の projection | — | ✅ | — |
 | 62 | Lemma 2.5 main scaffold | `lemma_2_5_at_main` Some s case を `nat_less_induct` on k で書き直し、 IH at k' < k を explicit に取り出す。 sorry の所在を inner inductive step (Hunter の 5 clause 順次 (ii)→(iii)→(iv)→(i)→(v)) に集約 | — | ✅ | — |
+| 63 | Lemma 2.5 vacuous-clause helper | `lemma_2_5_v_clause_n_le_one`: n ≤ 1 で clause (v) は vacuous (`n\<^sub>0 < n\<^sub>1 ∧ n\<^sub>1 < n` が n_1=0 を強制し n_0<0 で矛盾)。 `lemma_2_5_at_main` Some s case の n=1 dispatch で (v) を即落とすため | — | ✅ | — |
+| 64 | Lemma 2.5 vacuous-clause helper | `lemma_2_5_iii_clause_when_k_ge_m0`: k ≥ m_0 で clause (iii) は vacuous (`k < m_0` 前提が偽)。 `lemma_2_5_at_main` Some s case の inductive step が k ≥ m_0 に達した時に (iii) を即落とすため | — | ✅ | — |
 | 19 | Lemma 2.6 / Phase 3 ZF | 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 Theorem 1.8) | 外部依存 (Kranakis 論文の前提と命題が Paulson の `Constructible` 内で言明可能か未確認) | 18 待ち | 数日 |
 |  5 | Lemma 2.5 | 補助補題群整備 (m_parent / m_ancestor が strip / bumping / k-祖先と相互作用する性質) | Hunter は "tedious but straightforward" と書くが、補題リストを論文に書かない。手作業で発見・列挙する必要 | 未着手 | 不明 |
 |  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から 5 clause を順に独立化 | (iv) と (v) が同一 k で相互依存 (BMS_Ancestry.thy のコメント参照)。Hunter の順序 (ii)→(iii)→(iv)→(i)→(v) を我々は (iv,v 同時)→(i,ii,iii) に変更したが、それで証明が通るかは未確認 | 5 待ち | 数h+ |

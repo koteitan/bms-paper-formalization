@@ -586,6 +586,52 @@ text \<open>
   Lemma 2.5.
 \<close>
 
+text \<open>
+  Clause (v) is vacuous when \<open>n \<le> 1\<close>: the conjunction
+  \<open>n\<^sub>0 < n\<^sub>1 \<and> n\<^sub>1 < n\<close> forces \<open>n\<^sub>1 = 0\<close> and
+  then \<open>n\<^sub>0 < 0\<close>, which is impossible. Extracted so the
+  \<open>n = 1\<close> sub-case of \<open>lemma_2_5_at_main\<close> only has to deal with
+  clauses (i)--(iv).
+\<close>
+
+lemma lemma_2_5_v_clause_n_le_one:
+  assumes "n \<le> 1"
+  shows "lemma_2_5_v_clause A n k"
+  unfolding lemma_2_5_v_clause_def
+proof (intro allI impI)
+  fix i j n\<^sub>0 n\<^sub>1
+  assume h: "i < l1 A \<and> j < l1 A \<and> n\<^sub>0 < n\<^sub>1 \<and> n\<^sub>1 < n"
+  from h assms have False by linarith
+  thus "m_ancestor (A[n]) k (idx_B_in_expansion A n\<^sub>1 j)
+                              (idx_B_in_expansion A n\<^sub>0 i)
+        \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (n\<^sub>1 + 1) j)
+                                  (idx_B_in_expansion A n\<^sub>0 i)" by simp
+qed
+
+text \<open>
+  Clause (iii) is vacuous when \<open>k\<close> is at or above the maximum
+  parent level: the clause's premise demands
+  \<open>max_parent_level A = Some m\<^sub>0 \<and> k < m\<^sub>0\<close>, so
+  \<open>m\<^sub>0 \<le> k\<close> (in particular \<open>max_parent_level A = Some m\<^sub>0\<close>
+  with \<open>k \<ge> m\<^sub>0\<close>) makes the implication trivially true.
+  Useful inside the \<open>Some s\<close> sub-case of \<open>lemma_2_5_at_main\<close>
+  when the induction reaches \<open>k \<ge> m\<^sub>0\<close>.
+\<close>
+
+lemma lemma_2_5_iii_clause_when_k_ge_m0:
+  assumes "\<forall>m\<^sub>0. max_parent_level A = Some m\<^sub>0 \<longrightarrow> m\<^sub>0 \<le> k"
+  shows "lemma_2_5_iii_clause A n k"
+  unfolding lemma_2_5_iii_clause_def
+proof (intro allI impI)
+  fix m\<^sub>0 i
+  assume h: "0 < n \<and> max_parent_level A = Some m\<^sub>0 \<and> k < m\<^sub>0 \<and> i < l1 A"
+  from h assms have False by force
+  thus "m_ancestor A k (last_col_idx A) (idx_B0_in_orig A i) \<longleftrightarrow>
+        m_ancestor (A[n]) k (idx_B_in_expansion A n 0)
+                            (idx_B_in_expansion A (n - 1) i)"
+    by simp
+qed
+
 lemma lemma_2_5_at_main:
   fixes A :: array
   assumes "A \<in> BMS" "A \<noteq> []"
