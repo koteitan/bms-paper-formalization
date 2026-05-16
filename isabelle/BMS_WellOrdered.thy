@@ -75,6 +75,13 @@ lemma stable_rep_imp_strict_mono:
   shows "f i <\<^sub>o f j"
   using assms unfolding stable_rep_def by blast
 
+lemma stable_rep_imp_ancestor_stable:
+  assumes "stable_rep A f"
+      and "i < arr_len A" and "j < arr_len A"
+      and "m_ancestor A m i j"
+  shows "stable_lt m (f j) (f i)"
+  using assms unfolding stable_rep_def by blast
+
 text \<open>
   Restriction principle: if \<open>B\<close> has length \<open>\<le>\<close> \<open>A\<close>'s and
   m-ancestry in \<open>B\<close> on indices \<open>< arr_len B\<close> implies
