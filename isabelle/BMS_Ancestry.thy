@@ -273,6 +273,55 @@ proof -
   show ?thesis using j_lt p_eq by blast
 qed
 
+text \<open>
+  Full positional decomposition: any \<open>p\<close> in the range
+  \<open>[0, l0 + (Suc n) * l1)\<close> -- which contains
+  \<open>idx_B_in_expansion A n i\<close> for any \<open>i < l1\<close> -- is either
+  a \<open>G\<close>-index or a \<open>B_t\<close>-index for some \<open>t \<le> n\<close>.
+  Refines @{thm clause_iv_G_case} and @{thm clause_iv_B_n_case}
+  by also classifying intermediate blocks \<open>B_t\<close> for \<open>0 \<le> t < n\<close>.
+  Drives clause (iv)'s argument that a hypothetical \<open>p\<close> in
+  \<open>B_t\<close> for \<open>0 \<le> t < n\<close> must be ruled out.
+\<close>
+
+lemma clause_iv_p_decomposition:
+  assumes l1_pos: "0 < l1 A"
+      and p_lt:   "p < l0 A + (Suc n) * l1 A"
+  shows "p < l0 A
+       \<or> (\<exists>t j. t \<le> n \<and> j < l1 A \<and> p = idx_B_in_expansion A t j)"
+proof (cases "p < l0 A")
+  case True
+  thus ?thesis by blast
+next
+  case False
+  let ?q = "p - l0 A"
+  let ?t = "?q div (l1 A)"
+  let ?j = "?q mod (l1 A)"
+  have q_lt: "?q < Suc n * l1 A" using False p_lt by linarith
+  have t_le: "?t \<le> n"
+  proof -
+    have "?t < Suc n"
+    proof (rule ccontr)
+      assume "\<not> ?t < Suc n"
+      hence n_le: "Suc n \<le> ?t" by simp
+      have mult_le: "Suc n * l1 A \<le> ?t * l1 A"
+        using mult_le_mono1[OF n_le] by simp
+      have div_le: "?t * l1 A \<le> ?q" by (rule div_times_less_eq_dividend)
+      from mult_le div_le have "Suc n * l1 A \<le> ?q" by linarith
+      thus False using q_lt by simp
+    qed
+    thus ?thesis by simp
+  qed
+  have j_lt: "?j < l1 A" using l1_pos by simp
+  have q_eq: "?q = ?t * l1 A + ?j" by (simp add: div_mult_mod_eq)
+  have p_eq: "p = l0 A + ?t * l1 A + ?j"
+    using False q_eq by linarith
+  have idx_eq: "idx_B_in_expansion A ?t ?j = l0 A + ?t * l1 A + ?j"
+    by (simp add: idx_B_in_expansion_def)
+  have "p = idx_B_in_expansion A ?t ?j" using p_eq idx_eq by simp
+  thus ?thesis using t_le j_lt by blast
+qed
+
 lemma elem_expansion_B_via_bump:
   assumes A_ne: "A \<noteq> []"
       and t_le: "t \<le> n" and j_lt: "j < l1 A"
