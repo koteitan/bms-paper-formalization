@@ -361,6 +361,103 @@ proof -
 qed
 
 text \<open>
+  Column equality across blocks when \<open>max_parent_level A = Some 0\<close>:
+  the \<open>x\<close>-th column of every \<open>B\<close>-block in \<open>A[n]\<close> is
+  identical (independent of the block index \<open>c\<close>). Combines
+  @{thm pre_strip_nth_B} (pre-strip indexing) with
+  @{thm Bi_block_eq_B0_when_m0_zero} (no-bumping reduces every
+  \<open>B_i\<close> to \<open>B_0\<close>) and the strip step (which trims uniformly
+  per column).
+\<close>
+
+lemma AEn_nth_idx_B_eq_when_m0_zero:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and a_le: "a \<le> n"
+      and b_le: "b \<le> n"
+      and x_lt: "x < l1 A"
+  shows "(A[n]) ! (idx_B_in_expansion A a x)
+       = (A[n]) ! (idx_B_in_expansion A b x)"
+proof -
+  let ?P = "G_block A @ Bs_concat A n"
+  have exp_eq: "A[n] = strip_zero_rows ?P"
+    using A_ne unfolding expansion_def by simp
+  have l1_pos: "0 < l1 A"
+    using x_lt by simp
+  have len_P: "length ?P = l0 A + Suc n * l1 A"
+    by (simp add: l0_def l1_def length_Bs_concat)
+  have idx_a_lt: "idx_B_in_expansion A a x < length ?P"
+  proof -
+    have "a * l1 A + x < Suc a * l1 A" using x_lt by simp
+    also have "\<dots> \<le> Suc n * l1 A" using a_le by simp
+    finally have "a * l1 A + x < Suc n * l1 A" .
+    thus ?thesis using len_P unfolding idx_B_in_expansion_def by simp
+  qed
+  have idx_b_lt: "idx_B_in_expansion A b x < length ?P"
+  proof -
+    have "b * l1 A + x < Suc b * l1 A" using x_lt by simp
+    also have "\<dots> \<le> Suc n * l1 A" using b_le by simp
+    finally have "b * l1 A + x < Suc n * l1 A" .
+    thus ?thesis using len_P unfolding idx_B_in_expansion_def by simp
+  qed
+  have P_ne: "?P \<noteq> []" using idx_a_lt by auto
+  have strip_eq: "strip_zero_rows ?P = map (\<lambda>c. take (keep_of ?P) c) ?P"
+    using P_ne by (rule strip_zero_rows_eq_map_take)
+  have nth_a: "?P ! idx_B_in_expansion A a x = Bi_block A a ! x"
+    using a_le x_lt by (rule pre_strip_nth_B)
+  have nth_b: "?P ! idx_B_in_expansion A b x = Bi_block A b ! x"
+    using b_le x_lt by (rule pre_strip_nth_B)
+  have bi_a: "Bi_block A a = B0_block A"
+    using A_ne b0 mp0 by (rule Bi_block_eq_B0_when_m0_zero)
+  have bi_b: "Bi_block A b = B0_block A"
+    using A_ne b0 mp0 by (rule Bi_block_eq_B0_when_m0_zero)
+  have pre_col_eq: "?P ! idx_B_in_expansion A a x = ?P ! idx_B_in_expansion A b x"
+    using nth_a nth_b bi_a bi_b by simp
+  have strip_a: "(A[n]) ! idx_B_in_expansion A a x
+               = take (keep_of ?P) (?P ! idx_B_in_expansion A a x)"
+  proof -
+    have "(A[n]) ! idx_B_in_expansion A a x
+        = (map (\<lambda>c. take (keep_of ?P) c) ?P) ! idx_B_in_expansion A a x"
+      using exp_eq strip_eq by simp
+    also have "\<dots> = (\<lambda>c. take (keep_of ?P) c) (?P ! idx_B_in_expansion A a x)"
+      using nth_map[OF idx_a_lt] by simp
+    finally show ?thesis by simp
+  qed
+  have strip_b: "(A[n]) ! idx_B_in_expansion A b x
+               = take (keep_of ?P) (?P ! idx_B_in_expansion A b x)"
+  proof -
+    have "(A[n]) ! idx_B_in_expansion A b x
+        = (map (\<lambda>c. take (keep_of ?P) c) ?P) ! idx_B_in_expansion A b x"
+      using exp_eq strip_eq by simp
+    also have "\<dots> = (\<lambda>c. take (keep_of ?P) c) (?P ! idx_B_in_expansion A b x)"
+      using nth_map[OF idx_b_lt] by simp
+    finally show ?thesis by simp
+  qed
+  show ?thesis using strip_a strip_b pre_col_eq by simp
+qed
+
+text \<open>
+  Corollary of @{thm AEn_nth_idx_B_eq_when_m0_zero}: elem values
+  at any row \<open>m\<close> are invariant in the block index.
+\<close>
+
+lemma elem_AEn_idx_B_eq_when_m0_zero:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and a_le: "a \<le> n"
+      and b_le: "b \<le> n"
+      and x_lt: "x < l1 A"
+  shows "elem (A[n]) (idx_B_in_expansion A a x) m
+       = elem (A[n]) (idx_B_in_expansion A b x) m"
+proof -
+  have "(A[n]) ! (idx_B_in_expansion A a x) = (A[n]) ! (idx_B_in_expansion A b x)"
+    by (rule AEn_nth_idx_B_eq_when_m0_zero[OF A_ne b0 mp0 a_le b_le x_lt])
+  thus ?thesis unfolding elem_def by simp
+qed
+
+text \<open>
   Strict-less invariance across blocks at level \<open>k < t\<close>: by
   @{thm bump_col_uniform_k_lt_t} the bump amount at row \<open>k\<close>
   is uniform across all B_0 columns, so strict-less comparison
@@ -761,6 +858,45 @@ proof (intro allI impI)
 qed
 
 text \<open>
+  Helper for clause (ii), \<open>k = 0\<close>, \<open>t = 0\<close> sub-case.
+  When \<open>max_parent_level A = Some 0\<close>, no column ascends and
+  \<open>bump_col\<close> is the identity at every row, so the B-blocks of
+  \<open>A[n]\<close> are literal copies of \<open>B\<^sub>0\<close>. The row-0 values of
+  any B-block column \<open>idx_B_in_expansion A c x\<close> are independent
+  of the block index \<open>c\<close>. The m_parent of a B-block column at
+  row 0 either lands in the same block (same B_0 index for any
+  \<open>c\<close>) or leaves the block; chains that escape cannot return.
+  Therefore the m_ancestor relation at row 0 between two columns
+  of the same block is invariant under block shift.
+\<close>
+
+lemma m_anc_zero_idx_B_in_block_shift_when_t_zero:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and a_le: "a \<le> n" and b_le: "b \<le> n"
+      and i_lt: "i < l1 A"
+      and j_lt: "j < l1 A"
+      and i_lt_j: "i < j"
+  shows "m_ancestor (A[n]) 0 (idx_B_in_expansion A a j) (idx_B_in_expansion A a i)
+       \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A b j) (idx_B_in_expansion A b i)"
+  \<comment> \<open>Proof sketch (deferred): strong induction on \<open>j\<close>.
+      (1) Compute \<open>elem (A[n]) (idx_B c x) 0 = elem A (s + x) 0\<close>
+      via @{thm elem_expansion_B_eq_orig_k_ge_t} with \<open>k = 0\<close>,
+      \<open>t = 0\<close>; row-0 values are uniform across blocks.
+      (2) Characterize \<open>m_parent (A[n]) 0 (idx_B c j)\<close>: it either
+      stays in block \<open>c\<close> at \<open>idx_B c p\<close> where \<open>p\<close> is the
+      largest index in \<open>[0, j)\<close> with \<open>elem A (s+p) 0 < elem A
+      (s+j) 0\<close> (same \<open>p\<close> for every block), or it leaves block
+      \<open>c\<close> entirely (goes to earlier block / G / None).
+      (3) If m_parent stays in block, apply IH at the smaller
+      \<open>p < j\<close>. If m_parent leaves block, both sides of the
+      equivalence are False (chains cannot return to the target
+      block once they exit).\<close>
+  sorry
+
+text \<open>
   Step lemma for clause (ii): assumes IH (= full lemma_2_5_at at k' < k)
   and proves clause (ii) at level k. Per dependency matrix, (ii) at k
   uses only IH (no other clause at same k).
@@ -858,8 +994,17 @@ next
               case False
               hence t_eq: "t = 0" by simp
               \<comment> \<open>\<open>t = 0\<close>: \<open>k=0 \<ge> t\<close>, no ascending, no bumping.
-                  Elem values invariant via @{thm elem_expansion_B_eq_orig_k_ge_t}.\<close>
-              show ?thesis sorry
+                  Dispatch via @{thm m_anc_zero_idx_B_in_block_shift_when_t_zero}
+                  (block-shift invariance at row 0).\<close>
+              have mp_zero: "max_parent_level A = Some 0"
+                using \<open>max_parent_level A = Some t\<close> t_eq by simp
+              show ?thesis
+                using m_anc_zero_idx_B_in_block_shift_when_t_zero
+                        [OF A_BMS A_ne \<open>b0_start A = Some s\<close> mp_zero
+                           order.refl le0
+                           i_lt j_lt i_lt_j]
+                      \<open>k = 0\<close>
+                by simp
             qed
           qed
         next
