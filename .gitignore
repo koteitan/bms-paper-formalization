@@ -1,5 +1,6 @@
 .isabelle/
 *.heap
+tmp/
 heaps/
 output/
 *.swp
