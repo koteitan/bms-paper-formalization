@@ -332,6 +332,35 @@ lemma elem_expansion_B_via_bump:
         elem_Bi_block_via_bump_col[OF j_lt] by simp
 
 text \<open>
+  At row \<open>k \<ge> t\<close> (no ascending), the elem at any B-block
+  column equals the original B_0 column elem. Bumping has zero
+  effect since \<open>ascends A x k = False\<close>.
+\<close>
+
+lemma elem_expansion_B_eq_orig_k_ge_t:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_ge: "t \<le> k"
+      and a_le: "a \<le> n"
+      and x_lt: "x < l1 A"
+      and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and k_lt_col: "k < length (A ! (s + x))"
+  shows "elem (expansion A n) (idx_B_in_expansion A a x) k
+       = (A ! (s + x)) ! k"
+proof -
+  have not_asc: "\<not> ascends A x k"
+    unfolding ascends_def using b0 mp k_ge by simp
+  have bump_eq: "(bump_col A x a) ! k = (A ! (s + x)) ! k"
+    using bump_col_no_bump[OF b0 not_asc k_lt_col] .
+  have "elem (expansion A n) (idx_B_in_expansion A a x) k
+      = (bump_col A x a) ! k"
+    using elem_expansion_B_via_bump[OF A_ne a_le x_lt k_lt_keep] .
+  also have "\<dots> = (A ! (s + x)) ! k" using bump_eq .
+  finally show ?thesis .
+qed
+
+text \<open>
   Strict-less invariance across blocks at level \<open>k < t\<close>: by
   @{thm bump_col_uniform_k_lt_t} the bump amount at row \<open>k\<close>
   is uniform across all B_0 columns, so strict-less comparison

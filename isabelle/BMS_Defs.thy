@@ -1306,6 +1306,26 @@ proof -
   thus ?thesis using bi bi' by simp
 qed
 
+text \<open>
+  When the column \<open>d\<close> doesn't ascend at row \<open>k\<close> (e.g.
+  \<open>k \<ge> max_parent_level\<close>), bumping has no effect: \<open>bump_col
+  A d i\<close> at row \<open>k\<close> equals the original \<open>A ! (s + d)\<close>
+  at row \<open>k\<close>.
+\<close>
+
+lemma bump_col_no_bump:
+  assumes b0: "b0_start A = Some s"
+      and not_asc: "\<not> ascends A d k"
+      and len_k: "k < length (A ! (s + d))"
+  shows "(bump_col A d i) ! k = (A ! (s + d)) ! k"
+proof -
+  have "(bump_col A d i) ! k
+      = (A ! (s + d)) ! k + (if ascends A d k then i * delta A k else 0)"
+    using bump_col_nth_general[OF b0 len_k] .
+  also have "\<dots> = (A ! (s + d)) ! k" using not_asc by simp
+  finally show ?thesis .
+qed
+
 lemma bump_col_value_lt_m0:
   assumes b0: "b0_start A = Some s"
       and mp: "max_parent_level A = Some m\<^sub>0"
