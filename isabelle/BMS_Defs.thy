@@ -1355,6 +1355,22 @@ proof -
   show ?thesis using step1 step2 by simp
 qed
 
+text \<open>
+  Pre-strip expansion form at \<open>max_parent_level A = Some 0\<close>:
+  the pre-strip array is \<open>G_block A\<close> followed by
+  \<open>n+1\<close> copies of \<open>B0_block A\<close>.
+  Helper purpose: fills the m_0 = 0 sub-case of \<open>lemma_2_5_at_main\<close>'s
+  sorry by exposing A[n]'s explicit column structure.
+\<close>
+
+lemma pre_strip_expansion_when_m0_zero:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some 0"
+  shows "G_block A @ Bs_concat A n
+       = G_block A @ concat (replicate (Suc n) (B0_block A))"
+  using Bs_concat_when_m0_zero[OF A_ne b0 mp] by simp
+
 lemma length_Bs_concat:
   "length (Bs_concat A n) = Suc n * length (B0_block A)"
 proof (induct n)
