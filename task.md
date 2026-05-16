@@ -5,16 +5,15 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 10 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**コード上の sorry: 9 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
 - `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `lemma_2_5_ii_clause_step` k=0 0<t (BMS_Ancestry.thy:1308)
-- `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:1355)
-- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:1362)
-- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1421)
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:1493) — Hunter (iv): m_parent image structure (n=0 proven inline)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:1451) — Hunter (i): G-column target
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:1462) — Hunter (v): block n_1 ↔ n_1+1 transition
+- `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:1844)
+- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:1851)
+- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1910)
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:1982) — Hunter (iv): m_parent image structure (n=0 proven inline)
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:1993) — Hunter (i): G-column target
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:2004) — Hunter (v): block n_1 ↔ n_1+1 transition
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
 
 注: `lemma_2_5_at_main` は 5 step lemma 上で assembly proven (sorry 化解除)。 projection lemma_2_5_{i,ii,iii,iv,v,iv_and_v} はすべて lemma_2_5_at_main 経由で proper proof。
@@ -33,7 +32,11 @@
   - 🚨 (i) step lemma (`lemma_2_5_i_clause_step` stub、 sorry)
   - 🚨 (ii) step lemma (`lemma_2_5_ii_clause_step`)
     - ✅ scaffold: 8-way case split (n=0/None/i≥j proven) [ID 70]
-    - 🚨 k=0 0<t: uniform bumping (BMS_all_B0 経由)
+    - ✅ k=0 0<t: helper 完全 close (2026-05-17、 uniform bumping + block-shift invariance)
+      - ✅ `keep_of_pre_strip_pos_of_t_pos_and_n_pos`: B_1 row 0 > 0 で keep_of > 0 を establish
+      - ✅ `m_parent_AEn_idx_B_within_block_at_row_zero_when_0_lt_t`: m_parent within-block 特化
+      - ✅ `m_parent_AEn_idx_B_outside_block_at_row_zero_when_0_lt_t`: m_parent outside-block 特化
+      - ✅ `m_anc_idx_B_in_block_shift_at_row_zero_when_0_lt_t`: chain induction 本体
     - ✅ k=0 t=0: helper 完全 close [ID 74]
       - ✅ `AEn_nth_idx_B_eq_when_m0_zero`: column equality across blocks [ID 75]
       - ✅ `elem_AEn_idx_B_eq_when_m0_zero`: 上記 corollary [ID 76]

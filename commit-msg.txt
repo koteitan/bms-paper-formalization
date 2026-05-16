@@ -1,7 +1,8 @@
-(iv) clause_step n=0 case proven + matrix updated to match linear implementation
+Close (ii) k=0 0<t case via chain induction + block-shift invariance
 
-- Prove `lemma_2_5_iv_clause_step` n=0 case inline: when n=0, block 0 is the only B-block, so any m_parent target `< idx_B 0 i = l_0 + i` is necessarily a G-col or a block-0 B-col (case proof exhibits the disjunctive structure directly)
-- Suc n' case remains sorry (BMS structural property required)
-- Demote `lemma_2_5_at_main` in task.md from ✅ to 🚨 (step lemmas still carry sorry; assembly body extracted as a ✅ child)
-- Rewrite important-lemma.md matrix and implementation-order table to the current linear signature ((ii)→(iii)→(iv)→(i)→(v), no joint lemma); note that (iv) at k being (v)-independent is unverified (still sorry)
-- Sorry count unchanged at 10 (split only, net 0)
+- Add `keep_of_pre_strip_pos_of_t_pos_and_n_pos`: derive `keep_of (G_block A @ Bs_concat A n) > 0` from `max_parent_level = Some t` with `0 < t` and `n \<ge> 1` by exhibiting `bump_col A 0 1 ! 0 = (A ! last_col_idx A) ! 0 > 0` via `bump_col_value_eq_below` and the level-0 ancestor chain
+- Add `m_parent_AEn_idx_B_within_block_at_row_zero_when_0_lt_t`: when the block-0 filter `?S` is nonempty, `m_parent (A[n]) 0 (idx_B c j) = Some (idx_B c (last ?S))` for any block `c`, using `elem_expansion_B_lt_invariant_in_block` for strict-less invariance across blocks
+- Add `m_parent_AEn_idx_B_outside_block_at_row_zero_when_0_lt_t`: when `?S` is empty, every candidate is `< idx_B c 0` (lies in G or earlier block), proved by `ccontr`
+- Add `m_anc_idx_B_in_block_shift_at_row_zero_when_0_lt_t`: chain induction with `less_induct on j`, mirroring the structure of the t=0 helper
+- Dispatch the `lemma_2_5_ii_clause_step` k=0 0<t sorry (BMS_Ancestry.thy:1788) via the chain-induction helper above
+- Sorry count 10 -> 9
