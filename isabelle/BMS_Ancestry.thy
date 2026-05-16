@@ -760,6 +760,15 @@ next
           show ?thesis sorry
         next
           case (Suc k')
+          \<comment> \<open>IH gives full \<open>lemma_2_5_at A n k'\<close>: includes
+              (iv) at \<open>k'\<close> (parent of \<open>B^(n)[i']\<close> at level \<open>k'\<close>
+              is in \<open>G \<union> B^(n)\<close>) and (ii) at \<open>k'\<close>.
+              These constrain \<open>P_{Suc k'}\<close>'s candidate set via the
+              m_ancestor-at-\<open>k'\<close> filter in m_parent's definition.
+              Full proof: case-split P_{Suc k'}(B^(0)[j]) on \<open>G \<union> B^(0)\<close>,
+              correspondingly for B^(n), use IH to translate chain.\<close>
+          have IH_at_k': "lemma_2_5_at A n k'"
+            using IH \<open>k = Suc k'\<close> by simp
           show ?thesis sorry
         qed
       qed

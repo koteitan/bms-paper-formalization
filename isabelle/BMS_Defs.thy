@@ -486,6 +486,149 @@ lemma m_ancestor_trans:
   using m_ancestor_trans_aux by blast
 
 text \<open>
+  Linearity of the m-ancestor chain: any two m-ancestors of the same
+  source \<open>i\<close> are comparable (one is an ancestor of the other, or
+  they are equal). Follows from \<open>P_m\<close> being deterministic.
+\<close>
+
+lemma m_ancestor_chain_linear:
+  "\<forall>j k. m_ancestor A m i j \<longrightarrow> m_ancestor A m i k
+        \<longrightarrow> j = k \<or> m_ancestor A m j k \<or> m_ancestor A m k j"
+proof (induct i rule: nat_less_induct)
+  fix i
+  assume IH: "\<forall>i'<i. \<forall>j k. m_ancestor A m i' j \<longrightarrow> m_ancestor A m i' k
+                          \<longrightarrow> j = k \<or> m_ancestor A m j k \<or> m_ancestor A m k j"
+  show "\<forall>j k. m_ancestor A m i j \<longrightarrow> m_ancestor A m i k
+              \<longrightarrow> j = k \<or> m_ancestor A m j k \<or> m_ancestor A m k j"
+  proof (intro allI impI)
+    fix j k
+    assume H1: "m_ancestor A m i j"
+    assume H2: "m_ancestor A m i k"
+    obtain p where mp: "m_parent A m i = Some p"
+                and case_j: "p = j \<or> m_ancestor A m p j"
+      using H1 by (cases "m_parent A m i") auto
+    obtain p' where mp': "m_parent A m i = Some p'"
+                and case_k: "p' = k \<or> m_ancestor A m p' k"
+      using H2 by (cases "m_parent A m i") auto
+    have p_eq: "p = p'" using mp mp' by simp
+    have p_lt: "p < i" using mp m_parent_lt by simp
+    show "j = k \<or> m_ancestor A m j k \<or> m_ancestor A m k j"
+    proof (cases "p = j")
+      case pj: True
+      show ?thesis
+      proof (cases "p = k")
+        case True thus ?thesis using pj by simp
+      next
+        case False
+        hence "m_ancestor A m p k" using case_k p_eq by simp
+        thus ?thesis using pj by simp
+      qed
+    next
+      case pj_False: False
+      hence anc_pj: "m_ancestor A m p j" using case_j by simp
+      show ?thesis
+      proof (cases "p = k")
+        case True
+        hence "m_ancestor A m k j" using anc_pj by simp
+        thus ?thesis by simp
+      next
+        case False
+        hence anc_pk: "m_ancestor A m p k" using case_k p_eq by simp
+        show ?thesis using IH p_lt anc_pj anc_pk by blast
+      qed
+    qed
+  qed
+qed
+
+text \<open>
+  Ascending status is preserved along m-ancestor chains in \<open>B\<^sub>0\<close>:
+  if \<open>s + y\<close> is an \<open>m\<close>-ancestor of \<open>s + x\<close>, then
+  \<open>ascends A x m = ascends A y m\<close>. Proof uses
+  @{thm m_ancestor_chain_linear} for the \<open>\<Rightarrow>\<close> direction and
+  @{thm m_ancestor_trans} for the \<open>\<Leftarrow>\<close> direction.
+\<close>
+
+lemma ascends_invariant_along_chain:
+  assumes b0: "b0_start A = Some s"
+      and chain: "m_ancestor A k (s + x) (s + y)"
+  shows "ascends A x k = ascends A y k"
+proof (cases "max_parent_level A")
+  case None
+  \<comment> \<open>\<open>max_parent_level A = None\<close>: but assumption gives
+      \<open>b0_start A = Some s\<close>, which by \<open>b0_start_def\<close> forces
+      \<open>max_parent_level A = Some _\<close>. Contradiction.\<close>
+  have b_None: "b0_start A = None"
+    using None unfolding b0_start_def by simp
+  with b0 show ?thesis by simp
+next
+  case (Some m\<^sub>0)
+  show ?thesis
+  proof (cases "k < m\<^sub>0")
+    case False
+    \<comment> \<open>\<open>k \<ge> m\<^sub>0\<close>: ascends is False for any column.\<close>
+    have nx: "\<not> ascends A x k" using False Some b0 unfolding ascends_def by simp
+    have ny: "\<not> ascends A y k" using False Some b0 unfolding ascends_def by simp
+    show ?thesis using nx ny by simp
+  next
+    case True
+    hence k_lt: "k < m\<^sub>0" .
+    have asc_x: "ascends A x k = non_strict_ancestor A k (s + x) s"
+      using b0 Some k_lt by (simp add: ascends_def)
+    have asc_y: "ascends A y k = non_strict_ancestor A k (s + y) s"
+      using b0 Some k_lt by (simp add: ascends_def)
+    \<comment> \<open>Show non_strict_ancestor A k (s+x) s ⟷ non_strict_ancestor A k (s+y) s.\<close>
+    have nsa_eq: "non_strict_ancestor A k (s + x) s
+                = non_strict_ancestor A k (s + y) s"
+    proof
+      assume nx: "non_strict_ancestor A k (s + x) s"
+      \<comment> \<open>\<open>nx\<close>: \<open>s+x = s\<close> (x = 0) or m_anc \<open>s+x \<to> s\<close>.\<close>
+      show "non_strict_ancestor A k (s + y) s"
+      proof (cases "x = 0")
+        case True
+        \<comment> \<open>x = 0: chain \<open>s \<to> s+y\<close>, but m_anc requires target < source.
+            \<open>s + y \<ge> s\<close>, so chain implies \<open>s + y < s\<close>, contradiction.\<close>
+        have "s + y < s + x" using chain by (rule m_ancestor_target_lt)
+        with True show ?thesis by simp
+      next
+        case False
+        hence "x \<noteq> 0" .
+        hence sx_ne: "s + x \<noteq> s" by simp
+        have x_to_s: "m_ancestor A k (s + x) s"
+          using nx sx_ne unfolding non_strict_ancestor_def by simp
+        \<comment> \<open>Apply linearity: chain \<open>s+x \<to> s+y\<close> and chain \<open>s+x \<to> s\<close>;
+            so \<open>s+y = s\<close>, m_anc \<open>s+y \<to> s\<close>, or m_anc \<open>s \<to> s+y\<close>.
+            The last is impossible (target \<ge> source).\<close>
+        have "s + y = s \<or> m_ancestor A k (s + y) s \<or> m_ancestor A k s (s + y)"
+          using m_ancestor_chain_linear[of A k "s + x"] chain x_to_s by blast
+        moreover have "\<not> m_ancestor A k s (s + y)"
+          using m_ancestor_target_lt by fastforce
+        ultimately have "s + y = s \<or> m_ancestor A k (s + y) s" by blast
+        thus ?thesis unfolding non_strict_ancestor_def by blast
+      qed
+    next
+      assume ny: "non_strict_ancestor A k (s + y) s"
+      \<comment> \<open>\<open>ny\<close>: \<open>s+y = s\<close> (y = 0) or m_anc \<open>s+y \<to> s\<close>.\<close>
+      show "non_strict_ancestor A k (s + x) s"
+      proof (cases "y = 0")
+        case True
+        have "m_ancestor A k (s + x) s" using chain True by simp
+        thus ?thesis unfolding non_strict_ancestor_def by blast
+      next
+        case False
+        hence "y \<noteq> 0" .
+        hence sy_ne: "s + y \<noteq> s" by simp
+        have y_to_s: "m_ancestor A k (s + y) s"
+          using ny sy_ne unfolding non_strict_ancestor_def by simp
+        have "m_ancestor A k (s + x) s"
+          using m_ancestor_trans[OF chain y_to_s] .
+        thus ?thesis unfolding non_strict_ancestor_def by blast
+      qed
+    qed
+    show ?thesis using asc_x asc_y nsa_eq by simp
+  qed
+qed
+
+text \<open>
   An (Suc m)-parent of \<open>i\<close> is, by definition, an m-ancestor of \<open>i\<close>.
 \<close>
 
