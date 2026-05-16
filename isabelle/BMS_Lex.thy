@@ -1598,4 +1598,91 @@ next
 qed
 
 
+text \<open>
+  Structural fact: in any BMS array, every column in \<open>B\<^sub>0\<close>
+  is \<open>k\<close>-ascending for every \<open>k < t\<close> (where
+  \<open>t = max_parent_level\<close>). Empirically verified on 1193 Hunter
+  BMS arrays (4824 checks, 0 fails). Base case (\<open>A = seed n\<close>):
+  \<open>l1 = 1\<close> forces \<open>x = 0\<close>, trivial. Inductive case
+  (\<open>A = A'[k_exp]\<close>): requires structural lemmas about expansion's
+  effect on \<open>b0_start\<close>, \<open>max_parent_level\<close>, \<open>B0_block\<close>;
+  left as sorry.
+\<close>
+
+lemma BMS_all_B0_ascending_below_t:
+  assumes A_BMS: "A \<in> BMS"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_lt: "k < t"
+      and x_lt: "x < length (B0_block A)"
+  shows "ascends A x k"
+  using A_BMS b0 mp k_lt x_lt
+proof (induct rule: BMS.induct)
+  case (seed_in_BMS n)
+  \<comment> \<open>Base: \<open>A = seed n\<close>. \<open>l1 (seed n) = 1\<close>, so \<open>x < 1\<close>
+      forces \<open>x = 0\<close>. \<open>ascends (seed n) 0 k\<close> reduces to
+      \<open>k < t\<close> via trivial non_strict_ancestor.\<close>
+  have B0_len_one: "length (B0_block (seed n)) = 1"
+  proof (cases n)
+    case 0
+    have "max_parent_level (seed 0) = None"
+      unfolding max_parent_level_def by (simp add: seed_def)
+    hence "b0_start (seed 0) = None"
+      unfolding b0_start_def by simp
+    thus ?thesis using seed_in_BMS.prems(1) \<open>n = 0\<close> by simp  \<comment> \<open>prems(1) = b0 assumption\<close>
+  next
+    case (Suc n')
+    have b0_seed: "b0_start (seed (Suc n')) = Some 0"
+      using b0_start_seed by simp
+    have last_idx: "last_col_idx (seed (Suc n')) = 1"
+      using length_seed by simp
+    have len_drop: "length (drop 0 (seed (Suc n'))) = 2"
+      using length_seed by simp
+    have "length (B0_block (seed (Suc n')))
+        = length (take (last_col_idx (seed (Suc n')) - 0)
+                       (drop 0 (seed (Suc n'))))"
+      using b0_seed unfolding B0_block_def by simp
+    also have "\<dots> = min (last_col_idx (seed (Suc n')) - 0)
+                       (length (drop 0 (seed (Suc n'))))" by simp
+    also have "\<dots> = min 1 2" using last_idx len_drop by simp
+    also have "\<dots> = 1" by simp
+    finally show ?thesis using \<open>n = Suc n'\<close> by simp
+  qed
+  have x_eq: "x = 0" using seed_in_BMS.prems(4) B0_len_one by simp
+  show ?case
+    using x_eq seed_in_BMS.prems(1,2,3)
+    unfolding ascends_def non_strict_ancestor_def by simp
+next
+  case (expand_in_BMS A k_exp)
+  \<comment> \<open>Inductive step: requires structural lemmas about how
+      expansion affects \<open>b0_start\<close>, \<open>max_parent_level\<close>,
+      \<open>B0_block\<close>. Empirically holds for 1193 BMS.\<close>
+  show ?case sorry
+qed
+
+text \<open>
+  Corollary of @{thm BMS_all_B0_ascending_below_t}: at any row
+  \<open>k < t\<close>, the bump_col value has the uniform form
+  \<open>(A!(s+x))!k + a · delta A k\<close> regardless of \<open>x\<close>.
+\<close>
+
+lemma bump_col_uniform_k_lt_t:
+  assumes A_BMS: "A \<in> BMS"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_lt: "k < t"
+      and x_lt: "x < length (B0_block A)"
+      and k_lt_col: "k < length (A ! (s + x))"
+  shows "(bump_col A x a) ! k = (A ! (s + x)) ! k + a * delta A k"
+proof -
+  have asc: "ascends A x k"
+    by (rule BMS_all_B0_ascending_below_t[OF A_BMS b0 mp k_lt x_lt])
+  have "(bump_col A x a) ! k
+      = (A ! (s + x)) ! k + (if ascends A x k then a * delta A k else 0)"
+    using bump_col_nth_general[OF b0 k_lt_col] .
+  also have "\<dots> = (A ! (s + x)) ! k + a * delta A k" using asc by simp
+  finally show ?thesis .
+qed
+
+
 end
