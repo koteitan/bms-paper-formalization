@@ -405,6 +405,22 @@ text \<open>
   uses @{thm m_parent_lt}).
 \<close>
 
+text \<open>
+  Unfold lemmas for m_ancestor via m_parent. Avoid unfolding
+  @{thm m_ancestor.simps} inline in proofs — that produces a
+  case-expression goal that triggers slow simp/auto elaboration.
+\<close>
+
+lemma m_anc_via_parent_some:
+  assumes "m_parent A m i = Some p"
+  shows "m_ancestor A m i j \<longleftrightarrow> p = j \<or> m_ancestor A m p j"
+  using assms by simp
+
+lemma m_anc_via_parent_none:
+  assumes "m_parent A m i = None"
+  shows "\<not> m_ancestor A m i j"
+  using assms by simp
+
 lemma m_ancestor_target_lt:
   "m_ancestor A m i j \<Longrightarrow> j < i"
 proof (induct i arbitrary: j rule: nat_less_induct)

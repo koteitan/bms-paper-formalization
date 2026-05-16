@@ -1,115 +1,148 @@
 # タスクリスト
 
-> **メモ**: 完了したタスクは行を残し、状態欄に ✅ を入れる。
-> 各 commit が一次履歴であり、本ファイルは概観用。
-> **メモ**: 番号 (ID) は一度付けたら変更しない。新規追加は末尾に追加し、
-> 完了・削除しても他の ID は再採番しない。
-> **メモ**: 表は **怪しさ (truth が破れるリスク) の高い順** に並べる。
-> 行内容を変更しても並べ替え順序は維持する。
+> **メモ**: 完了は ✅、 未完は 🚨。
+> 各 commit が一次履歴であり、 本ファイルは概観用。
 
 ## 現在のステータス
 
-**コード上の `sorry`: 3 件** (`grep -rn "^  *sorry\| sorry$" isabelle/*.thy`):
-- `seed_descendants_total` の (N ≥ 2 ∧ A, A' 両者 strict descendants) sub-case (BMS_Lex.thy 内) — Hunter Lemma 2.3 closure (N=0/1 case は `seed_{0,1}_descendants_total` で dispatch、 A または A' = seed N の trivial case も dispatch)
-- `lemma_2_5_at_main` の (n ≥ 1 ∧ b0_start = Some s) sub-case (BMS_Ancestry.thy 内) — Hunter Lemma 2.5 (i)–(v) 同時 k-induction (n=0 case は `lemma_2_5_at_n_zero` で proven, b0_start = None case は既存 `lemma_2_5_at_no_b0`)
-- `stable_rep_extend_strict` Suc n の **Some s** sub-case (BMS_WellOrdered.thy:385) — Hunter 2.7.c–d Lemma 2.6 reflection (None case は v0.1.39 中で proven)
+**コード上の sorry: 9 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+- `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
+- `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
+- `lemma_2_5_at_main` Some s case (BMS_Ancestry.thy:~990)
+- `lemma_2_5_ii_clause_step` k=0 0<t (BMS_Ancestry.thy:895)
+- `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:942)
+- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:949)
+- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1008)
+- `m_anc_zero_idx_B_in_block_shift_when_t_zero` helper (BMS_Ancestry.thy:~880)
+- `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
 
-**未完タスク (状態 ≠ ✅): 17 件** — 上の 3 sorry は内部で複数のサブタスクに分解されている (例: `stable_rep_extend_strict` Suc n に対し ID 12,13,14):
+**コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。 `lemma_2_6` は ZF 側で discharge 予定、 他は ordinal/σ-pair の前提として保持。
 
-- ID 3 (`seed_descendants_total` N≥2)
-- IDs 12,13,14 (`stable_rep_extend_strict` の `g` 定義 / `stable_rep` 満たし / β 構成)
-- IDs 5,6,7,8 (`lemma_2_5_at_main` 補題群 / inductive step / 本体 / projection sanity)
-- IDs 16,17,18,19,20,21,22,23,24 (Lemma 2.6 ZF discharge: ROOT 雛形 → 2.6.A→B→C→D→E→F→G → axiomatize 置換)
+## Hunter Lemma 2.5 (i)-(v) 同時 k-induction
 
-**コード上の axiom (sorry とは別カウント):** `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def` の 6 件。 `lemma_2_6` は ZF 側 (ID 16–24) で discharge 予定、 他は ordinal/σ-pair の前提として保持。
+- 🚨 `lemma_2_5_at_main` Some s case (BMS_Ancestry.thy)
+  - ✅ scaffold restructure: `nat_less_induct` on k 化 [ID 45, 62]
+  - ✅ `lemma_2_5_at_n_zero`: n=0 base [ID 44]
+  - ✅ `lemma_2_5_at_no_b0`: b0_start=None case
+  - ✅ `lemma_2_5_v_clause_n_le_one`: n≤1 で (v) vacuous [ID 63]
+  - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous [ID 64]
+  - 🚨 (i) step lemma (未着手、 inline in main)
+  - 🚨 (ii) step lemma (`lemma_2_5_ii_clause_step`)
+    - ✅ scaffold: 8-way case split (n=0/None/i≥j proven) [ID 70]
+    - 🚨 k=0 0<t: uniform bumping (BMS_all_B0 経由)
+    - 🚨 k=0 t=0: helper sorry に factor [ID 74]
+      - ✅ `AEn_nth_idx_B_eq_when_m0_zero`: column equality across blocks [ID 75]
+      - ✅ `elem_AEn_idx_B_eq_when_m0_zero`: 上記 corollary [ID 76]
+      - 🚨 chain induction 本体 (m_parent shift-invariance + strong induct on j)
+        - 注: attempt 失敗 (build 4 分超 elaboration、 `m_ancestor.simps` unfolding 爆発)
+        - 次回 plan: (1) 既存 `m_anc_via_parent_some/none` 経由、 (2) `obtain p` パターン、 (3) helper 単位分割
+    - 🚨 Suc k' k<t: σ-equivariance
+    - 🚨 Suc k' k≥t: no bumping at row k
+  - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
+    - ✅ scaffold: 5-way case split (n=0/None/k≥m_0 proven) [ID 71]
+    - 🚨 k<m_0: (ii) at same k 経由
+  - 🚨 (iv) step lemma (未着手、 inline; ID 66-69 で構造解析済)
+  - 🚨 (v) step lemma (未着手、 inline)
+  - 🚨 (古い) [ID 5] 補助補題群整備 → 現 helpers で代替
+  - 🚨 (古い) [ID 6] `lemma_2_5_at_inductive_step`: 5 clause 独立化 → (ii)(iii) で進行中
+  - 🚨 (古い) [ID 7] `lemma_2_5_at_main_some` 本体
+  - 🚨 (古い) [ID 8] projection sanity check (ID 7 完了後)
 
-**完了済 (v0.1.39 で追加):** `is_array_butlast`, `m_ancestor_strip_subsume` (`m_parent_m_ancestor_strip` full-iff 経由), n=0 case の `stable_rep_extend_strict_zero`。
+### Lemma 2.5 helpers (proven infra)
+- ✅ 9 件 chain/value helpers [ID 73]:
+  - `m_ancestor_target_lt`, `m_ancestor_chain_linear`, `ascends_invariant_along_chain`
+  - `bump_col_uniform_k_lt_t`, `bump_col_no_bump`
+  - `elem_expansion_B_lt_invariant_in_block`, `elem_expansion_B_eq_orig_k_ge_t`
+  - `BMS_all_B0_ascending_below_t` base case
+- ✅ pre-strip / Bs_concat / bump helpers [IDs 46, 49-58, 65]:
+  - `b0_start_lt_last`, `l1_pos_of_some` [46]
+  - `arr_len_expansion_l01`, `pre_strip_nth_G` [49]
+  - `Bs_concat_nth_block`, `pre_strip_nth_B` [50]
+  - `elem_expansion_G_lt_keep`, `elem_expansion_B_lt_keep` [51]
+  - `bump_col_nth_general` [52]
+  - `elem_Bi_block_via_bump_col`, `elem_expansion_B_via_bump` [53]
+  - `delta_pos_of_lt_m0`, `bump_col_lt_step` [54]
+  - `clause_iv_G_case`, `clause_iv_B_n_case` [55]
+  - `elem_expansion_B_lt_step_same_j` [56]
+  - `elem_expansion_B_lt_same_block` [57]
+  - `bump_col_zero_eq_orig`, `elem_expansion_B0_via_orig` [58]
+  - `clause_iv_p_decomposition` [65]
+- ✅ m_0=0 helpers [ID 59]:
+  - `Bi_block_eq_B0_when_m0_zero`
+  - `Bs_concat_when_m0_zero`
+  - `pre_strip_expansion_when_m0_zero`
+- 🚨 `BMS_all_B0_ascending_below_t` inductive case [ID 72]
+  - 経験的に 1193 Hunter BMS で 4824 件 OK、 base case (seed n) proven
+  - inductive case (A'[k_exp]) は expand 後の b0_start/max_parent_level/B0_block の structural lemmas が必要
 
-公理一覧 (BMS_Stability.thy / BMS_WellOrdered.thy):
-- `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`: `<_o` の基本性質
-- `sigma_pair_exists`: `∃α β ∈ sigma_bound. ω_o <_o α <_o β ∧ ∀m. stable_lt m α β` — Hunter の σ-pair 存在条件
-- `lemma_2_6`: Hunter Lemma 2.6 そのまま (ZF 側で discharge 予定)
-- `o_of_def`: `A ∈ BMS ⟹ ∃f. stable_rep A f ∧ (∀i. f i <_o o_of A) ∧ (β-minimality)` — BMS に制限済み (v0.1.28)
+### m_ancestor unfold helpers (proven infra)
+- ✅ `m_anc_via_parent_some`: `m_parent A m i = Some p ⟹ m_anc A m i j ⟷ p = j ∨ m_anc A m p j` (本日追加)
+- ✅ `m_anc_via_parent_none`: `m_parent A m i = None ⟹ ¬ m_anc A m i j` (本日追加)
 
-`stable_rep_extend_strict` は `A ≠ []` を仮定として持つ (`o_of [] = bottom` で `β <_o o_of []` が偽になるため、v0.1.25)。
+## Hunter Cor 2.4 / Lemma 2.3
 
-## タスク (怪しさ高 → 低)
+- 🚨 `seed_descendants_total_strong` N≥2 case [ID 3] (BMS_Lex.thy:1369)
+  - Hunter の論証は (α)(β)(γ) を使うが (α) は strip と矛盾 (bug.md B-1)
+  - strip-faithful な再構成が必要
+- ✅ N=0 dispatch (`seed_0_descendants_total`)
+- ✅ N=1 dispatch (`seed_1_descendants_total`) [v0.1.37]
+- ✅ `seed_expansion_succ_zero` [ID 1]
+- ✅ `seed_chain_le_B_expansion` [ID 2]
+- ✅ `seed_lex_implies_le_B`, `lex_implies_le_B` [ID 4]
+- ✅ `bms_lt_imp_le_expansion` [ID 47]
+- ✅ N=0/1 case 分離で N≥2 narrow [ID 48]
+- ✅ `bms_descendants_lex_total` [ID 60]
 
-| ID | Lemma | タスク | 怪しさ要因 | 状態 | 見込み |
-|---:|---|---|---|---|:---:|
-|  3 | Cor 2.4 backward | `seed_descendants_total` 一般 N: `A ≤_B seed N ∧ A' ≤_B seed N ⟹ A ≤_B A' ∨ A' ≤_B A` (Hunter Lemma 2.3 closure 議論). N=0 ✅, N=1 ✅ (degenerate, chain enumerate) | Hunter の論証は (α)(β)(γ) を使うが (α) は strip と矛盾 (bug.md B-1)。strip-faithful な再構成が必要で、Hunter の loose な議論をそのまま写せない。N≥2 で genuine cross-branch | N≥2 残 | 数h–数日 |
-| 14 | Theorem 2.7 / `stable_rep_extend_strict` | `β` の構成と `g i <_o β` の検証 | `β` の存在は Hunter handwave。`f` の最大値 (= `f(last col)`) を `β` に取れるか具体 indexing が論文未明示 | 13 待ち | 半日 |
-| 13 | Theorem 2.7 / `stable_rep_extend_strict` | `g` が `stable_rep` を満たす証明 (Lemma 2.5 を本質的に使用) | Lemma 2.5 (i)-(v) の convention が Hunter の使い方と完全一致するか要検証。我々の `m_ancestor A m i j` の (j 早い側, i 後) と Hunter の (i 早い, j 後) で reverse が必要 | 12 待ち | 1日 |
-| 12 | Theorem 2.7 / `stable_rep_extend_strict` | `g` の構成定義: G_block には `f` の対応値、B_i (i ≥ 1) には Lemma 2.6 の Y' 反射値 | indexing (B_n と B_{n+1} の対応) と Lemma 2.6 への X, Y の渡し方が Hunter で省略気味 | 5-8 待ち | 数h |
-| 27 | Theorem 2.7 helper | `stable_rep_restrict`: stable_rep が m_ancestor 保存な subset に restrict できる | — | ✅ | — |
-| 28 | Theorem 2.7 helper | `m_ancestor (A[0]) m i j \<Longrightarrow> m_ancestor A m i j` (i,j < arr_len A - 1): A[0] = strip(butlast A) を経由した m_ancestor 保存。strip の row 削減と butlast の col 削減双方を m に関する nested induction で処理 | strip 後の elem out-of-bound 挙動 (`undefined < undefined = False`) と m_ancestor 終結条件の相互作用が厄介。Hunter は "trivially" で済ましているが Isabelle では明示的処理が必要 | ✅ | — |
-| 29 | Theorem 2.7 helper | `m_parent_m_ancestor_butlast`: butlast 経由の m_parent/m_ancestor 同時保存 (`m` × `i` の nested 帰納) | — | ✅ | — |
-| 30 | Theorem 2.7 helper | `nth_same_length_oob`: 同長リスト同士は OOB index でも一致 (`list_induct2`) | — | ✅ | — |
-| 31 | Theorem 2.7 helper | `stable_rep_extend_strict_zero`: n=0 base case (Hunter "$f_0 = f$ restricted to $l_0$") | — | ✅ | — |
-| 32 | Theorem 2.7 helper | `m_ancestor_A0_subsume_A`: butlast preservation ⊕ strip preservation。 `m_parent_m_ancestor_strip` (full iff) を `elem_strip_lt_iff` 経由で証明し、 そこから subsume を導出。 `keep_of`, `keep_of_row_zero`, `length_col_strip`, `elem_strip_lt_keep` の helper を整備 | — | ✅ | — |
-| 33 | Theorem 2.7 helper | `is_array_butlast`: butlast が is_array を保つ。 `?H = height A` (abbreviation) と `by blast` ベースで初期 simp loop を回避。 `in_set_butlastD` で set 包含、 `hd_append2 + append_butlast_last_id` で hd 一致 | — | ✅ | — |
-| 34 | Theorem 2.7 helper | `keep_of`: `strip_zero_rows` の trailing-zero cutoff を `definition` として分離 (`LEAST h. h ≤ height A ∧ ...`)。 `keep_of_le_height`, `keep_of_row_zero` で `Least_le` / `LeastI` 経由の性質を抽出 | — | ✅ | — |
-| 35 | Theorem 2.7 helper | `length_col_arr` (`is_array` 列の長さ = `height A`), `length_col_strip` (strip 列の長さ = `keep_of A`), `strip_zero_rows_eq_map_take` (A ≠ [] のとき strip = map take keep) | — | ✅ | — |
-| 36 | Theorem 2.7 helper | `elem_strip_lt_keep` (m < keep で elem 一致), `elem_strip_lt_iff` (`<` の同値: m < keep は elem 一致 / keep ≤ m < height は 0 = 0 / m ≥ height は OOB 同値) | — | ✅ | — |
-| 37 | Theorem 2.7 helper | `m_parent_m_ancestor_strip` (full iff、 m × i nested induction、 butlast 版と並行構造) | — | ✅ | — |
-| 38 | Theorem 2.7 helper | `Bs_concat_Suc`: `Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)` を名前付き lemma 化 (元は inline have が 3 箇所) | — | ✅ | — |
-| 39 | Theorem 2.7 helper | `arr_len_expansion`: `A ≠ [] ⟹ arr_len (A[n]) = length (G_block A) + Suc n * length (B0_block A)` (`length_strip_zero_rows` + `length_Bs_concat`) | — | ✅ | — |
-| 40 | Theorem 2.7 helper | `arr_len_expansion_Suc`: `arr_len (A[Suc n]) = arr_len (A[n]) + length (B0_block A)` (39 から導出) | — | ✅ | — |
-| 41 | Theorem 2.7 / `stable_rep_extend_strict` | `cases n` → `induct n` に refactor して Suc n' で IH (g_n, β_n) を `Suc.hyps` から explicit obtain | — | ✅ | — |
-| 42 | Theorem 2.7 / `stable_rep_extend_strict` Suc n' | b0_start A = None case を分離: `expansion_no_b0_eq_zero` で `A[Suc n'] = A[n']` を導出し、 IH をそのまま流用。 残 sorry は `b0_start A = Some s` 内部のみ | — | ✅ | — |
-| 43 | Theorem 2.7 / `stable_rep_extend_strict` Suc n' Some s | Hunter 反射構築本体: Lemma 2.6 適用での X, Y 具体化 / sigma_bound 所属検証 / g_{Suc n'} 定義 / stable_rep 検証 (Lemma 2.5 経由) / β 選定 | sorry の所在が None case 除去で集約。 sigma_bound 所属の axiom 拡張が必要かもしれない | sorry | 数 session |
-| 44 | Lemma 2.5 helper | `lemma_2_5_at_n_zero`: n=0 case (b0_start に依らず)。 (i)(ii) は両辺同一、 (iii)(v) は vacuous、 (iv) は m_parent 値を G_block / B_0 に分類 | — | ✅ | — |
-| 45 | Lemma 2.5 main restructure | `lemma_2_5_at_main` を 3 case: n=0 / Suc n' & None / Suc n' & Some s に分解。 sorry は最後の 1 case のみ | — | ✅ | — |
-| 46 | Theorem 2.7 helper | `b0_start_lt_last`: `b0_start A = Some s ⟹ s < last_col_idx A` (m_parent_lt 経由)、 `l1_pos_of_some`: `A ≠ [] ∧ b0_start A = Some s ⟹ 0 < l1 A` | — | ✅ | — |
-| 47 | Cor 2.4 helper | `bms_lt_imp_le_expansion`: `A <_B B ⟹ ∃n. A ≤_B expansion B n` (bms_le.cases で bms_le_refl 枝を排除)。 strict descendant をひと expansion step に decompose する基礎 | — | ✅ | — |
-| 48 | Cor 2.4 / `seed_descendants_total` 残 case | (N ≥ 2) sub-case を分離: N=0/1 case を `seed_{0,1}_descendants_total` で dispatch、 sorry を N ≥ 2 のみに更に narrow | — | ✅ | — |
-| 49 | Lemma 2.5 helper | `arr_len_expansion_l01`: `A ≠ [] ⟹ arr_len (A[n]) = l0 A + Suc n * l1 A` (`arr_len_expansion` の l0/l1 projection)、 `pre_strip_nth_G`: `i < l0 ⟹ pre-strip A[n] ! i = G_block A ! i` | — | ✅ | — |
-| 50 | Lemma 2.5 helper | `Bs_concat_nth_block`: `t ≤ n ∧ j < l1 ⟹ Bs_concat A n ! (t * l1 + j) = Bi_block A t ! j` (induction on n + `Bs_concat_Suc` + `length_Bs_concat`)、 `pre_strip_nth_B`: `t ≤ n ∧ j < l1 ⟹ pre-strip A[n] ! (idx_B_in_expansion A t j) = Bi_block A t ! j` | — | ✅ | — |
-| 51 | Lemma 2.5 helper | `elem_expansion_G_lt_keep`: `i < l0 ∧ m < keep_of pre-strip ⟹ elem (A[n]) i m = elem (G_block A) i m`、 `elem_expansion_B_lt_keep`: `t ≤ n ∧ j < l1 ∧ m < keep ⟹ elem (A[n]) (idx_B_in_expansion A t j) m = elem (Bi_block A t) j m`。 `elem_strip_lt_keep` + `pre_strip_nth_G/B` の組合せ | — | ✅ | — |
-| 52 | Lemma 2.5 helper | `bump_col_nth_general`: `b0_start A = Some s ∧ m < length (A!(s+d)) ⟹ (bump_col A d i) ! m = (A!(s+d))!m + (if ascends A d m then i * delta A m else 0)`。 既存 `bump_col_value_*` の汎化版 | — | ✅ | — |
-| 53 | Lemma 2.5 helper | `elem_Bi_block_via_bump_col`: `j < l1 ⟹ elem (Bi_block A t) j m = (bump_col A j t) ! m`、 `elem_expansion_B_via_bump`: 上記 + `elem_expansion_B_lt_keep` の合成で `elem (A[n]) (idx_B t j) m = (bump_col A j t) ! m` | — | ✅ | — |
-| 54 | Lemma 2.5 helper | `delta_pos_of_lt_m0`: `b0_start = Some s ∧ max_parent_level = Some m_0 ∧ m < m_0 ⟹ 0 < delta A m` (`m_ancestor_mono` + `m_ancestor_elem_lt`)、 `bump_col_lt_step`: `ascends ∧ 0 < delta ∧ i < i' ⟹ (bump_col A d i) ! k < (bump_col A d i') ! k` | — | ✅ | — |
-| 55 | Lemma 2.5 clause (iv) helper | `clause_iv_G_case`: `p < l0 ⟹ ∃j<l0. p = idx_G A j` (trivial via `idx_G_def`)、 `clause_iv_B_n_case`: `l0 + n*l1 ≤ p < l0 + (n+1)*l1 ⟹ ∃j<l1. p = idx_B_in_expansion A n j` (algebraic) | — | ✅ | — |
-| 56 | Lemma 2.5 elem comparison | `elem_expansion_B_lt_step_same_j`: same column index j, different block t < t' (≤ n) で ascending 行 k に対し `elem (A[n]) (idx_B t j) k < elem (A[n]) (idx_B t' j) k`。 `elem_expansion_B_via_bump` + `bump_col_lt_step` + `delta_pos_of_lt_m0` の合成 | — | ✅ | — |
-| 57 | Lemma 2.5 elem comparison | `elem_expansion_B_lt_same_block`: same block t, different column indices j, i in B_t (両 ascending at k)。 base 不等式 `(A!(s+j))!k < (A!(s+i))!k` を `elem (A[n]) (idx_B t j) k < elem (A[n]) (idx_B t i) k` に propagate (両 bump = +t*delta) | — | ✅ | — |
-| 58 | Lemma 2.5 helper | `bump_col_zero_eq_orig`: `b0_start = Some s ∧ k < length (A!(s+d)) ⟹ (bump_col A d 0) ! k = (A!(s+d)) ! k` (i=0 で bump 量 0)、 `elem_expansion_B0_via_orig`: `elem (A[n]) (idx_B 0 j) k = elem A (s+j) k` (B_0 列は元の A 列に直結) | — | ✅ | — |
-| 59 | m_0 = 0 helper (Lemma 2.5 sub) | `Bi_block_eq_B0_when_m0_zero`: max_parent_level = Some 0 で全 Bi_block が B0_block に collapse、 `Bs_concat_when_m0_zero`: Bs_concat A n = concat (replicate (Suc n) (B0_block A))、 `pre_strip_expansion_when_m0_zero`: pre-strip A[n] の explicit 形 | — | ✅ | — |
-| 60 | Cor 2.4 helper (sub) | `bms_descendants_lex_total`: descendants of any BMS array は lex-total、 `descendant_of_seed_lex_le`: 任意 descendant of seed N は = or <_lex seed N (bms_le_implies_lex 経由) | — | ✅ | — |
-| 61 | Theorem 2.7 helper | `stable_rep_imp_strict_mono` + `stable_rep_imp_ancestor_stable`: stable_rep_def の 2 component (strict mono と m-ancestor stable_lt 保存) の projection | — | ✅ | — |
-| 62 | Lemma 2.5 main scaffold | `lemma_2_5_at_main` Some s case を `nat_less_induct` on k で書き直し、 IH at k' < k を explicit に取り出す。 sorry の所在を inner inductive step (Hunter の 5 clause 順次 (ii)→(iii)→(iv)→(i)→(v)) に集約 | — | ✅ | — |
-| 63 | Lemma 2.5 vacuous-clause helper | `lemma_2_5_v_clause_n_le_one`: n ≤ 1 で clause (v) は vacuous (`n\<^sub>0 < n\<^sub>1 ∧ n\<^sub>1 < n` が n_1=0 を強制し n_0<0 で矛盾)。 `lemma_2_5_at_main` Some s case の n=1 dispatch で (v) を即落とすため | — | ✅ | — |
-| 64 | Lemma 2.5 vacuous-clause helper | `lemma_2_5_iii_clause_when_k_ge_m0`: k ≥ m_0 で clause (iii) は vacuous (`k < m_0` 前提が偽)。 `lemma_2_5_at_main` Some s case の inductive step が k ≥ m_0 に達した時に (iii) を即落とすため | — | ✅ | — |
-| 65 | Lemma 2.5 clause (iv) helper | `clause_iv_p_decomposition`: `p < l0 + (Suc n) * l1` ⟹ `p < l0` or `∃ t≤n j<l1. p = idx_B_in_expansion A t j` (`div_mult_mod_eq` + `mult_le_mono1`)。 既存 `clause_iv_G_case` (p∈G) + `clause_iv_B_n_case` (p∈B_n) を補完し、 中間ブロック B_t (0≤t<n) の case を出して clause (iv) 本論で矛盾を引く foundation | — | ✅ | — |
-| 66 | (b) 不明検証 / 構造解析 | hand-compute で `(seed 5)[3][2]` の l1 = 3 を確認: BMS arrays は `l1 ≥ 2` を持てる (素朴な `l1 ≤ 1` 仮説は false)。 同 array で row m (m < m_0 = 3) は B_0 内で strictly increasing ([1,2,3]) だが row m_0 は plateau ([1,2,2])。 新 conjecture: `A ∈ BMS ∧ b0_start=Some s ∧ max_parent_level=Some m_0 ⟹ ∀m<m_0 ∀j<j'<l1. elem A (s+j) m < elem A (s+j') m`。 これが真なら clause (iv) at k<m_0 で B_n candidate 常存在 ⟹ m_parent は B_n に居る ⟹ clause (iv) holds for k<m_0 | (b) 不明、 要 induction on BMS | 進行中 | 数h |
-| 67 | (b) 反証 / (b') 候補 | yaBMS の expand 出力 + 私の strip で生成した Hunter BMS 3284+219+237 = 3740 件で pairwise strict mono (b) を全件チェック。 反例: `(0,0)(1,1)(1,1)(1,1)` ∈ Hunter BMS (`(0,0,0)(1,1,1) → [2] → (0,0)(1,1)(2,2) → [1] → (0,0)(1,1)(2,1) → ... → (0,0)(1,1)(2,0)[2]` 経由 depth 5)、 B_0 row 0 = `(0,1,1)` で j=1,j'=2 plateau。 ⟹ (b) は **FALSE**。 弱形 (b'): `S[r,y] < S[r+j,y] for 0<j<l, y<t` を同 3740 件で全件 OK、 反例 0。 (b') が clause (iv) の closure に十分 (B_n[0] が strict less candidate を提供) | (b)=false, (b')=likely true、 (b') の formal proof は induction on BMS が必要 | 経験検証完了 | 解析済 |
-| 68 | Hunter clause (iv) 攻撃計画 | (b') を Isabelle で formal lemma 化 (sorry 付き)、 これを使って clause (iv) at k<t を内部 dispatch、 残りの k≥t case は別途。 (b') 証明は seed 基本 case vacuous、 induct case A[k] で structural lemmas (b0_start, max_parent_level の expand 後 form) が必要 | 計画段階 | 取消 (ID 69 参照) | — |
-| 69 | (b') 反証 / clause (iv) 攻略再考 | user 提示の反例 `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` (yaBMS standard=1) で (b') 反証。 t=2, r=0, l=3、 y=1, x=2 で S[r,y]=0=S[r+x,y] plateau。 ただし対応 M[1] = (0,0,0)(1,1,1)(2,0,0)(1,1,0)(2,2,1)(3,0,0) で clause (iv) 自体は成立 (B_n 最右列 (3,0,0) の row y=1,2 で m_parent=None なので vacuous 成立)。 結論: (iv) の sufficient condition は BMS の単純な structural property に分解できない (Hunter 同時 induction (ii)→(iii)→(iv)→(i)→(v) at k + IH at k'<k の interlock が本質) | (b') も FALSE | 結論済 | 解析完了 |
-| 70 | (ii) step lemma scaffolding | `lemma_2_5_ii_clause_step` 8-way case split: n=0/None/i≥j proven、 i<j で k=0 / Suc k' に split、 各々で max_parent_level + k vs t に split。 残 4 substantive sorries (k=0 t=0、 k=0 0<t、 Suc k' k≥t、 Suc k' k<t) で chain induction が必要 | scaffold 完成、 内部 substantive sorries 残 | scaffold | — |
-| 71 | (iii) step lemma scaffolding | `lemma_2_5_iii_clause_step` 5-way case split: n=0/None/(Some s, max_None)/(Some s, k≥m_0) proven、 (Some s, k<m_0) substantive sorry。 (ii) at same k を仮定として使う構造 | scaffold 完成、 1 substantive sorry | scaffold | — |
-| 72 | BMS_all_B0_ascending_below_t 構造的 invariant | 経験的に 1193 Hunter BMS で全 4824 件 OK の conjecture: 「∀ k<t, ∀ x<l1. ascends A x k」。 base case (seed n、 l1=1 で vacuous) proven、 inductive case (A'[k_exp]) sorry。 これが (ii)(iii) 全体の鍵となる構造的事実 | base proven、 inductive sorry | 進行中 | 数 session |
-| 73 | proven helpers (Lemma 2.5 攻撃用) | 9 件の helper を proven: m_ancestor_target_lt, m_ancestor_chain_linear, ascends_invariant_along_chain (chain 構造)、 bump_col_uniform_k_lt_t (cond)、 bump_col_no_bump、 elem_expansion_B_lt_invariant_in_block、 elem_expansion_B_eq_orig_k_ge_t (elem 値)、 BMS_all_B0_ascending base case | — | ✅ | — |
-| 74 | (ii) k=0 t=0 を block-shift helper に factor | `m_anc_zero_idx_B_in_block_shift_when_t_zero` helper sorry を追加、 (ii) k=0 t=0 sorry を helper 適用で 1 行に置換。 helper は max_parent_level=Some 0 (no bumping) で m_anc at row 0 が block shift 不変であることを主張。 sorry 数は 8 で変わらないが、 chain induction 本体が独立 lemma として切り出された。 proof は (1) elem invariance via existing helper、 (2) m_parent 内 in-block vs leaves-block 場合分け、 (3) strong induction on j で chain 構築 | scaffold restructured、 helper sorry 残 | scaffold | 数 session |
-| 75 | AEn_nth_idx_B_eq_when_m0_zero proven | t=0 (no bumping) で `(A[n]) ! (idx_B_in_expansion A a x) = (A[n]) ! (idx_B_in_expansion A b x)` (column equality across blocks)。 既存 Bi_block_eq_B0_when_m0_zero + pre_strip_nth_B + strip_zero_rows_eq_map_take の合成。 chain induction で「row k での elem 値が c に依らない」 「m_parent 候補が c に依らず同じ B0 内 index に landing」 を使う鍵となる infra | — | ✅ | — |
-| 76 | elem_AEn_idx_B_eq_when_m0_zero proven (corollary) | 75 の corollary: 全 row m で elem 値が c-不変。 elem_def + 75 で 3 行 proof | — | ✅ | — |
-| 19 | Lemma 2.6 / Phase 3 ZF | 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 Theorem 1.8) | 外部依存 (Kranakis 論文の前提と命題が Paulson の `Constructible` 内で言明可能か未確認) | 18 待ち | 数日 |
-|  5 | Lemma 2.5 | 補助補題群整備 (m_parent / m_ancestor が strip / bumping / k-祖先と相互作用する性質) | Hunter は "tedious but straightforward" と書くが、補題リストを論文に書かない。手作業で発見・列挙する必要 | 未着手 | 不明 |
-|  6 | Lemma 2.5 | `lemma_2_5_at_inductive_step`: IH at `k' < k` から 5 clause を順に独立化 | (iv) と (v) が同一 k で相互依存 (BMS_Ancestry.thy のコメント参照)。Hunter の順序 (ii)→(iii)→(iv)→(i)→(v) を我々は (iv,v 同時)→(i,ii,iii) に変更したが、それで証明が通るかは未確認 | 5 待ち | 数h+ |
-|  7 | Lemma 2.5 | `lemma_2_5_at_main_some` 本体: `nat_less_induct` で 6 を組み立て | 6 が完成すれば直接的だが、誘導の cong 関係に subtle なミスマッチが出やすい | 6 待ち | 1h |
-| 22 | Lemma 2.6 / Phase 3 ZF | 2.6.F: ψ ∧ φ の `L_β` から `L_α` への反射 | Paulson の reflection theorem を ψ∧φ の具体形に当てはめる必要。論文では暗黙 | 21 待ち | 1日 |
-| 23 | Lemma 2.6 / Phase 3 ZF | 2.6.G: `L_α` 内の証拠から `Y'` と全単射 `f` を構成 | 反射した formula の witness 抽出を全単射として整理する箇所、bijection を Isabelle で具体化する手間あり | 22 待ち | 1日 |
-| 20 | Lemma 2.6 / Phase 3 ZF | 2.6.D: 有限 Σ_{n+1} 連言の Σ_{n+1} 性 | Σ_n hierarchy の closure は Paulson 内で確立済みだが、Σ_{n+1} 形式の boilerplate が要る | 19 待ち | 1日 |
-| 21 | Lemma 2.6 / Phase 3 ZF | 2.6.E: Σ_{n+1} 存在閉包 | 同上 (20 と同質) | 20 待ち | 1日 |
-| 18 | Lemma 2.6 / Phase 3 ZF | 2.6.B: `φ_1(η,ξ,k) := η <_k ξ` が Σ_{n+1} | 17 上の組合せ。Hunter は構造的に書くが Isabelle/ZF での Σ_n 階層内符号化に手間 | 17 待ち | 1日 |
-|  8 | Lemma 2.5 | 既存 `lemma_2_5_i` 〜 `lemma_2_5_v` projection が新証明と互換に動作することを確認 | 7 完成後の sanity check。怪しさ低 | 7 待ち | 30m |
-| 17 | Lemma 2.6 / Phase 3 ZF | 2.6.A: `φ_0(η,ξ) := η ∈ ξ` が Σ_0 | 標準事実、Paulson 内に既存の可能性 | 16 待ち | 1日 |
-| 16 | Lemma 2.6 / Phase 3 ZF | Paulson `Constructible` ライブラリ import | 怪しさ低 (作業量のみ) | 15 待ち | 1日 |
-| 24 | Lemma 2.6 / Phase 3 ZF | HOL 側の `axiomatize lemma_2_6` を ZF 側からの transfer に置換 | 23 完成後の機械的 transfer | 23 待ち | 半日 |
-|  1 | Cor 2.4 backward | `seed_expansion_succ_zero`: `(seed (Suc n)[Suc k])[0] = seed (Suc n)[k]` (Hunter p.4 "A[0] = butlast A" の strip-faithful 版; bug.md B-1) | — | ✅ | — |
-|  2 | Cor 2.4 backward | `seed_chain_le_B_expansion`: `k ≤ k' ⟹ seed (Suc n)[k] ≤_B seed (Suc n)[k']` (1 から導出) | — | ✅ | — |
-|  4 | Cor 2.4 backward | `seed_lex_implies_le_B` (3 + Cor 2.2 + arr_lex_irrefl/trans で導出); `lex_implies_le_B` (`bms_pair_below_seed` + 3 経由で導出済み) | — | ✅ | — |
-|  9 | Theorem 2.7 / `o_on_seed` | `Ord_t` の axiom 拡張: `sigma_pair_exists` (Hunter σ-pair 存在) | — | ✅ | — |
-| 10 | Theorem 2.7 / `o_on_seed` | seed n の 2 列に対し `f 0 = α, f 1 = β` で `stable_rep` を構築 | — | ✅ | — |
-| 11 | Theorem 2.7 / `o_on_seed` | `m_ancestor (seed n) m 1 0` の `m ≥ n` ケース補強 | — | ✅ | — |
-| 15 | Lemma 2.6 / Phase 3 ZF | `isabelle_zf/` ディレクトリ・`ROOT` 雛形 | — | ✅ | — |
-| 25 | Soundness audit | `sigma_pair_exists` を Hunter の σ-pair 条件に強化 (v0.1.27) | — | ✅ | — |
-| 26 | Soundness audit | `o_of_def` 公理を `A ∈ BMS` に制限 (v0.1.28) | — | ✅ | — |
+### clause (iv) 攻撃失敗 history (削除せず保存)
+- ✅ [ID 66] (b) conjecture 構造解析 (`(seed 5)[3][2]` で l1≥2 確認)
+- ✅ [ID 67] (b) 反証: yaBMS + strip で 3740 件 BFS、 反例 `(0,0)(1,1)(1,1)(1,1)`
+- ✅ [ID 68] 計画 (取消)
+- ✅ [ID 69] (b') 反証: user 提示反例 `(0,0,0)(1,1,1)(2,0,0)(1,1,1)`
+- **結論**: (iv) の sufficient condition は単純な structural property に分解不可、 Hunter 同時 induction の interlock が本質
+
+## Hunter Theorem 2.7 / stable_rep_extend_strict
+
+- 🚨 `stable_rep_extend_strict` Suc n' Some s case (BMS_WellOrdered.thy:410)
+  - 🚨 [ID 12] g 構成: G_block には f、 B_i (i≥1) には Lemma 2.6 の Y' 反射値
+  - 🚨 [ID 13] g が stable_rep を満たす証明 (Lemma 2.5 本質的使用)
+  - 🚨 [ID 14] β 構成 (Hunter handwave、 f の最大値を β に取る具体 indexing が論文未明示)
+  - 🚨 [ID 43] 反射構築本体: Lemma 2.6 適用での X, Y 具体化 / sigma_bound 所属検証 / g_{Suc n'} 定義 / stable_rep 検証 / β 選定
+- ✅ `stable_rep_extend_strict_zero`: n=0 base [ID 31]
+- ✅ induct n refactor [ID 41]
+- ✅ b0_start=None case 分離 [ID 42]
+- ✅ `stable_rep_imp_strict_mono` / `stable_rep_imp_ancestor_stable` [ID 61]
+- ✅ `stable_rep_restrict` [ID 27]
+- ✅ `m_ancestor (A[0]) m i j ⟹ m_ancestor A m i j` [ID 28]
+- ✅ `m_parent_m_ancestor_butlast` [ID 29]
+- ✅ `nth_same_length_oob` [ID 30]
+- ✅ `m_ancestor_A0_subsume_A` [ID 32]
+- ✅ `is_array_butlast` [ID 33]
+- ✅ `keep_of` 分離 (`keep_of_le_height`, `keep_of_row_zero`) [ID 34]
+- ✅ `length_col_arr` / `length_col_strip` / `strip_zero_rows_eq_map_take` [ID 35]
+- ✅ `elem_strip_lt_keep` / `elem_strip_lt_iff` [ID 36]
+- ✅ `m_parent_m_ancestor_strip` (full iff) [ID 37]
+- ✅ `Bs_concat_Suc` [ID 38]
+- ✅ `arr_len_expansion` [ID 39]
+- ✅ `arr_len_expansion_Suc` [ID 40]
+- ✅ o_on_seed 一式 [IDs 9, 10, 11]:
+  - `sigma_pair_exists` axiom 拡張
+  - seed n 2 列に対する stable_rep 構築
+  - `m_ancestor (seed n) m 1 0` の m≥n 補強
+
+## Hunter Lemma 2.6 / Phase 3 ZF discharge
+
+- 🚨 [ID 24] HOL 側の `axiomatize lemma_2_6` を ZF 側からの transfer に置換
+- 🚨 [ID 16] Paulson `Constructible` ライブラリ import
+- 🚨 [ID 17] 2.6.A: `φ_0(η,ξ) := η ∈ ξ` が Σ_0
+- 🚨 [ID 18] 2.6.B: `φ_1(η,ξ,k) := η <_k ξ` が Σ_{n+1}
+- 🚨 [ID 19] 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 Theorem 1.8 依存)
+- 🚨 [ID 20] 2.6.D: 有限 Σ_{n+1} 連言の Σ_{n+1} 性
+- 🚨 [ID 21] 2.6.E: Σ_{n+1} 存在閉包
+- 🚨 [ID 22] 2.6.F: ψ ∧ φ の `L_β` から `L_α` への反射
+- 🚨 [ID 23] 2.6.G: `L_α` 内の証拠から `Y'` と全単射 `f` を構成
+- ✅ [ID 15] `isabelle_zf/` ディレクトリ + ROOT 雛形
+
+## Soundness audit
+
+- ✅ [ID 25] `sigma_pair_exists` を Hunter の σ-pair 条件に強化 [v0.1.27]
+- ✅ [ID 26] `o_of_def` 公理を `A ∈ BMS` に制限 [v0.1.28]
