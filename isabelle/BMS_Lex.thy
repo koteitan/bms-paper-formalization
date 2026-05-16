@@ -1407,6 +1407,19 @@ lemma bms_descendants_lex_total:
   using arr_lex_total by blast
 
 text \<open>
+  Every descendant of \<open>seed N\<close> is \<open>=\<close> or \<open><\<^sub>l\<^sub>e\<^sub>x\<close>
+  \<open>seed N\<close> (via @{thm bms_le_implies_lex} applied at
+  \<open>seed N \<in> BMS\<close>). Helper purpose: provides the lex-anchor
+  characterization for the k' \<ge> 2 sub-case of
+  \<open>seed_descendants_total_strong\<close>.
+\<close>
+
+lemma descendant_of_seed_lex_le:
+  assumes "B \<le>\<^sub>B seed N"
+  shows "B = seed N \<or> B <\<^sub>l\<^sub>e\<^sub>x seed N"
+  using bms_le_implies_lex[OF seed_in_BMS assms] .
+
+text \<open>
   \<open>seed_lex_implies_le_B\<close> reduces to totality via
   @{thm bms_le_implies_lex}: if \<open>A' \<le>\<^sub>B A\<close>, then either
   \<open>A' = A\<close> or \<open>A' <\<^sub>l\<^sub>e\<^sub>x A\<close>, both contradicting
