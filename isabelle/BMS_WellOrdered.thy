@@ -64,6 +64,18 @@ definition stable_rep :: "array \<Rightarrow> (nat \<Rightarrow> Ord_t) \<Righta
         m_ancestor A m i j \<longrightarrow> stable_lt m (f j) (f i))"
 
 text \<open>
+  Strict-mono projection from @{const stable_rep}.
+  Helper purpose: small projection useful when reasoning about
+  \<open>f i <\<^sub>o f j\<close> in any of the 3 sorry sub-cases.
+\<close>
+
+lemma stable_rep_imp_strict_mono:
+  assumes "stable_rep A f"
+      and "i < arr_len A" and "j < arr_len A" and "i < j"
+  shows "f i <\<^sub>o f j"
+  using assms unfolding stable_rep_def by blast
+
+text \<open>
   Restriction principle: if \<open>B\<close> has length \<open>\<le>\<close> \<open>A\<close>'s and
   m-ancestry in \<open>B\<close> on indices \<open>< arr_len B\<close> implies
   m-ancestry in \<open>A\<close> (same indices, same level), then a stable
