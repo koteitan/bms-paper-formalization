@@ -1424,34 +1424,61 @@ next
   qed
 qed
 
+text \<open>
+  Step lemma stubs for clauses (iv), (i), (v) per Hunter's
+  dependency order (ii) \<rightarrow> (iii) \<rightarrow> (iv) \<rightarrow> (i) \<rightarrow> (v).
+  Substantive proofs deferred; the assembly into
+  \<open>lemma_2_5_at_main\<close> below uses them mechanically.
+\<close>
+
+lemma lemma_2_5_iv_clause_step:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+  shows "lemma_2_5_iv_clause A n k"
+  sorry
+
+lemma lemma_2_5_i_clause_step:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+  shows "lemma_2_5_i_clause A n k"
+  sorry
+
+lemma lemma_2_5_v_clause_step:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_i_at_k: "lemma_2_5_i_clause A n k"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+  shows "lemma_2_5_v_clause A n k"
+  sorry
+
 lemma lemma_2_5_at_main:
   fixes A :: array
-  assumes "A \<in> BMS" "A \<noteq> []"
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
   shows "lemma_2_5_at A n k"
-proof (cases n)
-  case 0
-  show ?thesis using lemma_2_5_at_n_zero[OF assms(2)] \<open>n = 0\<close> by simp
-next
-  case (Suc n')
-  show ?thesis
-  proof (cases "b0_start A")
-    case None
-    show ?thesis by (rule lemma_2_5_at_no_b0[OF assms(2) None])
-  next
-    case (Some s)
-    \<comment> \<open>Hunter's simultaneous induction on \<open>k\<close> in the substantive case
-        \<open>n \<ge> 1 \<and> b0_start A = Some s\<close>. Structured with explicit
-        \<open>nat_less_induct\<close> on \<open>k\<close> so that the IH at \<open>k' < k\<close>
-        is available for clauses (i)--(v).\<close>
-    show ?thesis using assms
-    proof (induct k rule: nat_less_induct)
-      case (1 k)
-      \<comment> \<open>IH: \<open>\<forall> k' < k. lemma_2_5_at A n k'\<close>; conclude
-          \<open>lemma_2_5_at A n k\<close> by Hunter's order (ii) (iii) (iv)
-          (i) (v) within the inductive step.\<close>
-      show ?case sorry
-    qed
-  qed
+proof (induct k rule: nat_less_induct)
+  case (1 k)
+  have IH: "\<forall>k'<k. lemma_2_5_at A n k'" using "1.hyps" by blast
+  have ii: "lemma_2_5_ii_clause A n k"
+    by (rule lemma_2_5_ii_clause_step[OF A_BMS A_ne IH])
+  have iii: "lemma_2_5_iii_clause A n k"
+    by (rule lemma_2_5_iii_clause_step[OF A_BMS A_ne IH ii])
+  have iv: "lemma_2_5_iv_clause A n k"
+    by (rule lemma_2_5_iv_clause_step[OF A_BMS A_ne IH ii iii])
+  have i: "lemma_2_5_i_clause A n k"
+    by (rule lemma_2_5_i_clause_step[OF A_BMS A_ne IH ii iii iv])
+  have v: "lemma_2_5_v_clause A n k"
+    by (rule lemma_2_5_v_clause_step[OF A_BMS A_ne IH i ii iii iv])
+  show ?case unfolding lemma_2_5_at_def using i ii iii iv v by blast
 qed
 
 

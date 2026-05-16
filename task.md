@@ -5,27 +5,31 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 8 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**コード上の sorry: 10 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
 - `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `lemma_2_5_at_main` Some s case (BMS_Ancestry.thy:1452)
 - `lemma_2_5_ii_clause_step` k=0 0<t (BMS_Ancestry.thy:1308)
 - `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:1355)
 - `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:1362)
 - `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1421)
+- `lemma_2_5_iv_clause_step` 全体 (BMS_Ancestry.thy:1441) — Hunter (iv): m_parent image structure
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:1451) — Hunter (i): G-column target
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:1462) — Hunter (v): block n_1 ↔ n_1+1 transition
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
+
+注: `lemma_2_5_at_main` は 5 step lemma 上で assembly proven (sorry 化解除)。 projection lemma_2_5_{i,ii,iii,iv,v,iv_and_v} はすべて lemma_2_5_at_main 経由で proper proof。
 
 **コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。 `lemma_2_6` は ZF 側で discharge 予定、 他は ordinal/σ-pair の前提として保持。
 
 ## Hunter Lemma 2.5 (i)-(v) 同時 k-induction
 
-- 🚨 `lemma_2_5_at_main` Some s case (BMS_Ancestry.thy)
+- ✅ `lemma_2_5_at_main` assembly (5 step lemma 経由、 sorry 化解除)
   - ✅ scaffold restructure: `nat_less_induct` on k 化 [ID 45, 62]
   - ✅ `lemma_2_5_at_n_zero`: n=0 base [ID 44]
   - ✅ `lemma_2_5_at_no_b0`: b0_start=None case
   - ✅ `lemma_2_5_v_clause_n_le_one`: n≤1 で (v) vacuous [ID 63]
   - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous [ID 64]
-  - 🚨 (i) step lemma (未着手、 inline in main)
+  - 🚨 (i) step lemma (`lemma_2_5_i_clause_step` stub、 sorry)
   - 🚨 (ii) step lemma (`lemma_2_5_ii_clause_step`)
     - ✅ scaffold: 8-way case split (n=0/None/i≥j proven) [ID 70]
     - 🚨 k=0 0<t: uniform bumping (BMS_all_B0 経由)
@@ -41,8 +45,8 @@
   - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
     - ✅ scaffold: 5-way case split (n=0/None/k≥m_0 proven) [ID 71]
     - 🚨 k<m_0: (ii) at same k 経由
-  - 🚨 (iv) step lemma (未着手、 inline; ID 66-69 で構造解析済)
-  - 🚨 (v) step lemma (未着手、 inline)
+  - 🚨 (iv) step lemma (`lemma_2_5_iv_clause_step` stub、 sorry; ID 66-69 で構造解析済)
+  - 🚨 (v) step lemma (`lemma_2_5_v_clause_step` stub、 sorry)
   - 🚨 (古い) [ID 5] 補助補題群整備 → 現 helpers で代替
   - 🚨 (古い) [ID 6] `lemma_2_5_at_inductive_step`: 5 clause 独立化 → (ii)(iii) で進行中
   - 🚨 (古い) [ID 7] `lemma_2_5_at_main_some` 本体
