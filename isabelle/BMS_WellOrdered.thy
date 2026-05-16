@@ -387,17 +387,18 @@ next
       using \<beta>_n_lt g_n_rep g_n_lt eq by metis
   next
     case (Some s)
-    \<comment> \<open>Hunter's 2.7.c--d: given the level-\<open>n'\<close> stable rep
-        \<open>g_n\<close> with bound \<open>\<beta>_n <\<^sub>o o_of A\<close>, apply Lemma 2.6
-        to construct \<open>g_{Suc n'}\<close> for \<open>A[Suc n']\<close>.
-        The columns of \<open>A[Suc n']\<close> decompose as
-        \<open>G_block @ Bs_concat A (Suc n')\<close> followed by strip;
-        reuse \<open>g_n\<close>-values on the columns that already appear
-        in \<open>A[n']\<close>, and define new values on the freshly added
-        \<open>Bi_block A (Suc n')\<close> columns via Lemma 2.6's
-        bijection.  Lemma 2.5 ensures m-ancestor
-        preservation between levels.\<close>
-    show ?thesis sorry
+    \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6 + Lemma 2.5.\<close>
+    show ?thesis
+    proof (cases n')
+      case 0
+      \<comment> \<open>\<open>n = 1\<close>: arr_len (A[1]) = l0 + 2*l1; construct g
+          for the 2-block expansion (B_0, B_1).\<close>
+      show ?thesis sorry
+    next
+      case (Suc n'')
+      \<comment> \<open>\<open>n \<ge> 2\<close>: full Hunter reflection construction.\<close>
+      show ?thesis sorry
+    qed
   qed
 qed
 
