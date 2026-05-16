@@ -5,15 +5,14 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 9 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**コード上の sorry: 8 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
 - `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `lemma_2_5_at_main` Some s case (BMS_Ancestry.thy:~990)
-- `lemma_2_5_ii_clause_step` k=0 0<t (BMS_Ancestry.thy:895)
-- `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:942)
-- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:949)
-- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1008)
-- `m_anc_zero_idx_B_in_block_shift_when_t_zero` helper (BMS_Ancestry.thy:~880)
+- `lemma_2_5_at_main` Some s case (BMS_Ancestry.thy:1452)
+- `lemma_2_5_ii_clause_step` k=0 0<t (BMS_Ancestry.thy:1308)
+- `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:1355)
+- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:1362)
+- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1421)
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
 
 **コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。 `lemma_2_6` は ZF 側で discharge 予定、 他は ordinal/σ-pair の前提として保持。
@@ -30,12 +29,13 @@
   - 🚨 (ii) step lemma (`lemma_2_5_ii_clause_step`)
     - ✅ scaffold: 8-way case split (n=0/None/i≥j proven) [ID 70]
     - 🚨 k=0 0<t: uniform bumping (BMS_all_B0 経由)
-    - 🚨 k=0 t=0: helper sorry に factor [ID 74]
+    - ✅ k=0 t=0: helper 完全 close [ID 74]
       - ✅ `AEn_nth_idx_B_eq_when_m0_zero`: column equality across blocks [ID 75]
       - ✅ `elem_AEn_idx_B_eq_when_m0_zero`: 上記 corollary [ID 76]
-      - 🚨 chain induction 本体 (m_parent shift-invariance + strong induct on j)
-        - 注: attempt 失敗 (build 4 分超 elaboration、 `m_ancestor.simps` unfolding 爆発)
-        - 次回 plan: (1) 既存 `m_anc_via_parent_some/none` 経由、 (2) `obtain p` パターン、 (3) helper 単位分割
+      - ✅ `elem_AEn_idx_B_eq_block_zero_at_row_zero_when_m0_zero`: 上記 row-0 特化
+      - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_zero` chain induction 本体
+      - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_zero` sub-helper
+      - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_zero` sub-helper
     - 🚨 Suc k' k<t: σ-equivariance
     - 🚨 Suc k' k≥t: no bumping at row k
   - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
