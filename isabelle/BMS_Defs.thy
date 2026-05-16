@@ -1303,6 +1303,58 @@ lemma Bs_concat_Suc:
   "Bs_concat A (Suc n) = Bs_concat A n @ Bi_block A (Suc n)"
   by (simp add: Bs_concat_def)
 
+text \<open>
+  When \<open>max_parent_level A = Some 0\<close>, \<open>Bs_concat A n\<close>
+  is the \<open>n+1\<close>-fold concatenation of \<open>B0_block A\<close>.
+  Helper purpose: extends @{thm Bi_block_eq_B0_when_m0_zero} to
+  the full \<open>Bs_concat\<close> for the m_0 = 0 sub-case of
+  \<open>lemma_2_5_at_main\<close>'s sorry.
+\<close>
+
+lemma Bs_concat_when_m0_zero:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some 0"
+  shows "Bs_concat A n = concat (replicate (Suc n) (B0_block A))"
+proof -
+  have bi_eq: "\<And>i. Bi_block A i = B0_block A"
+    using A_ne b0 mp by (rule Bi_block_eq_B0_when_m0_zero)
+  have len: "length (map (Bi_block A) [0..<Suc n])
+           = length (replicate (Suc n) (B0_block A))"
+    by simp
+  have entries: "\<And>i. i < length (map (Bi_block A) [0..<Suc n])
+                       \<Longrightarrow> map (Bi_block A) [0..<Suc n] ! i
+                            = replicate (Suc n) (B0_block A) ! i"
+  proof -
+    fix i assume "i < length (map (Bi_block A) [0..<Suc n])"
+    hence i_lt: "i < Suc n" by simp
+    have l: "map (Bi_block A) [0..<Suc n] ! i = Bi_block A i"
+    proof -
+      have i_lt_len: "i < length [0..<Suc n]" using i_lt by simp
+      have "map (Bi_block A) [0..<Suc n] ! i = Bi_block A ([0..<Suc n] ! i)"
+        using i_lt_len by (rule nth_map)
+      also have "[0..<Suc n] ! i = i"
+        using i_lt nth_upt[where i = 0 and k = i and j = "Suc n"] by simp
+      finally show ?thesis .
+    qed
+    have r: "replicate (Suc n) (B0_block A) ! i = B0_block A"
+      using i_lt nth_replicate[where n = "Suc n" and x = "B0_block A" and i = i]
+      by simp
+    show "map (Bi_block A) [0..<Suc n] ! i
+        = replicate (Suc n) (B0_block A) ! i"
+      using l r bi_eq by simp
+  qed
+  have map_eq: "map (Bi_block A) [0..<Suc n]
+              = replicate (Suc n) (B0_block A)"
+    using len entries by (rule nth_equalityI)
+  have step1: "Bs_concat A n = concat (map (Bi_block A) [0..<Suc n])"
+    unfolding Bs_concat_def by simp
+  have step2: "concat (map (Bi_block A) [0..<Suc n])
+             = concat (replicate (Suc n) (B0_block A))"
+    using map_eq by simp
+  show ?thesis using step1 step2 by simp
+qed
+
 lemma length_Bs_concat:
   "length (Bs_concat A n) = Suc n * length (B0_block A)"
 proof (induct n)
