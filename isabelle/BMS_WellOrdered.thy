@@ -388,17 +388,7 @@ next
   next
     case (Some s)
     \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6 + Lemma 2.5.\<close>
-    show ?thesis
-    proof (cases n')
-      case 0
-      \<comment> \<open>\<open>n = 1\<close>: arr_len (A[1]) = l0 + 2*l1; construct g
-          for the 2-block expansion (B_0, B_1).\<close>
-      show ?thesis sorry
-    next
-      case (Suc n'')
-      \<comment> \<open>\<open>n \<ge> 2\<close>: full Hunter reflection construction.\<close>
-      show ?thesis sorry
-    qed
+    show ?thesis sorry
   qed
 qed
 
