@@ -5,15 +5,14 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 9 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**コード上の sorry: 8 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
 - `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `lemma_2_5_ii_clause_step` Suc k' k<t (BMS_Ancestry.thy:1844)
-- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:1851)
-- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:1910)
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:1982) — Hunter (iv): m_parent image structure (n=0 proven inline)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:1993) — Hunter (i): G-column target
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:2004) — Hunter (v): block n_1 ↔ n_1+1 transition
+- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:2418)
+- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:2477)
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:2549) — Hunter (iv): m_parent image structure (n=0 proven inline)
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:2560) — Hunter (i): G-column target
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:2571) — Hunter (v): block n_1 ↔ n_1+1 transition
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
 
 注: `lemma_2_5_at_main` は 5 step lemma 上で assembly proven (sorry 化解除)。 projection lemma_2_5_{i,ii,iii,iv,v,iv_and_v} はすべて lemma_2_5_at_main 経由で proper proof。
@@ -44,7 +43,11 @@
       - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_zero` chain induction 本体
       - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_zero` sub-helper
       - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_zero` sub-helper
-    - 🚨 Suc k' k<t: σ-equivariance
+    - ✅ Suc k' k<t: helper 完全 close (2026-05-17、 parameterized manc_inv で IH (ii) at k' を経由)
+      - ✅ `keep_of_pre_strip_ge_max_parent_level`: t ≤ keep_of を establish (rows 0..t-1 all positive in pre-strip)
+      - ✅ `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_lt_t`: m_parent within-block 特化、 manc_inv parameter で c⟷0 invariance
+      - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_lt_t`: m_parent outside-block 特化、 manc_inv parameter
+      - ✅ `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t`: chain induction (c=0 trivial / c=n via IH (ii) at k')
     - 🚨 Suc k' k≥t: no bumping at row k
   - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
     - ✅ scaffold: 5-way case split (n=0/None/k≥m_0 proven) [ID 71]

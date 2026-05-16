@@ -1,8 +1,8 @@
-Close (ii) k=0 0<t case via chain induction + block-shift invariance
+Close (ii) Suc k' k<t case via parameterized chain induction
 
-- Add `keep_of_pre_strip_pos_of_t_pos_and_n_pos`: derive `keep_of (G_block A @ Bs_concat A n) > 0` from `max_parent_level = Some t` with `0 < t` and `n \<ge> 1` by exhibiting `bump_col A 0 1 ! 0 = (A ! last_col_idx A) ! 0 > 0` via `bump_col_value_eq_below` and the level-0 ancestor chain
-- Add `m_parent_AEn_idx_B_within_block_at_row_zero_when_0_lt_t`: when the block-0 filter `?S` is nonempty, `m_parent (A[n]) 0 (idx_B c j) = Some (idx_B c (last ?S))` for any block `c`, using `elem_expansion_B_lt_invariant_in_block` for strict-less invariance across blocks
-- Add `m_parent_AEn_idx_B_outside_block_at_row_zero_when_0_lt_t`: when `?S` is empty, every candidate is `< idx_B c 0` (lies in G or earlier block), proved by `ccontr`
-- Add `m_anc_idx_B_in_block_shift_at_row_zero_when_0_lt_t`: chain induction with `less_induct on j`, mirroring the structure of the t=0 helper
-- Dispatch the `lemma_2_5_ii_clause_step` k=0 0<t sorry (BMS_Ancestry.thy:1788) via the chain-induction helper above
-- Sorry count 10 -> 9
+- Add `keep_of_pre_strip_ge_max_parent_level`: strengthen the previous `0 < keep_of` bound to `t \<le> keep_of (G_block A @ Bs_concat A n)`, by exhibiting `bump_col A 0 1 ! m > 0` for every `m < t` (rows below the trim point cannot all be zero) and applying `keep_of_row_zero` for contradiction
+- Add `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_lt_t`: parameterized helper that takes a `manc_inv` hypothesis (block-`c`-to-block-0 `m_ancestor` at `k'` equivalence) and concludes the within-block `m_parent` characterization at row `Suc k'`
+- Add `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_lt_t`: parameterized outside-block characterization with the same `manc_inv` hypothesis, derives the contradiction via `filter_empty_conv` (avoiding `m_ancestor.simps` auto-unfolding)
+- Add `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t`: chain induction that applies the helpers at `c = 0` (trivial `manc_inv`) and `c = n` (`manc_inv` from IH (ii) at `k'`)
+- Dispatch the `lemma_2_5_ii_clause_step` Suc k' k<t sorry (BMS_Ancestry.thy:1844) via the chain-induction helper above
+- Sorry count 9 -> 8
