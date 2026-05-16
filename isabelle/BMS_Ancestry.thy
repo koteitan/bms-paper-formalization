@@ -608,10 +608,31 @@ next
     show ?thesis using assms
     proof (induct k rule: nat_less_induct)
       case (1 k)
-      \<comment> \<open>IH: \<open>\<forall> k' < k. lemma_2_5_at A n k'\<close>; conclude
-          \<open>lemma_2_5_at A n k\<close> by Hunter's order (ii) (iii) (iv)
-          (i) (v) within the inductive step.\<close>
-      show ?case sorry
+      \<comment> \<open>IH: \<open>\<forall> k' < k. lemma_2_5_at A n k'\<close>.
+          Split on \<open>max_parent_level A\<close>: the \<open>None\<close> case
+          is impossible (b0_start = Some s forces it); the
+          \<open>Some 0\<close> case (no ascending rows, all Bi_block
+          collapse to B0_block) and \<open>Some (Suc m0')\<close> case
+          (general Hunter argument) remain.\<close>
+      show ?case
+      proof (cases "max_parent_level A")
+        case None
+        hence "b0_start A = None" by (simp add: b0_start_def)
+        with Some show ?thesis by simp
+      next
+        case (Some m\<^sub>0)
+        show ?thesis
+        proof (cases m\<^sub>0)
+          case 0
+          \<comment> \<open>\<open>m_0 = 0\<close>: no ascending rows; all Bi_block
+              equal B0_block via @{thm Bi_block_eq_B0_when_m0_zero}.\<close>
+          show ?thesis sorry
+        next
+          case (Suc m\<^sub>0')
+          \<comment> \<open>\<open>m_0 \<ge> 1\<close>: full Hunter k-induction step.\<close>
+          show ?thesis sorry
+        qed
+      qed
     qed
   qed
 qed
