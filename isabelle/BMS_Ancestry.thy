@@ -810,16 +810,43 @@ next
           show ?thesis sorry
         next
           case (Suc k')
-          \<comment> \<open>IH gives full \<open>lemma_2_5_at A n k'\<close>: includes
-              (iv) at \<open>k'\<close> (parent of \<open>B^(n)[i']\<close> at level \<open>k'\<close>
-              is in \<open>G \<union> B^(n)\<close>) and (ii) at \<open>k'\<close>.
-              These constrain \<open>P_{Suc k'}\<close>'s candidate set via the
-              m_ancestor-at-\<open>k'\<close> filter in m_parent's definition.
-              Full proof: case-split P_{Suc k'}(B^(0)[j]) on \<open>G \<union> B^(0)\<close>,
-              correspondingly for B^(n), use IH to translate chain.\<close>
+          \<comment> \<open>IH gives full \<open>lemma_2_5_at A n k'\<close>.
+              Split further on \<open>max_parent_level A\<close> and \<open>k\<close> vs \<open>t\<close>.\<close>
           have IH_at_k': "lemma_2_5_at A n k'"
             using IH \<open>k = Suc k'\<close> by simp
-          show ?thesis sorry
+          show ?thesis
+          proof (cases "max_parent_level A")
+            case None
+            \<comment> \<open>\<open>max_parent_level = None\<close>: but \<open>b0_start = Some s\<close>
+                forces it to be \<open>Some _\<close>. Contradiction.\<close>
+            have "b0_start A = None" using None unfolding b0_start_def by simp
+            with Some show ?thesis by simp
+          next
+            case (Some t)
+            \<comment> \<open>\<open>max_parent_level = Some t\<close>. Split on \<open>k < t\<close>
+                (active level, uniform bumping) vs \<open>k \<ge> t\<close>
+                (inactive, no bumping).\<close>
+            show ?thesis
+            proof (cases "k < t")
+              case True
+              hence k_lt_t: "k < t" .
+              \<comment> \<open>\<open>k < t\<close>: substantive. By
+                  @{thm elem_expansion_B_lt_invariant_in_block} the
+                  strict-less relation at row \<open>k\<close> between B-block
+                  columns is invariant in the block index. Combined
+                  with IH (ii) at \<open>k'\<close> (for m_anc-at-\<open>k'\<close>
+                  constraint) and chain-length induction, the
+                  m_ancestor equivalence follows.\<close>
+              show ?thesis sorry
+            next
+              case False
+              hence k_ge_t: "t \<le> k" by simp
+              \<comment> \<open>\<open>k \<ge> t\<close>: no ascending, bumping=0 at row k.
+                  Values unchanged, strict-less invariant trivially.
+                  Combined with IH (ii) at \<open>k'\<close>, chain corresponds.\<close>
+              show ?thesis sorry
+            qed
+          qed
         qed
       qed
     qed
