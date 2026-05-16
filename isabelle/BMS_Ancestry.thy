@@ -288,6 +288,35 @@ text \<open>
 \<close>
 
 text \<open>
+  \<open>B_0\<close> columns of \<open>A[n]\<close> equal the corresponding
+  columns of the original \<open>A\<close> (offset by \<open>s\<close>): no bumping
+  at multiplier \<open>i = 0\<close>.
+\<close>
+
+lemma bump_col_zero_eq_orig:
+  assumes b0: "b0_start A = Some s"
+      and len_k: "k < length (A ! (s + d))"
+  shows "(bump_col A d 0) ! k = (A ! (s + d)) ! k"
+  using bump_col_nth_general[OF b0 len_k] by simp
+
+lemma elem_expansion_B0_via_orig:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and j_lt: "j < l1 A"
+      and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and k_lt_len: "k < length (A ! (s + j))"
+  shows "elem (expansion A n) (idx_B_in_expansion A 0 j) k
+       = elem A (s + j) k"
+proof -
+  have bump_eq: "elem (expansion A n) (idx_B_in_expansion A 0 j) k
+              = (bump_col A j 0) ! k"
+    using elem_expansion_B_via_bump[OF A_ne _ j_lt k_lt_keep] by simp
+  have orig: "(bump_col A j 0) ! k = (A ! (s + j)) ! k"
+    using bump_col_zero_eq_orig[OF b0 k_lt_len] .
+  show ?thesis using bump_eq orig unfolding elem_def by simp
+qed
+
+text \<open>
   Same block index \<open>t\<close>, different column indices \<open>j, i\<close>
   in \<open>B_t\<close> (both ascending at row \<open>k\<close>): the strict
   inequality \<open>(A!(s+j))!k < (A!(s+i))!k\<close> propagates to
