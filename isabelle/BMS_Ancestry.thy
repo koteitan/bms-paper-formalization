@@ -602,8 +602,17 @@ next
   next
     case (Some s)
     \<comment> \<open>Hunter's simultaneous induction on \<open>k\<close> in the substantive case
-        \<open>n \<ge> 1 \<and> b0_start A = Some s\<close>.\<close>
-    show ?thesis sorry
+        \<open>n \<ge> 1 \<and> b0_start A = Some s\<close>. Structured with explicit
+        \<open>nat_less_induct\<close> on \<open>k\<close> so that the IH at \<open>k' < k\<close>
+        is available for clauses (i)--(v).\<close>
+    show ?thesis using assms
+    proof (induct k rule: nat_less_induct)
+      case (1 k)
+      \<comment> \<open>IH: \<open>\<forall> k' < k. lemma_2_5_at A n k'\<close>; conclude
+          \<open>lemma_2_5_at A n k\<close> by Hunter's order (ii) (iii) (iv)
+          (i) (v) within the inductive step.\<close>
+      show ?case sorry
+    qed
   qed
 qed
 
