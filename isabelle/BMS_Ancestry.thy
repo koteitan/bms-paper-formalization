@@ -3198,7 +3198,25 @@ lemma bms_ascend_propagates_to_chain_ancestor:
       and chain_AEn: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
                                           (idx_B_in_expansion A 0 x)"
   shows "ascends A x (Suc k)"
-  sorry
+proof (cases "x = 0")
+  case True
+  \<comment> \<open>\<open>x = 0\<close>: \<open>s + 0 = s\<close>, so \<open>non_strict_ancestor A (Suc k) s s\<close>
+      reduces to reflexivity \<open>s = s\<close>. The \<open>Suc k < m_0\<close> side condition
+      is inherited from \<open>asc_j\<close>.\<close>
+  have Sk_lt_t: "Suc k < t"
+    using asc_j b0 mp unfolding ascends_def by simp
+  have nsa: "non_strict_ancestor A (Suc k) (s + 0) s"
+    unfolding non_strict_ancestor_def by simp
+  show ?thesis
+    using True b0 mp Sk_lt_t nsa unfolding ascends_def by simp
+next
+  case False
+  \<comment> \<open>\<open>x > 0\<close>: substantive Hunter dichotomy case (A) — first column \<open>s\<close>
+      being the \<open>(Suc k)\<close>-ancestor of \<open>j\<close> forces \<open>s\<close> to be the
+      \<open>(Suc k)\<close>-ancestor of \<open>(s+x)\<close> as well, via BMS row-monotonicity
+      across columns in the intermediate range. (Substantive proof pending.)\<close>
+  show ?thesis sorry
+qed
 
 text \<open>
   Hunter dichotomy contrapositive (case (B) shape for the not-ascending
