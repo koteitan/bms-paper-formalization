@@ -83,63 +83,96 @@ IH(ii) → (ii)@k → (iii)@k ↘
 
 **コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。 `lemma_2_6` は ZF 側で discharge 予定、 他は ordinal/σ-pair の前提として保持。
 
-## Hunter Lemma 2.5 (i)-(v) 同時 k-induction
+## Hunter Lemma 2.5 (i)-(v) layered 帰納 (2026-05-17 改訂)
 
-- 🚨 `lemma_2_5_at_main` (5 step lemma assembly は本体 sorry 解除済、 ただし step lemma 群が sorry)
-  - ✅ assembly 本体: `nat_less_induct` on k + Hunter 順 ((ii)→(iii)→(iv)→(i)→(v)) で step lemma を呼ぶ
-  - ✅ scaffold restructure: `nat_less_induct` on k 化 [ID 45, 62]
-  - ✅ `lemma_2_5_at_n_zero`: n=0 base [ID 44]
+旧 simultaneous induction は unsound infrastructure 経由で全 clause が unsound 化したため削除。 改訂版は paper 精読に基づく per-clause layered approach (詳細は `important-lemma.md`)。
+
+- 🚨 `lemma_2_5_at_main` (旧 5-AND assembly が unsound 削除済、 layered 構造で再構築待ち)
+  - ✅ `lemma_2_5_at_n_zero`: n=0 base
   - ✅ `lemma_2_5_at_no_b0`: b0_start=None case
-  - ✅ `lemma_2_5_v_clause_n_le_one`: n≤1 で (v) vacuous [ID 63]
-  - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous [ID 64]
-  - 🚨 (i) step lemma (`lemma_2_5_i_clause_step` stub、 sorry)
-  - ✅ (ii) step lemma (`lemma_2_5_ii_clause_step`) — 全 sub-case proven
-    - ✅ scaffold: 8-way case split (n=0/None/i≥j proven) [ID 70]
-    - ✅ k=0 0<t: helper 完全 close (2026-05-17、 uniform bumping + block-shift invariance)
-      - ✅ `keep_of_pre_strip_pos_of_t_pos_and_n_pos`: B_1 row 0 > 0 で keep_of > 0 を establish
-      - ✅ `m_parent_AEn_idx_B_within_block_at_row_zero_when_0_lt_t`: m_parent within-block 特化
-      - ✅ `m_parent_AEn_idx_B_outside_block_at_row_zero_when_0_lt_t`: m_parent outside-block 特化
-      - ✅ `m_anc_idx_B_in_block_shift_at_row_zero_when_0_lt_t`: chain induction 本体
-    - ✅ k=0 t=0: helper 完全 close [ID 74]
-      - ✅ `AEn_nth_idx_B_eq_when_m0_zero`: column equality across blocks [ID 75]
-      - ✅ `elem_AEn_idx_B_eq_when_m0_zero`: 上記 corollary [ID 76]
-      - ✅ `elem_AEn_idx_B_eq_block_zero_at_row_zero_when_m0_zero`: 上記 row-0 特化
-      - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_zero` chain induction 本体
-      - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_zero` sub-helper
-      - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_zero` sub-helper
-    - ✅ Suc k' k<t: helper 完全 close (2026-05-17、 parameterized manc_inv で IH (ii) at k' を経由)
-      - ✅ `keep_of_pre_strip_ge_max_parent_level`: t ≤ keep_of を establish (rows 0..t-1 all positive in pre-strip)
-      - ✅ `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_lt_t`: m_parent within-block 特化、 manc_inv parameter で c⟷0 invariance
-      - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_lt_t`: m_parent outside-block 特化、 manc_inv parameter
-      - ✅ `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t`: chain induction (c=0 trivial / c=n via IH (ii) at k')
-    - ✅ Suc k' k≥t: helper 完全 close (2026-05-17、 elem 等式 in-bounds + OOB の uniform 処理)
-      - ✅ `elem_AEn_eq_at_row_k_ge_t_across_blocks`: elem 値の block 不変性 (in-bounds via elem_expansion_B_eq_orig_k_ge_t、 OOB via nth_same_length_oob)
-      - ✅ `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_ge_t`
-      - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_ge_t`
-      - ✅ `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t`: chain induction
-  - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
-    - ✅ scaffold: 5-way case split (n=0/None/k≥m_0 proven) [ID 71]
-    - ✅ k<m_0 assembly: 4 sub-helper を経由した chain translation 組み立て (2026-05-17)
-      - ✅ `lemma_2_5_at_main` nested (k, n) induction 化 (IH_n = lemma_2_5_at A (n-1) k を提供)
-      - ✅ `lemma_2_5_iii_clause_step` signature に IH_n_minus_1 追加
-      - ✅ assembly: first-step in A + first-step in A[n] + Lemma A + Lemma A' + (ii) for A[n-1] at k で chain translation
-      - ✅ sub-helper: `m_parent_orig_last_col_when_k_lt_m0` (first step in A) [2026-05-17 close]
-        - ✅ induct k less_induct + cases k=0/Suc k': cand X-2 (= ?p) は largest cand、 elem cond + m_anc cond (Suc 経由 IH at k')
-        - 依存: `elem_B0_lt_last_col_when_k_lt_m0` (Hunter 構造 conjecture、 sorry)
-      - ✅ sub-helper: `m_parent_AEn_idx_B_n_zero_when_k_lt_m0` (first step in A[n]) [2026-05-17 close]
-        - ✅ 同構造 (less_induct on k) + bumping arithmetic で elem cond を導出
-        - 依存: `elem_B0_lt_last_col_when_k_lt_m0` + `bump_col_uniform_k_lt_t` + `BMS_all_B0_ascending_below_t`
-      - ✅ sub-helper Lemma A: `m_anc_orig_eq_AEn_shared_B0` (orig vs A[n] for shared cols ≤ idx_B(0, l_1)-1) [2026-05-17 close]
-        - ✅ `elem_orig_eq_AEn_shared_below_l1` (G/B_0 case split via elem_expansion_G_lt_keep + elem_expansion_B0_via_orig)
-        - ✅ chain induction: outer less_induct on k + inner less_induct on p、 m_parent match via filter cong + IH at k'
-      - ✅ sub-helper Lemma A': `m_anc_AEn_minus_1_eq_AEn_shared` (A[n-1] vs A[n] for shared cols ≤ idx_B(n-1, l_1)-1) [2026-05-17 close]
-        - ✅ `elem_AEn_minus_1_eq_AEn_shared`: pre-strip cols match (G/B-block case split) + strip preserves elem for k < t ≤ keep_of (both)
-        - ✅ chain induction (same structure as Lemma A)、 precondition `n_minus_1_pos: 0 < n - 1` (n ≥ 2) で両 keep_of bound を保証
-        - ✅ (iii) substantive case を `n - 1 = 0` (n=1) と `0 < n - 1` (n≥2) で case-split: n=1 では chain が step1 (Lemma A) に collapse、 n≥2 では step1+Lemma A'+(ii) at A[n-1]+Lemma A'
-  - 🚨 (iv) step lemma (`lemma_2_5_iv_clause_step`)
-    - ✅ n=0 case proven inline (block 0 = only B-block, positions trivially split G + block 0)
-    - 🚨 n>0 case: BMS structural property要 (block n partial cand 存在保証)
-  - 🚨 (v) step lemma (`lemma_2_5_v_clause_step` stub、 sorry)
+  - ✅ `lemma_2_5_v_clause_n_le_one`: n≤1 で (v) vacuous
+  - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous
+  - 🚨 layered 構築待ち: (ii)→(iv)→(iii)→(i)→(v)
+
+- 🚨 (ii) step `lemma_2_5_ii_clause_step` (旧 signature、 body sorry、 削除前は unsound)
+- 🚨 (ii) step v2 `lemma_2_5_ii_clause_step_v2` (Hunter case-split、 IH(ii) only)
+  - ✅ scaffold: 4-way dispatch [2026-05-17 cherry-pick 66bb06d]
+  - ✅ vacuous (n=0 / b0=None / i≥j): direct discharge
+  - ✅ k=0 t=0: `m_anc_zero_idx_B_in_block_shift_when_t_zero` で dispatch
+  - ✅ Suc k' k≥t: `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t` で dispatch
+  - 🚨 k=0 0<t (line 2094): sound per-col case-split helpers 要 (~150 行)
+  - 🚨 Suc k' k<t (line 2119): 同上 + IH (ii) at k'
+
+- 🚨 (iv) step `lemma_2_5_iv_clause_step`
+  - ✅ n=0 case proven inline (block 0 only B-block)
+  - ✅ Suc n' 部分: `b0_start=None` vacuous + G case (`clause_iv_G_case`) + B_n case (`clause_iv_B_n_case`) discharge [2026-05-17 cherry-pick f4bc700]
+  - 🚨 Suc n' 残: intermediate B_t case (0 ≤ t < n、 line 2588) — (ii) k<t sound helpers 経由
+
+- 🚨 (iii) step `lemma_2_5_iii_clause_step` (旧 signature、 body sorry、 削除前は unsound)
+  - 古い 4 sub-helpers 構造 (Lemma A, Lemma A', first-step in A, first-step in A[n]) は削除済 (first-step 2 つは false conjecture 依存だった)
+  - 残: Lemma A と Lemma A' は sound に保持済 (現コードに残っている)
+  - 🚨 再実装待ち: (ii) at k を oracle として layered で証明 (paper page 5「trivial extension」)
+
+- 🚨 (i) step `lemma_2_5_i_clause_step` (全体 sorry)
+  - 🚨 再実装待ち: layered で (ii)(iii)(iv) at k + IH(i) を使用
+
+- 🚨 (v) step `lemma_2_5_v_clause_step` (全体 sorry)
+  - 🚨 再実装待ち: layered で (ii)(iii)(iv) at k を直接 corollary
+
+## (ii) k<t cases 用 sound infrastructure (両 agent 共通指摘の foundational work)
+
+🚨 **次の round の中核 task** (~300 行):
+- `elem_AEn_cross_block_not_ascends`: ¬ ascends A x k で elem A[n] @ idx_B(c, x) = (A!(s+x))!k (block 不変)
+- `m_parent_AEn_idx_B_within_block_at_k_when_k_lt_t_ascending`: ascending case 用
+- `m_parent_AEn_idx_B_within_block_at_k_when_k_lt_t_not_ascending`: non-ascending case 用
+- chain shift for k=0 / Suc k' in k < t regime、 ascending case-split で構築
+- `ascends_invariant_along_chain` を活用 (= 既存 sound helper)
+
+## 🤖 Sub-agent 並列実行プラン (2026-05-17)
+
+### Round 1 (foundational、 1 agent)
+- 🤖 **Agent E**: (ii) k<t sound infrastructure (~300 行)
+  - 📥 input: 既存 sound helpers + Hunter paper p.5 case-split
+  - 📤 output: elem cross-block helpers + per-col case-split chain shift
+
+### Round 2 (1 agent、 Round 1 依存)
+- 🤖 **Agent F**: (ii) v2 substantive proof 完成
+  - 📥 input: Agent E の helpers
+  - 📤 output: `lemma_2_5_ii_clause_step_v2` 残 2 sorry (line 2094, 2119) close
+  - 結果: Stage 1 完了 (∀k. (ii))
+
+### Round 3 (2 agents 並列、 Round 2 依存)
+- 🤖 **Agent G**: (iv) Suc n' intermediate B_t case 完成
+  - 📥 input: (ii) main + Agent E の k<t helpers
+  - 📤 output: `lemma_2_5_iv_clause_step` line 2588 sorry close → Stage 2 完了
+- 🤖 **Agent H**: (iii) layered 再実装
+  - 📥 input: (ii) main、 残存 Lemma A、 Lemma A'
+  - 📤 output: `lemma_2_5_iii_clause_step` を Hunter「trivial extension」 で書き直し → Stage 3 完了
+
+### Round 4 (2 agents 並列、 Round 3 依存)
+- 🤖 **Agent I**: (i) substantive proof (paper p.7)
+  - 📥 input: (ii)(iii)(iv) main + IH(i)
+  - 📤 output: `lemma_2_5_i_clause_step` 全体 + `lemma_2_5_i_main` → Stage 4 完了
+- 🤖 **Agent J**: (v) layered 実装 (paper p.7、 直接 corollary)
+  - 📥 input: (ii)(iii)(iv) main (oracle)
+  - 📤 output: `lemma_2_5_v_clause_step` 全体 → Stage 5 完了
+
+### Final (1 agent、 全 Stage 完了後)
+- 🤖 **Agent K**: `lemma_2_5_at_main` を layered 5-Stage で組み立て
+  - 📥 input: 5 main lemmas
+  - 📤 output: `lemma_2_5_at_main` + projection lemmas update
+
+### 並列タイムライン
+
+```
+Round 1: [Agent E]
+Round 2:         [Agent F]
+Round 3:                 [Agent G][Agent H]    ← 並列 2
+Round 4:                                  [Agent I][Agent J]  ← 並列 2
+Final:                                                       [Agent K]
+```
+
+並列性 max 2 agents (Round 3, 4)。 Stage 1 (foundational) と Stage 5 (final assembly) は serial。
   - 🚨 (古い) [ID 5] 補助補題群整備 → 現 helpers で代替
   - 🚨 (古い) [ID 6] `lemma_2_5_at_inductive_step`: 5 clause 独立化 → (ii)(iii) で進行中
   - 🚨 (古い) [ID 7] `lemma_2_5_at_main_some` 本体
