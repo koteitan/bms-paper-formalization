@@ -77,9 +77,46 @@ $$
 \text{Anc}_k(\boldsymbol{S}[n],\ \text{idx}_B(n_1 + 1, j),\ \text{idx}_B(n_0, i)) \Bigr]
 $$
 
-## clause 間の依存関係 (改訂版: paper 精読 2026-05-17)
+## clause 間の依存関係
 
-**重要発見**: paper page 5-7 を精読した結果、 Hunter は universal ascending 仮定を使っておらず、 各 clause 内で「j 列が ascend するか否か」 の case-split を行う論法を採用していた。 我々の旧 Isabelle 定式化が over-strong 仮定 (`BMS_all_B0_ascending_below_t`) を導入していたため unsound 化、 2026-05-17 に削除済。
+paper page 5-7 を精読した結果、 Hunter は universal ascending 仮定を使っておらず、 各 clause 内で「j 列が ascend するか否か」 の case-split を行う論法を採用していた。
+
+## IH (induction hypothesis) の定義
+
+各 clause を $k$ に関する well-founded < induction で証明する際の **IH (= 帰納仮説)** は、 同 clause を $k' < k$ 全てで仮定したもの:
+
+$$\text{IH}_{(ii)}(k) \;:=\; \forall k' < k.\ \text{clause (ii) at } k'$$
+
+$$\text{IH}_{(iv)}(k) \;:=\; \forall k' < k.\ \text{clause (iv) at } k'$$
+
+$$\text{IH}_{(i)}(k) \;:=\; \forall k' < k.\ \text{clause (i) at } k'$$
+
+clause (iii), (v) は同 $k$ の他 clause からの直接 corollary であり、 induction 不要なので自前 IH は存在しない。
+
+展開すると IH(ii) は具体的に:
+
+$$\text{IH}_{(ii)}(k) \;\equiv\; \forall k' < k.\ \forall i, j < l.\
+  \text{Anc}_{k'}(\boldsymbol{S}[n],\ \text{idx}_B(0, j),\ \text{idx}_B(0, i))
+  \iff
+  \text{Anc}_{k'}(\boldsymbol{S}[n],\ \text{idx}_B(n, j),\ \text{idx}_B(n, i))$$
+
+### 証明すべきは IH ⟹ clause の含意 (step lemma)
+
+実際に労力を要するのは **step lemma の含意** であって、 単独の clause でも IH でもない:
+
+$$\text{step}_{(ii)}(k) \;:=\; \text{IH}_{(ii)}(k) \implies \text{clause (ii) at } k$$
+
+$$\text{step}_{(iv)}(k) \;:=\; \text{IH}_{(iv)}(k) \land (\forall k'.\ \text{clause (ii) at } k') \implies \text{clause (iv) at } k$$
+
+$$\text{step}_{(i)}(k) \;:=\; \text{IH}_{(i)}(k) \land (\forall k'.\ \text{clause (ii)(iii)(iv) at } k') \implies \text{clause (i) at } k$$
+
+(iii)(v) は IH なしの直接 step:
+
+$$\text{step}_{(iii)}(k) \;:=\; \text{clause (ii) at } k \implies \text{clause (iii) at } k$$
+
+$$\text{step}_{(v)}(k) \;:=\; \text{clause (ii)(iii)(iv) at } k \implies \text{clause (v) at } k$$
+
+各 step lemma を証明後、 well-founded < induction wrapper で $\forall k.$ 化して main lemma を得る。
 
 ## clause (i)-(v) × IH の改訂依存マトリックス
 
@@ -122,16 +159,6 @@ $$
 
 各 stage 独立に sub-agent 並列実装可能。
 
-### Isabelle 実装順序
-
-| 順序 | (1) | (2) | (3) | (4) | (5) |
-|---|---|---|---|---|---|
-| Hunter (paper) | (ii) | (iii) | (iv) | (i) | (v) |
-| Isabelle 旧 (unsound、 削除済) | (ii) | (iii) | (iv) | (i) | (v) |
-| Isabelle 新 (layered) | (ii) | (iv) | (iii) | (i) | (v) |
-
-新実装では (iv) を先に (= (iii) 不要)、 (iii)(v) は直接 corollary。
-
 ### 詳細
 
 #### (i) at $k$
@@ -150,34 +177,11 @@ $$
 - paper page 5: "trivially extended" — (ii) の proof を流用
 
 #### (iv) at $k$
-- IH(iv) + **(ii) at $k$** (旧版の (iii) 依存削除)
+- IH(iv) + **(ii) at $k$**
 - 内容: 最上位 block の parent は中間 block に居ない
 - paper page 6: "by (iv) for k'" + "(ii) for k" を明示使用
-- ✅ n=0 case proven inline
 
 #### (v) at $k$
-- **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$** (旧版の (i) 依存削除、 自前 IH 不要)
+- **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$** (自前 IH 不要)
 - 内容: block index の上方 shift で祖先関係が不変
 - paper page 7: "by application of (iii)" + "(ii) for k" + (iv) 使用
-
-## ⚠️ 削除済の unsound infrastructure (2026-05-17)
-
-旧版で導入した universal ascending 仮定 (`BMS_all_B0_ascending_below_t`、 統一 bumping `bump_col_uniform_k_lt_t`) は yaBMS で反例 `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` を確認し全削除。 依存していた:
-- `elem_expansion_B_lt_invariant_in_block` (= block 間 strict-less 不変)
-- (ii) k=0 0<t / Suc k' k<t chain helpers
-- (iii) first-step in A / A[n]
-- `elem_B0_lt_last_col_when_k_lt_m0` (新規追加された FALSE conjecture)
-
-も全削除。 影響: `lemma_2_5_ii_clause_step` と `lemma_2_5_iii_clause_step` の本体は現在 sorry (signature のみ残存、 layered 再実装待ち)。
-
-## ✅ 保持された sound infrastructure
-
-- `bump_col_at_ascending_row`, `bump_col_no_bump` (per-col 形式、 ascends を explicit に取る)
-- (ii) k=0 t=0 chain (m_0=0 で bumping 完全 0、 sound)
-- (ii) Suc k' k≥t chain (k≥t で bumping なし、 sound)
-- Lemma A (`m_anc_orig_eq_AEn_shared_B0`): A vs A[n] の m_anc 一致 (shared cols、 chain induction)
-- Lemma A' (`m_anc_AEn_minus_1_eq_AEn_shared`): A[n-1] vs A[n] の m_anc 一致
-- `keep_of_pre_strip_ge_max_parent_level`
-- 全 elem_expansion 系 (bump multiplier 0 or k≥t)
-- (iv) n=0 case (inline、 構造のみ使用)
-
