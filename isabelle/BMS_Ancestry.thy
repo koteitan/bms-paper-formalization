@@ -2647,9 +2647,96 @@ proof (cases n)
   qed
 next
   case (Suc n')
-  \<comment> \<open>\<open>n \<ge> 1\<close>: substantive case. Requires Hunter's per-col
-      case-split (paper page 6). Left as sorry pending re-implementation.\<close>
-  show ?thesis sorry
+  \<comment> \<open>\<open>n \<ge> 1\<close>: substantive case. Structural decomposition of
+      \<open>p\<close> via @{thm clause_iv_p_decomposition}: \<open>p\<close> lies in \<open>G\<close>
+      or in \<open>B_t\<close> for some \<open>t \<le> n\<close>. The \<open>G\<close> and \<open>t = n\<close>
+      cases discharge directly via @{thm clause_iv_G_case} and
+      @{thm clause_iv_B_n_case}; the intermediate \<open>t < n\<close> case
+      is Hunter's hard sub-argument (paper page 6) and is left as
+      \<open>sorry\<close> pending re-implementation of the deleted helpers.\<close>
+  show ?thesis
+  proof (cases "b0_start A")
+    case None
+    \<comment> \<open>\<open>b0_start A = None\<close>: \<open>l_1 = 0\<close>, premise \<open>i < l_1\<close> is
+        vacuous, so the clause holds trivially.\<close>
+    have l1z: "l1 A = 0" by (rule l1_zero_of_no_b0[OF None])
+    show ?thesis
+      unfolding lemma_2_5_iv_clause_def using l1z by simp
+  next
+    case (Some s)
+    note b0 = Some
+    have l1_pos: "0 < l1 A"
+    proof -
+      have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+      have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+      show ?thesis
+        using b0 s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
+    qed
+    show ?thesis
+      unfolding lemma_2_5_iv_clause_def
+    proof (intro allI impI)
+      fix i assume h: "0 < i \<and> i < l1 A"
+      hence i_pos: "0 < i" and i_lt: "i < l1 A" by simp+
+      let ?tgt = "idx_B_in_expansion A n i"
+      show "m_parent (A[n]) k ?tgt = None
+          \<or> (\<exists>p. m_parent (A[n]) k ?tgt = Some p
+                 \<and> ((\<exists>j<l1 A. p = idx_B_in_expansion A n j)
+                    \<or> (\<exists>j<l0 A. p = idx_G A j)))"
+      proof (cases "m_parent (A[n]) k ?tgt")
+        case None thus ?thesis by simp
+      next
+        case (Some p)
+        have p_lt_tgt: "p < ?tgt" using Some by (rule m_parent_lt)
+        have tgt_eq: "?tgt = l0 A + n * l1 A + i"
+          unfolding idx_B_in_expansion_def by simp
+        have p_lt_sum: "p < l0 A + Suc n * l1 A"
+        proof -
+          have "?tgt < l0 A + Suc n * l1 A"
+            using i_lt tgt_eq by simp
+          thus ?thesis using p_lt_tgt by linarith
+        qed
+        have decomp: "p < l0 A
+                    \<or> (\<exists>t j. t \<le> n \<and> j < l1 A
+                              \<and> p = idx_B_in_expansion A t j)"
+          using clause_iv_p_decomposition[OF l1_pos p_lt_sum] .
+        show ?thesis
+        proof (cases "p < l0 A")
+          case True
+          \<comment> \<open>\<open>p < l_0\<close>: \<open>G\<close>-column.\<close>
+          have "\<exists>j<l0 A. p = idx_G A j" by (rule clause_iv_G_case[OF True])
+          thus ?thesis using Some by blast
+        next
+          case False
+          \<comment> \<open>\<open>l_0 \<le> p\<close>: \<open>p\<close> sits in some \<open>B_t\<close>, \<open>t \<le> n\<close>.\<close>
+          obtain t j where t_le: "t \<le> n" and j_lt: "j < l1 A"
+                       and p_eq: "p = idx_B_in_expansion A t j"
+            using decomp False by blast
+          show ?thesis
+          proof (cases "t = n")
+            case True
+            \<comment> \<open>\<open>t = n\<close>: \<open>p\<close> is in \<open>B_n\<close>; direct discharge.\<close>
+            have "\<exists>j<l1 A. p = idx_B_in_expansion A n j"
+              using True j_lt p_eq by blast
+            thus ?thesis using Some by blast
+          next
+            case False
+            \<comment> \<open>\<open>t < n\<close>: intermediate (or \<open>t = 0\<close>) block.
+                Hunter's hard case (paper page 6) — left as \<open>sorry\<close>.
+                The argument splits on whether the first column of
+                \<open>B_n\<close> is a \<open>k'\<close>-ancestor of the \<open>i\<close>-th column for
+                all \<open>k' < k\<close>; if so, clauses (ii) and (iii) at \<open>k\<close>
+                let us transfer the chain to deduce that the
+                \<open>k\<close>-parent must lie in \<open>B_n\<close> or \<open>G\<close>; otherwise
+                clause (iv) at the offending \<open>k' < k\<close> (from IH)
+                gives a witness ancestor in \<open>B_n \<union> G\<close> through
+                which the \<open>k\<close>-parent must factor.\<close>
+            have t_lt: "t < n" using t_le False by linarith
+            show ?thesis sorry
+          qed
+        qed
+      qed
+    qed
+  qed
 qed
 
 lemma lemma_2_5_i_clause_step:
