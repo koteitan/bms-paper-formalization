@@ -177,6 +177,9 @@ IH(ii) → (ii)@k → (iii)@k ↘
 - ✅ `elem_AEn_idx_B_value` (block-shift elem identity、 2026-05-18 追加):
   - `elem (A[n]) (idx_B t j) k = (A!(s+j))!k + (if ascends A j k then t·δ_k else 0)`
   - 用途: (iii) bridge、 (iv) k=0 row-0 monotonicity、 block-shift 推論
+- ✅ `elem_AEn_idx_B_block_shift_diff` (隣接 block 差分、 2026-05-18 追加):
+  - `elem (A[n]) (idx_B (Suc t) j) k = elem (A[n]) (idx_B t j) k + (if ascends A j k then δ_k else 0)`
+  - 用途: 隣接 block 間 elem 比較、 chain transition reasoning
 - ✅ 9 件 chain/value helpers [ID 73]:
   - `m_ancestor_target_lt`, `m_ancestor_chain_linear`, `ascends_invariant_along_chain`
   - `bump_col_uniform_k_lt_t`, `bump_col_no_bump`

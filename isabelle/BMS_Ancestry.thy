@@ -358,6 +358,41 @@ proof -
 qed
 
 text \<open>
+  Block-shift difference: shifting the block index by one adds a single
+  \<open>delta A k\<close> at ascending rows, zero otherwise. Direct corollary of
+  @{thm elem_AEn_idx_B_value}.
+\<close>
+
+lemma elem_AEn_idx_B_block_shift_diff:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and t_Suc_le: "Suc t \<le> n" and j_lt: "j < l1 A"
+      and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and k_lt_col: "k < length (A ! (s + j))"
+  shows "elem (A[n]) (idx_B_in_expansion A (Suc t) j) k
+       = elem (A[n]) (idx_B_in_expansion A t j) k
+       + (if ascends A j k then delta A k else 0)"
+proof -
+  have t_le: "t \<le> n" using t_Suc_le by simp
+  have at_t: "elem (A[n]) (idx_B_in_expansion A t j) k
+            = (A ! (s + j)) ! k + (if ascends A j k then t * delta A k else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 t_le j_lt k_lt_keep k_lt_col] .
+  have at_Suc_t: "elem (A[n]) (idx_B_in_expansion A (Suc t) j) k
+                = (A ! (s + j)) ! k
+                + (if ascends A j k then Suc t * delta A k else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 t_Suc_le j_lt k_lt_keep k_lt_col] .
+  show ?thesis
+  proof (cases "ascends A j k")
+    case True
+    have rhs_eq: "Suc t * delta A k = t * delta A k + delta A k" by simp
+    show ?thesis using at_t at_Suc_t True rhs_eq by simp
+  next
+    case False
+    show ?thesis using at_t at_Suc_t False by simp
+  qed
+qed
+
+text \<open>
   At row \<open>k \<ge> t\<close> (no ascending), the elem at any B-block
   column equals the original B_0 column elem. Bumping has zero
   effect since \<open>ascends A x k = False\<close>.
