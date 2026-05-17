@@ -7,15 +7,35 @@
 
 **重大発見 (2026-05-17)**: yaBMS で `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` が standard BMS かつ `ascends A 2 1 = False` を確認。 これにより `BMS_all_B0_ascending_below_t` は FALSE statement であることが判明。 dependent な `bump_col_uniform_k_lt_t` と (ii)/(iii) helpers が unsound。 paper 精読の結果、 Hunter は universal ascending を主張しておらず、 各 clause 内で「ascending か否か」 の case-split を行う論法を採用していた。 我々の Isabelle 定式化が over-strong 仮定を導入していた。
 
-**コード上の sorry: 8 件** (全 honest sorry、 false statement 0):
+**コード上の sorry: 14 件** (全 honest sorry、 false statement 0):
+
+外部 (Lemma 2.5 以外):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
-- `lemma_2_5_ii_clause_step` (BMS_Ancestry.thy:1956) — 旧 signature 残存、 body sorry 化 (削除前は unsound)
-- `lemma_2_5_ii_clause_step_v2` (BMS_Ancestry.thy:1985) — 新 sound scaffold (Hunter case-split)
-- `lemma_2_5_iii_clause_step` (BMS_Ancestry.thy:2447) — 旧 signature 残存、 body sorry 化
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:2511)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:2522)
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:2533)
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
+
+(ii) v2 step (`lemma_2_5_ii_clause_step_v2`):
+- BMS_Ancestry.thy:3229 — k=0 0<t outer case
+- BMS_Ancestry.thy:3306 — Suc k' k<t、 asc_chain 内 sub-sorry 1
+- BMS_Ancestry.thy:3320 — Suc k' k<t、 not_asc_chain 内 sub-sorry 2
+
+旧 (ii) step (signature 残、 body sorry):
+- BMS_Ancestry.thy:3091 — `lemma_2_5_ii_clause_step` (旧 5-AND IH 形式、 v2 が新 form)
+
+(iii) step (`lemma_2_5_iii_clause_step`):
+- BMS_Ancestry.thy:4078 — n≥2 「shift by (n-1) blocks」 bridge (H delivery)
+
+(iv) step (auxiliary `clause_iv_intermediate_B_t_impossible`):
+- BMS_Ancestry.thy:4155 — k=0 row-0 monotonicity
+- BMS_Ancestry.thy:4168 — ancestor-of-G-is-G lemma
+- BMS_Ancestry.thy:4186 — chain transfer via (ii)/(iii)
+- BMS_Ancestry.thy:4193 — IH (iv) at offending k' on witness
+
+(i) step (`lemma_2_5_i_clause_step`):
+- BMS_Ancestry.thy:4411 — forward direction sub-sorry (I delivery)
+- BMS_Ancestry.thy:4419 — backward direction sub-sorry
+
+(v) step (`lemma_2_5_v_clause_step`):
+- BMS_Ancestry.thy:4476 — paper p.7 「last k-ancestor in B_{n_2}」 substantive (J delivery)
 
 **削除済の unsound infrastructure (2026-05-17 commit)**:
 - 🗑️ `BMS_all_B0_ascending_below_t` (FALSE statement、 反例 `(0,0,0)(1,1,1)(2,0,0)(1,1,1)`)
@@ -87,96 +107,71 @@ IH(ii) → (ii)@k → (iii)@k ↘
 
 旧 simultaneous induction は unsound infrastructure 経由で全 clause が unsound 化したため削除。 改訂版は paper 精読に基づく per-clause layered approach (詳細は `important-lemma.md`)。
 
-- 🚨 `lemma_2_5_at_main` (旧 5-AND assembly が unsound 削除済、 layered 構造で再構築待ち)
+- 🚨 `lemma_2_5_at_main` (旧 5-AND assembly 削除済、 layered 5-stage 組み立て待ち)
   - ✅ `lemma_2_5_at_n_zero`: n=0 base
   - ✅ `lemma_2_5_at_no_b0`: b0_start=None case
   - ✅ `lemma_2_5_v_clause_n_le_one`: n≤1 で (v) vacuous
   - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous
-  - 🚨 layered 構築待ち: (ii)→(iv)→(iii)→(i)→(v)
+  - 🚨 5 main lemmas (∀k. (i)(ii)(iii)(iv)(v)) の AND 構築
 
-- 🚨 (ii) step `lemma_2_5_ii_clause_step` (旧 signature、 body sorry、 削除前は unsound)
 - 🚨 (ii) step v2 `lemma_2_5_ii_clause_step_v2` (Hunter case-split、 IH(ii) only)
-  - ✅ scaffold: 4-way dispatch [2026-05-17 cherry-pick 66bb06d]
-  - ✅ vacuous (n=0 / b0=None / i≥j): direct discharge
-  - ✅ k=0 t=0: `m_anc_zero_idx_B_in_block_shift_when_t_zero` で dispatch
-  - ✅ Suc k' k≥t: `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t` で dispatch
-  - 🚨 k=0 0<t (line 2094): sound per-col case-split helpers 要 (~150 行)
-  - 🚨 Suc k' k<t (line 2119): 同上 + IH (ii) at k'
+  - ✅ scaffold: 4-way dispatch
+  - ✅ vacuous (n=0 / b0=None / i≥j) + k=0 t=0 + Suc k' k≥t: dispatch 済
+  - ✅ Round 1 (Agent E): 11 sound k<t helpers 構築 (~1027 行)
+  - ✅ Round 1.5 (Agent E2): helpers' `asc_all` を `asc_chain` (per-cand chain conditional) に weaken
+  - 🟡 Round 2 (Agent F2): Suc k' k<t case scaffold + 2 sub-sorries (lines 3306, 3320)
+  - 🚨 残: k=0 0<t (line 3229) — Round 1 に k=0 helpers なし、 追加要
 
 - 🚨 (iv) step `lemma_2_5_iv_clause_step`
-  - ✅ n=0 case proven inline (block 0 only B-block)
-  - ✅ Suc n' 部分: `b0_start=None` vacuous + G case (`clause_iv_G_case`) + B_n case (`clause_iv_B_n_case`) discharge [2026-05-17 cherry-pick f4bc700]
-  - 🚨 Suc n' 残: intermediate B_t case (0 ≤ t < n、 line 2588) — (ii) k<t sound helpers 経由
+  - ✅ n=0 case proven inline
+  - ✅ Suc n' 部分: b0_start=None + G case + B_n case discharge
+  - ✅ Round 3a (Agent G): auxiliary `clause_iv_intermediate_B_t_impossible` で intermediate B_t case を Hunter page 6 case-split に scaffold、 step lemma を dispatch 化
+  - 🚨 残: 4 sub-sorries in auxiliary (lines 4155, 4168, 4186, 4193)
 
-- 🚨 (iii) step `lemma_2_5_iii_clause_step` (旧 signature、 body sorry、 削除前は unsound)
-  - 古い 4 sub-helpers 構造 (Lemma A, Lemma A', first-step in A, first-step in A[n]) は削除済 (first-step 2 つは false conjecture 依存だった)
-  - 残: Lemma A と Lemma A' は sound に保持済 (現コードに残っている)
-  - 🚨 再実装待ち: (ii) at k を oracle として layered で証明 (paper page 5「trivial extension」)
+- 🚨 (iii) step `lemma_2_5_iii_clause_step`
+  - ✅ 既存 sound infra: Lemma A、 Lemma A' (m_anc 同等性 for shared cols)
+  - ✅ Round 3b (Agent H): 2 new helpers + (iii) re-implement、 STEP 1 + n=1 case rigorous
+  - 🚨 残: n≥2 「(n-1)-block bridge」 sorry (line 4078)
 
-- 🚨 (i) step `lemma_2_5_i_clause_step` (全体 sorry)
-  - 🚨 再実装待ち: layered で (ii)(iii)(iv) at k + IH(i) を使用
+- 🚨 (i) step `lemma_2_5_i_clause_step`
+  - ✅ Round 4a (Agent I): scaffold + trivial cases (n=0, b0=None) + iff 構造
+  - 🚨 残: forward/backward 2 sub-sorries (lines 4411, 4419) — Hunter p.7 ascending case-split
 
-- 🚨 (v) step `lemma_2_5_v_clause_step` (全体 sorry)
-  - 🚨 再実装待ち: layered で (ii)(iii)(iv) at k を直接 corollary
+- 🚨 (v) step `lemma_2_5_v_clause_step`
+  - ✅ Round 4b (Agent J): scaffold + trivial cases (n≤1, b0=None)
+  - 🚨 残: substantive case (line 4476) — Hunter p.7 「last k-ancestor in B_{n_2}」 argument
 
-## (ii) k<t cases 用 sound infrastructure (両 agent 共通指摘の foundational work)
+- 🚨 旧 (ii) step `lemma_2_5_ii_clause_step` (BMS_Ancestry.thy:3091)
+  - 旧 5-AND IH 形式、 body sorry (削除前は unsound、 v2 が新 form として並列)。 layered 完了後に削除予定
 
-🚨 **次の round の中核 task** (~300 行):
-- `elem_AEn_cross_block_not_ascends`: ¬ ascends A x k で elem A[n] @ idx_B(c, x) = (A!(s+x))!k (block 不変)
-- `m_parent_AEn_idx_B_within_block_at_k_when_k_lt_t_ascending`: ascending case 用
-- `m_parent_AEn_idx_B_within_block_at_k_when_k_lt_t_not_ascending`: non-ascending case 用
-- chain shift for k=0 / Suc k' in k < t regime、 ascending case-split で構築
-- `ascends_invariant_along_chain` を活用 (= 既存 sound helper)
+## 🤖 Sub-agent 並列実行履歴 (2026-05-17)
 
-## 🤖 Sub-agent 並列実行プラン (2026-05-17)
+### Round 1 (Agent E、 worktree isolation、 1027 行追加)
+- ✅ Output: 11 sound k<t helpers (elem_AEn_cross_block_when_(not_)ascends, m_parent_AEn_within/outside_block_at_Suc_k_when_k_lt_t_asc/_not_asc, m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_asc/_not_asc, etc.)
 
-### Round 1 (foundational、 1 agent)
-- 🤖 **Agent E**: (ii) k<t sound infrastructure (~300 行)
-  - 📥 input: 既存 sound helpers + Hunter paper p.5 case-split
-  - 📤 output: elem cross-block helpers + per-col case-split chain shift
+### Round 1.5 (Agent E2、 helper redesign)
+- ✅ Output: helpers' hypothesis を `asc_all: ∀x≤j. x<l1A → ascends` から `asc_chain: ∀x<j. m_ancestor (A[n]) k' (idx_B 0 j) (idx_B 0 x) → ascends` (per-cand chain conditional) に書き直し
+- 経緯: F2 (Round 2) が遭遇した design flaw。 `asc_all` は yaBMS 反例 `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` で偽の universal claim と同型で derive 不可
 
-### Round 2 (1 agent、 Round 1 依存)
-- 🤖 **Agent F**: (ii) v2 substantive proof 完成
-  - 📥 input: Agent E の helpers
-  - 📤 output: `lemma_2_5_ii_clause_step_v2` 残 2 sorry (line 2094, 2119) close
-  - 結果: Stage 1 完了 (∀k. (ii))
+### Round 2 (Agent F → F2、 cherry-pick + main 編集)
+- ✅ Output: v2 step scaffold (4-way dispatch) + Suc k' k<t case の case-split + side condition discharge
+- 🟡 残: 内部 2 sub-sorry (asc_chain/not_asc_chain lift) + k=0 0<t outer sorry
 
-### Round 3 (2 agents 並列、 Round 2 依存)
-- 🤖 **Agent G**: (iv) Suc n' intermediate B_t case 完成
-  - 📥 input: (ii) main + Agent E の k<t helpers
-  - 📤 output: `lemma_2_5_iv_clause_step` line 2588 sorry close → Stage 2 完了
-- 🤖 **Agent H**: (iii) layered 再実装
-  - 📥 input: (ii) main、 残存 Lemma A、 Lemma A'
-  - 📤 output: `lemma_2_5_iii_clause_step` を Hunter「trivial extension」 で書き直し → Stage 3 完了
+### Round 3 (Agent G + H、 並列、 worktree+diff)
+- ✅ Agent G: (iv) auxiliary `clause_iv_intermediate_B_t_impossible` + step dispatch、 1 bare → 4 sub-sorries
+- ✅ Agent H: (iii) extended Lemma A 2 件 + step re-implement、 STEP 1 + n=1 rigorous、 n≥2 1 sub-sorry
 
-### Round 4 (2 agents 並列、 Round 3 依存)
-- 🤖 **Agent I**: (i) substantive proof (paper p.7)
-  - 📥 input: (ii)(iii)(iv) main + IH(i)
-  - 📤 output: `lemma_2_5_i_clause_step` 全体 + `lemma_2_5_i_main` → Stage 4 完了
-- 🤖 **Agent J**: (v) layered 実装 (paper p.7、 直接 corollary)
-  - 📥 input: (ii)(iii)(iv) main (oracle)
-  - 📤 output: `lemma_2_5_v_clause_step` 全体 → Stage 5 完了
+### Round 4 (Agent I + J、 並列、 worktree+diff)
+- ✅ Agent I: (i) scaffold + trivial cases + iff 構造、 forward/backward 2 sub-sorries
+- ✅ Agent J: (v) scaffold + trivial cases、 substantive 1 sub-sorry
 
-### Final (1 agent、 全 Stage 完了後)
-- 🤖 **Agent K**: `lemma_2_5_at_main` を layered 5-Stage で組み立て
-  - 📥 input: 5 main lemmas
-  - 📤 output: `lemma_2_5_at_main` + projection lemmas update
-
-### 並列タイムライン
-
-```
-Round 1: [Agent E]
-Round 2:         [Agent F]
-Round 3:                 [Agent G][Agent H]    ← 並列 2
-Round 4:                                  [Agent I][Agent J]  ← 並列 2
-Final:                                                       [Agent K]
-```
-
-並列性 max 2 agents (Round 3, 4)。 Stage 1 (foundational) と Stage 5 (final assembly) は serial。
-  - 🚨 (古い) [ID 5] 補助補題群整備 → 現 helpers で代替
-  - 🚨 (古い) [ID 6] `lemma_2_5_at_inductive_step`: 5 clause 独立化 → (ii)(iii) で進行中
-  - 🚨 (古い) [ID 7] `lemma_2_5_at_main_some` 本体
-  - 🚨 (古い) [ID 8] projection sanity check (ID 7 完了後)
+### Round 5+ (未着手、 sub-sorries close + Final assembly)
+- 🚨 Round 2.5: v2 step の 3 sub-sorries (line 3229, 3306, 3320)
+- 🚨 Round 3a.5: (iv) intermediate 4 sub-sorries
+- 🚨 Round 3b.5: (iii) n≥2 bridge
+- 🚨 Round 4a.5: (i) 2 sub-sorries
+- 🚨 Round 4b.5: (v) substantive case
+- 🚨 Final: `lemma_2_5_at_main` 5-stage assembly
 
 ### Lemma 2.5 helpers (proven infra)
 - ✅ 9 件 chain/value helpers [ID 73]:
