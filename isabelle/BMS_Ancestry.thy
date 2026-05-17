@@ -3138,6 +3138,206 @@ proof (induct j arbitrary: i rule: less_induct)
   qed
 qed
 
+
+text \<open>
+  Sub-helpers for clause (iii). Lemma A and Lemma A' below are SOUND
+  (no dependence on the deleted false universal-ascending claim) and
+  reusable in any (iii) re-implementation:
+  \<^item> \<open>m_anc_orig_eq_AEn_shared_B0\<close> (Lemma A): \<open>m_ancestor A k p q\<close>
+    matches \<open>m_ancestor (A[n]) k p q\<close> for cols \<open>p\<close> in the shared
+    range \<open>[0..idx_B(0, l_1) - 1]\<close>.
+  \<^item> \<open>m_anc_AEn_minus_1_eq_AEn_shared\<close> (Lemma A'): \<open>m_ancestor (A[n-1]) k p q\<close>
+    matches \<open>m_ancestor (A[n]) k p q\<close> for cols \<open>p\<close> in the shared
+    range \<open>[0..idx_B(n-1, l_1) - 1]\<close>.
+
+  Note (2026-05-17): the previously-defined first-step helpers
+  \<open>m_parent_orig_last_col_when_k_lt_m0\<close> and \<open>m_parent_AEn_idx_B_n_zero_when_k_lt_m0\<close>
+  (plus the FALSE conjecture \<open>elem_B0_lt_last_col_when_k_lt_m0\<close>) have been
+  DELETED. They presupposed that every B_0 col's k-th elem is strictly
+  less than the last col's k-th elem (k < m_0), which is refuted by the
+  BMS array \<open>(0,0,0)(1,1,1)(2,0,0)(1,1,1)\<close> at \<open>k = 0, x = 1\<close>
+  (\<open>elem A 1 0 = 1\<close>, \<open>elem A 3 0 = 1\<close>, not strict). Re-implementation
+  must use Hunter's per-col case-split.
+\<close>
+
+text \<open>Elem match between original \<open>A\<close> and expansion \<open>A[n]\<close>
+  for cols in the shared range \<open>p < idx_B(0, l_1)\<close> at row \<open>k < m_0\<close>.
+  Decomposed by \<open>p < l_0\<close> (G-col, uses @{thm elem_expansion_G_lt_keep})
+  vs \<open>l_0 \<le> p\<close> (B_0-col, uses @{thm elem_expansion_B0_via_orig}).\<close>
+
+lemma elem_orig_eq_AEn_shared_below_l1:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and n_pos: "0 < n"
+      and p_lt: "p < idx_B_in_expansion A 0 (l1 A)"
+      and k_lt: "k < m\<^sub>0"
+  shows "elem A p k = elem (A[n]) p k"
+proof -
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s"
+    using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have keep_ge_t: "m\<^sub>0 \<le> keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
+  have k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+    using k_lt keep_ge_t by linarith
+  have p_lt_sum: "p < l0 A + l1 A"
+    using p_lt unfolding idx_B_in_expansion_def by simp
+  show ?thesis
+  proof (cases "p < l0 A")
+    case True
+    have p_lt_s: "p < s" using True l0_eq by simp
+    have eAEn: "elem (A[n]) p k = elem (G_block A) p k"
+      by (rule elem_expansion_G_lt_keep[OF A_ne True k_lt_keep])
+    have G_eq: "G_block A = take s A" using b0 unfolding G_block_def by simp
+    have G_nth: "G_block A ! p = A ! p"
+      using G_eq p_lt_s by simp
+    have "elem (G_block A) p k = elem A p k"
+      using G_nth unfolding elem_def by simp
+    thus ?thesis using eAEn by simp
+  next
+    case False
+    hence p_ge_l0: "l0 A \<le> p" by simp
+    define j where "j = p - l0 A"
+    have j_lt: "j < l1 A" using False p_lt_sum j_def by linarith
+    have p_eq_idx: "p = idx_B_in_expansion A 0 j"
+      using p_ge_l0 j_def unfolding idx_B_in_expansion_def by simp
+    have sj_lt_last: "s + j < last_col_idx A"
+    proof -
+      have l1_eq: "l1 A = last_col_idx A - s"
+        using s_lt_last b0 last_lt_arr
+        unfolding l1_def B0_block_def by simp
+      hence "j < last_col_idx A - s" using j_lt by simp
+      thus ?thesis by linarith
+    qed
+    have sj_arr: "s + j < arr_len A" using sj_lt_last last_lt_arr by linarith
+    have k_lt_col_len: "k < length (A ! (s + j))"
+    proof -
+      have "length (A ! (s + j)) = height A"
+        using length_col_arr[OF is_arr A_ne sj_arr] .
+      moreover have "k < height A" using k_lt max_parent_level_lt[OF mp] by linarith
+      ultimately show ?thesis by simp
+    qed
+    have "elem (A[n]) p k = elem (A[n]) (idx_B_in_expansion A 0 j) k"
+      using p_eq_idx by simp
+    also have "\<dots> = elem A (s + j) k"
+      using elem_expansion_B0_via_orig[OF A_ne b0 j_lt k_lt_keep k_lt_col_len] .
+    also have "\<dots> = elem A p k"
+      using j_def p_ge_l0 l0_eq unfolding elem_def by simp
+    finally show ?thesis by simp
+  qed
+qed
+
+text \<open>Lemma A (\<open>m_anc_orig_eq_AEn_shared_B0\<close>). For
+  shared cols and \<open>k < m_0\<close>, \<open>m_parent\<close> matches in \<open>A\<close> and \<open>A[n]\<close>
+  (via \<open>elem_orig_eq_AEn_shared_below_l1\<close> plus IH at \<open>k-1\<close>
+  for the m_anc filter). Then \<open>m_anc\<close> matches by chain induction.\<close>
+
+lemma m_anc_orig_eq_AEn_shared_B0:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and n_pos: "0 < n"
+      and p_lt: "p < idx_B_in_expansion A 0 (l1 A)"
+  shows "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
+  using k_lt p_lt
+proof (induct k arbitrary: p q rule: less_induct)
+  case (less k)
+  note IH_k = less.hyps
+  note k_lt' = less.prems(1)
+  note p_lt' = less.prems(2)
+  \<comment> \<open>Step 1: \<open>m_parent A k p = m_parent (A[n]) k p\<close> via filter cong.\<close>
+  have mp_match:
+    "\<And>p'. p' < idx_B_in_expansion A 0 (l1 A) \<Longrightarrow>
+           m_parent A k p' = m_parent (A[n]) k p'"
+  proof -
+    fix p'
+    assume p'_lt: "p' < idx_B_in_expansion A 0 (l1 A)"
+    show "m_parent A k p' = m_parent (A[n]) k p'"
+    proof (cases k)
+      case 0
+      have cands_eq: "[j \<leftarrow> [0..<p']. elem A j 0 < elem A p' 0]
+                    = [j \<leftarrow> [0..<p']. elem (A[n]) j 0 < elem (A[n]) p' 0]"
+      proof (rule filter_cong[OF refl])
+        fix j assume "j \<in> set [0..<p']"
+        hence j_lt_p': "j < p'" by simp
+        have j_lt_idx: "j < idx_B_in_expansion A 0 (l1 A)"
+          using j_lt_p' p'_lt by linarith
+        have ej: "elem A j 0 = elem (A[n]) j 0"
+          using elem_orig_eq_AEn_shared_below_l1
+                  [OF A_BMS A_ne b0 mp n_pos j_lt_idx k_lt'] \<open>k = 0\<close> by simp
+        have ep: "elem A p' 0 = elem (A[n]) p' 0"
+          using elem_orig_eq_AEn_shared_below_l1
+                  [OF A_BMS A_ne b0 mp n_pos p'_lt k_lt'] \<open>k = 0\<close> by simp
+        show "elem A j 0 < elem A p' 0 \<longleftrightarrow> elem (A[n]) j 0 < elem (A[n]) p' 0"
+          using ej ep by simp
+      qed
+      thus ?thesis using \<open>k = 0\<close> by (simp add: Let_def)
+    next
+      case (Suc k')
+      have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
+      have k'_lt_m0: "k' < m\<^sub>0" using k'_lt k_lt' by linarith
+      have cands_eq: "[j \<leftarrow> [0..<p']. elem A j (Suc k') < elem A p' (Suc k')
+                                       \<and> m_ancestor A k' p' j]
+                    = [j \<leftarrow> [0..<p']. elem (A[n]) j (Suc k') < elem (A[n]) p' (Suc k')
+                                       \<and> m_ancestor (A[n]) k' p' j]"
+      proof (rule filter_cong[OF refl])
+        fix j assume "j \<in> set [0..<p']"
+        hence j_lt_p': "j < p'" by simp
+        have j_lt_idx: "j < idx_B_in_expansion A 0 (l1 A)"
+          using j_lt_p' p'_lt by linarith
+        have ej: "elem A j (Suc k') = elem (A[n]) j (Suc k')"
+          using elem_orig_eq_AEn_shared_below_l1
+                  [OF A_BMS A_ne b0 mp n_pos j_lt_idx k_lt'] \<open>k = Suc k'\<close> by simp
+        have ep: "elem A p' (Suc k') = elem (A[n]) p' (Suc k')"
+          using elem_orig_eq_AEn_shared_below_l1
+                  [OF A_BMS A_ne b0 mp n_pos p'_lt k_lt'] \<open>k = Suc k'\<close> by simp
+        have manc: "m_ancestor A k' p' j \<longleftrightarrow> m_ancestor (A[n]) k' p' j"
+          using IH_k[OF k'_lt k'_lt_m0 p'_lt] by blast
+        show "(elem A j (Suc k') < elem A p' (Suc k') \<and> m_ancestor A k' p' j)
+            \<longleftrightarrow> (elem (A[n]) j (Suc k') < elem (A[n]) p' (Suc k')
+                 \<and> m_ancestor (A[n]) k' p' j)"
+          using ej ep manc by simp
+      qed
+      thus ?thesis using \<open>k = Suc k'\<close> by (simp add: Let_def)
+    qed
+  qed
+  \<comment> \<open>Step 2: \<open>m_anc\<close> match by chain induction on \<open>p\<close>.\<close>
+  show ?case using p_lt'
+  proof (induct p arbitrary: q rule: less_induct)
+    case (less p)
+    note IH_p = less.hyps
+    note p_lt'' = less.prems
+    have mp_p: "m_parent A k p = m_parent (A[n]) k p"
+      using mp_match[OF p_lt''] .
+    show "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
+    proof (cases "m_parent A k p")
+      case None
+      have mp_AEn_none: "m_parent (A[n]) k p = None" using None mp_p by simp
+      have lhs_F: "\<not> m_ancestor A k p q" using m_anc_via_parent_none[OF None] .
+      have rhs_F: "\<not> m_ancestor (A[n]) k p q" using m_anc_via_parent_none[OF mp_AEn_none] .
+      show ?thesis using lhs_F rhs_F by simp
+    next
+      case (Some r)
+      have mp_AEn_some: "m_parent (A[n]) k p = Some r" using Some mp_p by simp
+      have r_lt: "r < p" using Some by (rule m_parent_lt)
+      have r_lt_idx: "r < idx_B_in_expansion A 0 (l1 A)" using r_lt p_lt'' by linarith
+      have iff_A: "m_ancestor A k p q \<longleftrightarrow> r = q \<or> m_ancestor A k r q"
+        using m_anc_via_parent_some[OF Some] .
+      have iff_AEn: "m_ancestor (A[n]) k p q \<longleftrightarrow> r = q \<or> m_ancestor (A[n]) k r q"
+        using m_anc_via_parent_some[OF mp_AEn_some] .
+      have rec: "m_ancestor A k r q \<longleftrightarrow> m_ancestor (A[n]) k r q"
+        using IH_p[OF r_lt r_lt_idx] .
+      show ?thesis using iff_A iff_AEn rec by blast
+    qed
+  qed
+qed
 text \<open>
   Sound (ii) step lemma following Hunter's paper (arXiv:2307.04606v3)
   page 5 case-split approach.
@@ -3165,6 +3365,83 @@ text \<open>
   pending an explicit BMS row-monotonicity helper.
 \<close>
 
+text \<open>
+  Pure A-level form of the lift (chain in A, not A[n]). Used as a helper
+  inside the A[n] wrapper below after chain transfer via Lemma A.
+\<close>
+
+lemma bms_chain_level_lift_A:
+  fixes A :: array and k :: nat
+  assumes asc_j_chain: "m_ancestor A (Suc k) (s + j) s"
+      and chain_A: "m_ancestor A k (s + j) (s + x)"
+      and x_pos: "0 < x"
+      and x_lt_j: "x < j"
+  shows "m_ancestor A (Suc k) (s + x) s"
+  using asc_j_chain chain_A x_pos x_lt_j
+proof (induct j arbitrary: x rule: less_induct)
+  case (less j)
+  note asc_j_ch = less.prems(1)
+  note chain_jx = less.prems(2)
+  note x_pos' = less.prems(3)
+  note x_lt_j' = less.prems(4)
+  \<comment> \<open>Get \<open>q_1 = m_parent A (Suc k) (s+j)\<close>.\<close>
+  obtain q_1 where mp_sj: "m_parent A (Suc k) (s + j) = Some q_1"
+                and case_q1: "q_1 = s \<or> m_ancestor A (Suc k) q_1 s"
+    using asc_j_ch by (cases "m_parent A (Suc k) (s + j)") auto
+  have q1_lt_sj: "q_1 < s + j" by (rule m_parent_lt[OF mp_sj])
+  \<comment> \<open>\<open>(Suc k)\<close>-chain step gives a \<open>k\<close>-chain step by @{thm m_ancestor_mono}.\<close>
+  have asc_step: "m_ancestor A (Suc k) (s + j) q_1"
+    using mp_sj by simp
+  have chain_j_to_q1: "m_ancestor A k (s + j) q_1"
+    using m_ancestor_mono[OF _ asc_step, of k] by simp
+  have anc_q1_s: "q_1 = s \<or> m_ancestor A (Suc k) q_1 s"
+    using case_q1 by blast
+  \<comment> \<open>Chain linearity at level \<open>k\<close> (source \<open>s+j\<close>, ancestors \<open>s+x\<close>, \<open>q_1\<close>).\<close>
+  have lin: "s + x = q_1 \<or> m_ancestor A k (s + x) q_1 \<or> m_ancestor A k q_1 (s + x)"
+    using m_ancestor_chain_linear chain_jx chain_j_to_q1 by blast
+  show ?case
+  proof (cases "s + x = q_1")
+    case sx_eq_q1: True
+    \<comment> \<open>\<open>(s+x) = q_1\<close>: conclusion follows from the chain step + \<open>case_q1\<close>.
+        Sub-case \<open>q_1 = s\<close> gives \<open>x = 0\<close>, contradicting \<open>x_pos'\<close>.\<close>
+    have anc_q1_s': "m_ancestor A (Suc k) q_1 s"
+      using anc_q1_s sx_eq_q1 x_pos' by auto
+    show ?thesis using sx_eq_q1 anc_q1_s' by simp
+  next
+    case sx_ne_q1: False
+    show ?thesis
+    proof (cases "m_ancestor A k q_1 (s + x)")
+      case sx_lt_q1: True
+      \<comment> \<open>\<open>(s+x) < q_1\<close>: apply IH at \<open>j' = q_1 - s\<close>.\<close>
+      have sx_lt_q1_pos: "s + x < q_1"
+        using sx_lt_q1 m_ancestor_target_lt by simp
+      have q1_gt_s: "q_1 > s" using sx_lt_q1_pos x_pos' by linarith
+      have q1_ge_s: "s \<le> q_1" using q1_gt_s by simp
+      obtain j' where j'_def: "q_1 = s + j'" and j'_pos: "0 < j'"
+        using q1_gt_s
+        by (metis less_imp_Suc_add Suc_le_eq)
+      have j'_lt_j: "j' < j"
+        using j'_def q1_lt_sj by linarith
+      have x_lt_j': "x < j'"
+        using sx_lt_q1_pos j'_def by linarith
+      have anc_q1_s': "m_ancestor A (Suc k) q_1 s"
+        using anc_q1_s sx_lt_q1_pos q1_gt_s by auto
+      have asc_chain_j': "m_ancestor A (Suc k) (s + j') s"
+        using anc_q1_s' j'_def by simp
+      have chain_j'_x: "m_ancestor A k (s + j') (s + x)"
+        using sx_lt_q1 j'_def by simp
+      show ?thesis
+        by (rule less.hyps[OF j'_lt_j asc_chain_j' chain_j'_x x_pos' x_lt_j'])
+    next
+      case sx_lt_q1_F: False
+      \<comment> \<open>\<open>(s+x) > q_1\<close>: must have \<open>m_anc A k (s+x) q_1\<close>.
+          Nested maximality argument for \<open>m_parent A (Suc k) (s+x)\<close>;
+          factored out as a separate proof obligation pending implementation.\<close>
+      show ?thesis sorry
+    qed
+  qed
+qed
+
 lemma bms_chain_level_lift:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -3179,7 +3456,27 @@ lemma bms_chain_level_lift:
       and x_pos: "0 < x"
       and x_lt_j: "x < j"
   shows "m_ancestor A (Suc k) (s + x) s"
-  sorry
+proof -
+  \<comment> \<open>Transfer chain from \<open>A[n]\<close> to \<open>A\<close> via Lemma A.\<close>
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s"
+    using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have sj_eq: "idx_B_in_expansion A 0 j = s + j"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  have sx_eq: "idx_B_in_expansion A 0 x = s + x"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  have sj_lt: "s + j < idx_B_in_expansion A 0 (l1 A)"
+    using j_lt l0_eq unfolding idx_B_in_expansion_def by simp
+  have k_lt_t: "k < t" using Sk_lt_t by simp
+  have chain_A: "m_ancestor A k (s + j) (s + x)"
+    using m_anc_orig_eq_AEn_shared_B0
+            [OF A_BMS A_ne b0 mp k_lt_t n_pos sj_lt]
+          chain_AEn sj_eq sx_eq by simp
+  show ?thesis
+    by (rule bms_chain_level_lift_A[OF asc_j_chain chain_A x_pos x_lt_j])
+qed
 
 text \<open>
   Hunter dichotomy, case (A) (paper page 5, applied to m = Suc k):
@@ -3534,206 +3831,6 @@ proof (induct k rule: nat_less_induct)
   have IH_ii: "\<forall>k'<k. lemma_2_5_ii_clause A n k'" using "1.hyps" by blast
   show ?case
     by (rule lemma_2_5_ii_clause_step_v2[OF A_BMS A_ne IH_ii])
-qed
-
-text \<open>
-  Sub-helpers for clause (iii). Lemma A and Lemma A' below are SOUND
-  (no dependence on the deleted false universal-ascending claim) and
-  reusable in any (iii) re-implementation:
-  \<^item> \<open>m_anc_orig_eq_AEn_shared_B0\<close> (Lemma A): \<open>m_ancestor A k p q\<close>
-    matches \<open>m_ancestor (A[n]) k p q\<close> for cols \<open>p\<close> in the shared
-    range \<open>[0..idx_B(0, l_1) - 1]\<close>.
-  \<^item> \<open>m_anc_AEn_minus_1_eq_AEn_shared\<close> (Lemma A'): \<open>m_ancestor (A[n-1]) k p q\<close>
-    matches \<open>m_ancestor (A[n]) k p q\<close> for cols \<open>p\<close> in the shared
-    range \<open>[0..idx_B(n-1, l_1) - 1]\<close>.
-
-  Note (2026-05-17): the previously-defined first-step helpers
-  \<open>m_parent_orig_last_col_when_k_lt_m0\<close> and \<open>m_parent_AEn_idx_B_n_zero_when_k_lt_m0\<close>
-  (plus the FALSE conjecture \<open>elem_B0_lt_last_col_when_k_lt_m0\<close>) have been
-  DELETED. They presupposed that every B_0 col's k-th elem is strictly
-  less than the last col's k-th elem (k < m_0), which is refuted by the
-  BMS array \<open>(0,0,0)(1,1,1)(2,0,0)(1,1,1)\<close> at \<open>k = 0, x = 1\<close>
-  (\<open>elem A 1 0 = 1\<close>, \<open>elem A 3 0 = 1\<close>, not strict). Re-implementation
-  must use Hunter's per-col case-split.
-\<close>
-
-text \<open>Elem match between original \<open>A\<close> and expansion \<open>A[n]\<close>
-  for cols in the shared range \<open>p < idx_B(0, l_1)\<close> at row \<open>k < m_0\<close>.
-  Decomposed by \<open>p < l_0\<close> (G-col, uses @{thm elem_expansion_G_lt_keep})
-  vs \<open>l_0 \<le> p\<close> (B_0-col, uses @{thm elem_expansion_B0_via_orig}).\<close>
-
-lemma elem_orig_eq_AEn_shared_below_l1:
-  fixes A :: array and n :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some m\<^sub>0"
-      and n_pos: "0 < n"
-      and p_lt: "p < idx_B_in_expansion A 0 (l1 A)"
-      and k_lt: "k < m\<^sub>0"
-  shows "elem A p k = elem (A[n]) p k"
-proof -
-  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
-  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
-  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
-  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
-  have l0_eq: "l0 A = s"
-    using b0 s_le_arr unfolding l0_def G_block_def by simp
-  have keep_ge_t: "m\<^sub>0 \<le> keep_of (G_block A @ Bs_concat A n)"
-    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
-  have k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
-    using k_lt keep_ge_t by linarith
-  have p_lt_sum: "p < l0 A + l1 A"
-    using p_lt unfolding idx_B_in_expansion_def by simp
-  show ?thesis
-  proof (cases "p < l0 A")
-    case True
-    have p_lt_s: "p < s" using True l0_eq by simp
-    have eAEn: "elem (A[n]) p k = elem (G_block A) p k"
-      by (rule elem_expansion_G_lt_keep[OF A_ne True k_lt_keep])
-    have G_eq: "G_block A = take s A" using b0 unfolding G_block_def by simp
-    have G_nth: "G_block A ! p = A ! p"
-      using G_eq p_lt_s by simp
-    have "elem (G_block A) p k = elem A p k"
-      using G_nth unfolding elem_def by simp
-    thus ?thesis using eAEn by simp
-  next
-    case False
-    hence p_ge_l0: "l0 A \<le> p" by simp
-    define j where "j = p - l0 A"
-    have j_lt: "j < l1 A" using False p_lt_sum j_def by linarith
-    have p_eq_idx: "p = idx_B_in_expansion A 0 j"
-      using p_ge_l0 j_def unfolding idx_B_in_expansion_def by simp
-    have sj_lt_last: "s + j < last_col_idx A"
-    proof -
-      have l1_eq: "l1 A = last_col_idx A - s"
-        using s_lt_last b0 last_lt_arr
-        unfolding l1_def B0_block_def by simp
-      hence "j < last_col_idx A - s" using j_lt by simp
-      thus ?thesis by linarith
-    qed
-    have sj_arr: "s + j < arr_len A" using sj_lt_last last_lt_arr by linarith
-    have k_lt_col_len: "k < length (A ! (s + j))"
-    proof -
-      have "length (A ! (s + j)) = height A"
-        using length_col_arr[OF is_arr A_ne sj_arr] .
-      moreover have "k < height A" using k_lt max_parent_level_lt[OF mp] by linarith
-      ultimately show ?thesis by simp
-    qed
-    have "elem (A[n]) p k = elem (A[n]) (idx_B_in_expansion A 0 j) k"
-      using p_eq_idx by simp
-    also have "\<dots> = elem A (s + j) k"
-      using elem_expansion_B0_via_orig[OF A_ne b0 j_lt k_lt_keep k_lt_col_len] .
-    also have "\<dots> = elem A p k"
-      using j_def p_ge_l0 l0_eq unfolding elem_def by simp
-    finally show ?thesis by simp
-  qed
-qed
-
-text \<open>Lemma A (\<open>m_anc_orig_eq_AEn_shared_B0\<close>). For
-  shared cols and \<open>k < m_0\<close>, \<open>m_parent\<close> matches in \<open>A\<close> and \<open>A[n]\<close>
-  (via \<open>elem_orig_eq_AEn_shared_below_l1\<close> plus IH at \<open>k-1\<close>
-  for the m_anc filter). Then \<open>m_anc\<close> matches by chain induction.\<close>
-
-lemma m_anc_orig_eq_AEn_shared_B0:
-  fixes A :: array and n :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some m\<^sub>0"
-      and k_lt: "k < m\<^sub>0"
-      and n_pos: "0 < n"
-      and p_lt: "p < idx_B_in_expansion A 0 (l1 A)"
-  shows "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
-  using k_lt p_lt
-proof (induct k arbitrary: p q rule: less_induct)
-  case (less k)
-  note IH_k = less.hyps
-  note k_lt' = less.prems(1)
-  note p_lt' = less.prems(2)
-  \<comment> \<open>Step 1: \<open>m_parent A k p = m_parent (A[n]) k p\<close> via filter cong.\<close>
-  have mp_match:
-    "\<And>p'. p' < idx_B_in_expansion A 0 (l1 A) \<Longrightarrow>
-           m_parent A k p' = m_parent (A[n]) k p'"
-  proof -
-    fix p'
-    assume p'_lt: "p' < idx_B_in_expansion A 0 (l1 A)"
-    show "m_parent A k p' = m_parent (A[n]) k p'"
-    proof (cases k)
-      case 0
-      have cands_eq: "[j \<leftarrow> [0..<p']. elem A j 0 < elem A p' 0]
-                    = [j \<leftarrow> [0..<p']. elem (A[n]) j 0 < elem (A[n]) p' 0]"
-      proof (rule filter_cong[OF refl])
-        fix j assume "j \<in> set [0..<p']"
-        hence j_lt_p': "j < p'" by simp
-        have j_lt_idx: "j < idx_B_in_expansion A 0 (l1 A)"
-          using j_lt_p' p'_lt by linarith
-        have ej: "elem A j 0 = elem (A[n]) j 0"
-          using elem_orig_eq_AEn_shared_below_l1
-                  [OF A_BMS A_ne b0 mp n_pos j_lt_idx k_lt'] \<open>k = 0\<close> by simp
-        have ep: "elem A p' 0 = elem (A[n]) p' 0"
-          using elem_orig_eq_AEn_shared_below_l1
-                  [OF A_BMS A_ne b0 mp n_pos p'_lt k_lt'] \<open>k = 0\<close> by simp
-        show "elem A j 0 < elem A p' 0 \<longleftrightarrow> elem (A[n]) j 0 < elem (A[n]) p' 0"
-          using ej ep by simp
-      qed
-      thus ?thesis using \<open>k = 0\<close> by (simp add: Let_def)
-    next
-      case (Suc k')
-      have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
-      have k'_lt_m0: "k' < m\<^sub>0" using k'_lt k_lt' by linarith
-      have cands_eq: "[j \<leftarrow> [0..<p']. elem A j (Suc k') < elem A p' (Suc k')
-                                       \<and> m_ancestor A k' p' j]
-                    = [j \<leftarrow> [0..<p']. elem (A[n]) j (Suc k') < elem (A[n]) p' (Suc k')
-                                       \<and> m_ancestor (A[n]) k' p' j]"
-      proof (rule filter_cong[OF refl])
-        fix j assume "j \<in> set [0..<p']"
-        hence j_lt_p': "j < p'" by simp
-        have j_lt_idx: "j < idx_B_in_expansion A 0 (l1 A)"
-          using j_lt_p' p'_lt by linarith
-        have ej: "elem A j (Suc k') = elem (A[n]) j (Suc k')"
-          using elem_orig_eq_AEn_shared_below_l1
-                  [OF A_BMS A_ne b0 mp n_pos j_lt_idx k_lt'] \<open>k = Suc k'\<close> by simp
-        have ep: "elem A p' (Suc k') = elem (A[n]) p' (Suc k')"
-          using elem_orig_eq_AEn_shared_below_l1
-                  [OF A_BMS A_ne b0 mp n_pos p'_lt k_lt'] \<open>k = Suc k'\<close> by simp
-        have manc: "m_ancestor A k' p' j \<longleftrightarrow> m_ancestor (A[n]) k' p' j"
-          using IH_k[OF k'_lt k'_lt_m0 p'_lt] by blast
-        show "(elem A j (Suc k') < elem A p' (Suc k') \<and> m_ancestor A k' p' j)
-            \<longleftrightarrow> (elem (A[n]) j (Suc k') < elem (A[n]) p' (Suc k')
-                 \<and> m_ancestor (A[n]) k' p' j)"
-          using ej ep manc by simp
-      qed
-      thus ?thesis using \<open>k = Suc k'\<close> by (simp add: Let_def)
-    qed
-  qed
-  \<comment> \<open>Step 2: \<open>m_anc\<close> match by chain induction on \<open>p\<close>.\<close>
-  show ?case using p_lt'
-  proof (induct p arbitrary: q rule: less_induct)
-    case (less p)
-    note IH_p = less.hyps
-    note p_lt'' = less.prems
-    have mp_p: "m_parent A k p = m_parent (A[n]) k p"
-      using mp_match[OF p_lt''] .
-    show "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
-    proof (cases "m_parent A k p")
-      case None
-      have mp_AEn_none: "m_parent (A[n]) k p = None" using None mp_p by simp
-      have lhs_F: "\<not> m_ancestor A k p q" using m_anc_via_parent_none[OF None] .
-      have rhs_F: "\<not> m_ancestor (A[n]) k p q" using m_anc_via_parent_none[OF mp_AEn_none] .
-      show ?thesis using lhs_F rhs_F by simp
-    next
-      case (Some r)
-      have mp_AEn_some: "m_parent (A[n]) k p = Some r" using Some mp_p by simp
-      have r_lt: "r < p" using Some by (rule m_parent_lt)
-      have r_lt_idx: "r < idx_B_in_expansion A 0 (l1 A)" using r_lt p_lt'' by linarith
-      have iff_A: "m_ancestor A k p q \<longleftrightarrow> r = q \<or> m_ancestor A k r q"
-        using m_anc_via_parent_some[OF Some] .
-      have iff_AEn: "m_ancestor (A[n]) k p q \<longleftrightarrow> r = q \<or> m_ancestor (A[n]) k r q"
-        using m_anc_via_parent_some[OF mp_AEn_some] .
-      have rec: "m_ancestor A k r q \<longleftrightarrow> m_ancestor (A[n]) k r q"
-        using IH_p[OF r_lt r_lt_idx] .
-      show ?thesis using iff_A iff_AEn rec by blast
-    qed
-  qed
 qed
 
 text \<open>Elem match between adjacent expansions \<open>A[n-1]\<close> and \<open>A[n]\<close>
