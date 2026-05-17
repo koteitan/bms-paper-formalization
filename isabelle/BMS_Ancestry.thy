@@ -3370,6 +3370,133 @@ text \<open>
   inside the A[n] wrapper below after chain transfer via Lemma A.
 \<close>
 
+text \<open>
+  Maximality sub-lemma for case 2 of @{thm bms_chain_level_lift_A}:
+  given a single-step (Suc k)-parent \<open>m_parent A (Suc k) (s+j) = Some q_1\<close>,
+  and \<open>p\<close> a position with \<open>q_1 < p < s+j\<close> AND \<open>p\<close> is a k-ancestor of \<open>s+j\<close>,
+  then \<open>elem A (s+j) (Suc k) \<le> elem A p (Suc k)\<close> (otherwise \<open>p\<close>
+  would beat \<open>q_1\<close> as a (Suc k)-parent candidate).
+\<close>
+
+lemma bms_max_elem_above_q1:
+  fixes A :: array and k :: nat and s :: nat and j :: nat and q_1 :: nat and p :: nat
+  assumes mp_sj: "m_parent A (Suc k) (s + j) = Some q_1"
+      and p_gt_q1: "q_1 < p"
+      and p_lt_sj: "p < s + j"
+      and p_chain: "m_ancestor A k (s + j) p"
+  shows "elem A (s + j) (Suc k) \<le> elem A p (Suc k)"
+proof (rule ccontr)
+  assume "\<not> elem A (s + j) (Suc k) \<le> elem A p (Suc k)"
+  hence p_elem_lt: "elem A p (Suc k) < elem A (s + j) (Suc k)" by simp
+  let ?P = "\<lambda>j'. elem A j' (Suc k) < elem A (s + j) (Suc k)
+              \<and> m_ancestor A k (s + j) j'"
+  let ?cands = "filter ?P [0..<s + j]"
+  have p_P: "?P p" using p_elem_lt p_chain by simp
+  have p_in_cands: "p \<in> set ?cands" using p_lt_sj p_P by simp
+  have cands_ne: "?cands \<noteq> []" using p_in_cands by auto
+  have mp_eq_last: "m_parent A (Suc k) (s + j) = Some (last ?cands)"
+    using cands_ne by (simp add: Let_def)
+  hence q1_eq: "q_1 = last ?cands" using mp_sj by simp
+  have sorted_cands: "sorted ?cands" by (simp add: sorted_filter)
+  have all_le_last: "\<forall>y \<in> set ?cands. y \<le> last ?cands"
+    using sorted_cands cands_ne
+    by (metis last_in_set sorted_iff_nth_mono_less
+              in_set_conv_nth length_pos_if_in_set le_refl
+              less_imp_le_nat nat_le_linear)
+  have "p \<le> last ?cands" using all_le_last p_in_cands by blast
+  thus False using p_gt_q1 q1_eq by simp
+qed
+
+text \<open>
+  Case 2 sub-lemma: for any position \<open>y\<close> with \<open>q_1 < y < s+j\<close>
+  and \<open>y\<close> a k-ancestor of \<open>s+j\<close>, the (Suc k)-chain from \<open>y\<close>
+  reaches \<open>s\<close>. Proof by well-founded induction on \<open>y\<close> using the
+  maximality sub-lemma to bound \<open>m_parent A (Suc k) y\<close> from below by \<open>q_1\<close>.
+\<close>
+
+lemma bms_chain_level_lift_A_above_q1:
+  fixes A :: array and k :: nat and s :: nat and j :: nat and q_1 :: nat
+  assumes mp_sj: "m_parent A (Suc k) (s + j) = Some q_1"
+      and anc_q1_s: "q_1 = s \<or> m_ancestor A (Suc k) q_1 s"
+      and chain_j_to_q1: "m_ancestor A k (s + j) q_1"
+  shows "\<forall>y. q_1 < y \<and> y < s + j \<and> m_ancestor A k (s + j) y
+              \<longrightarrow> m_ancestor A (Suc k) y s"
+proof (intro allI)
+  fix y
+  show "q_1 < y \<and> y < s + j \<and> m_ancestor A k (s + j) y
+        \<longrightarrow> m_ancestor A (Suc k) y s"
+  proof (induct y rule: less_induct)
+    case (less y)
+    note inner_IH = less.hyps
+    show ?case
+    proof (intro impI, elim conjE)
+      assume y_gt_q1: "q_1 < y"
+      assume y_lt_sj: "y < s + j"
+      assume chain_jy: "m_ancestor A k (s + j) y"
+      \<comment> \<open>By chain linearity at \<open>k\<close>: \<open>m_anc A k y q_1\<close>.\<close>
+      have chain_y_q1: "m_ancestor A k y q_1"
+      proof -
+        have "y = q_1 \<or> m_ancestor A k y q_1 \<or> m_ancestor A k q_1 y"
+          using m_ancestor_chain_linear chain_jy chain_j_to_q1 by blast
+        moreover have "y \<noteq> q_1" using y_gt_q1 by simp
+        moreover have "\<not> m_ancestor A k q_1 y"
+          using m_ancestor_target_lt y_gt_q1 by force
+        ultimately show ?thesis by blast
+      qed
+      \<comment> \<open>Elem comparisons: \<open>elem q_1 (Suc k) < elem (s+j) (Suc k) \<le> elem y (Suc k)\<close>.\<close>
+      have elem_q1_lt_sj: "elem A q_1 (Suc k) < elem A (s + j) (Suc k)"
+        using m_parent_elem_lt[OF mp_sj] .
+      have elem_sj_le_y: "elem A (s + j) (Suc k) \<le> elem A y (Suc k)"
+        using bms_max_elem_above_q1[OF mp_sj y_gt_q1 y_lt_sj chain_jy] .
+      have elem_q1_lt_y: "elem A q_1 (Suc k) < elem A y (Suc k)"
+        using elem_q1_lt_sj elem_sj_le_y by linarith
+      \<comment> \<open>So \<open>q_1\<close> is a candidate for \<open>m_parent A (Suc k) y\<close>.\<close>
+      let ?P_y = "\<lambda>p. elem A p (Suc k) < elem A y (Suc k) \<and> m_ancestor A k y p"
+      have q1_cand: "?P_y q_1"
+        using elem_q1_lt_y chain_y_q1 by simp
+      have q1_in_cands_y: "q_1 \<in> set (filter ?P_y [0..<y])"
+        using y_gt_q1 q1_cand by simp
+      have cands_y_ne: "filter ?P_y [0..<y] \<noteq> []"
+        using q1_in_cands_y by auto
+      obtain r where mp_y: "m_parent A (Suc k) y = Some r"
+                 and r_eq: "r = last (filter ?P_y [0..<y])"
+        using cands_y_ne by (auto simp add: Let_def)
+      have r_lt_y: "r < y" by (rule m_parent_lt[OF mp_y])
+      \<comment> \<open>\<open>r \<ge> q_1\<close> by maximality (\<open>last\<close> of a sorted list).\<close>
+      have r_ge_q1: "q_1 \<le> r"
+      proof -
+        have sorted_cands: "sorted (filter ?P_y [0..<y])"
+          by (simp add: sorted_filter)
+        have "\<forall>z \<in> set (filter ?P_y [0..<y]). z \<le> last (filter ?P_y [0..<y])"
+          using sorted_cands cands_y_ne
+          by (metis last_in_set sorted_iff_nth_mono_less
+                    in_set_conv_nth length_pos_if_in_set le_refl
+                    less_imp_le_nat nat_le_linear)
+        thus ?thesis using q1_in_cands_y r_eq by blast
+      qed
+      show "m_ancestor A (Suc k) y s"
+      proof (cases "r = q_1")
+        case r_eq_q1: True
+        show ?thesis
+          using mp_y r_eq_q1 anc_q1_s by auto
+      next
+        case r_ne_q1: False
+        hence r_gt_q1: "q_1 < r" using r_ge_q1 by linarith
+        \<comment> \<open>Apply IH at \<open>r < y\<close>.\<close>
+        have r_lt_sj: "r < s + j" using r_lt_y y_lt_sj by simp
+        have chain_y_r: "m_ancestor A k y r"
+          using mp_y by simp
+        have chain_jr: "m_ancestor A k (s + j) r"
+          using m_ancestor_trans[OF chain_jy chain_y_r] .
+        have IH_r: "m_ancestor A (Suc k) r s"
+          using inner_IH[OF r_lt_y] r_gt_q1 r_lt_sj chain_jr by simp
+        show ?thesis
+          using mp_y IH_r by auto
+      qed
+    qed
+  qed
+qed
+
 lemma bms_chain_level_lift_A:
   fixes A :: array and k :: nat
   assumes asc_j_chain: "m_ancestor A (Suc k) (s + j) s"
@@ -3434,10 +3561,16 @@ proof (induct j arbitrary: x rule: less_induct)
         by (rule less.hyps[OF j'_lt_j asc_chain_j' chain_j'_x x_pos' x_lt_j'])
     next
       case sx_lt_q1_F: False
-      \<comment> \<open>\<open>(s+x) > q_1\<close>: must have \<open>m_anc A k (s+x) q_1\<close>.
-          Nested maximality argument for \<open>m_parent A (Suc k) (s+x)\<close>;
-          factored out as a separate proof obligation pending implementation.\<close>
-      show ?thesis sorry
+      \<comment> \<open>\<open>(s+x) > q_1\<close>: dispatch to @{thm bms_chain_level_lift_A_above_q1}.\<close>
+      have chain_sx_q1: "m_ancestor A k (s + x) q_1"
+        using lin sx_ne_q1 sx_lt_q1_F by blast
+      have sx_gt_q1: "q_1 < s + x"
+        using chain_sx_q1 m_ancestor_target_lt by simp
+      have sx_lt_sj: "s + x < s + j" using x_lt_j' by simp
+      show ?thesis
+        using bms_chain_level_lift_A_above_q1
+                [OF mp_sj anc_q1_s chain_j_to_q1]
+              sx_gt_q1 sx_lt_sj chain_jx by blast
     qed
   qed
 qed

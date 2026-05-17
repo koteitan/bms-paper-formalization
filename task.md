@@ -89,7 +89,9 @@ graph LR
       - 🚨 `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0 dichotomy (k=0 用 block-shift helpers 未実装)
       - ✅ `bms_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (A)、 x=0 inline + x>0 は `bms_chain_level_lift` 経由
       - ✅ `bms_chain_level_lift` — A[n] wrapper、 Lemma A で chain transfer + `bms_chain_level_lift_A` 呼び出し
-      - 🚨 `bms_chain_level_lift_A` — pure A 形式の lift、 j に関する強い帰納、 case 1 (s+x=q1) と case 3 (s+x<q1) は ✅、 case 2 (s+x>q1) は nested maximality 帰納要
+      - ✅ `bms_chain_level_lift_A` — pure A 形式の lift、 j に関する強い帰納 + chain linearity で 3 case を dispatch
+      - ✅ `bms_chain_level_lift_A_above_q1` — case 2 (s+x>q1) 専用 sub-lemma、 y に関する強い帰納 + maximality
+      - ✅ `bms_max_elem_above_q1` — maximality 補題: m_parent A (Suc k) (s+j) = Some q_1 のとき q_1<p<s+j かつ p が s+j の k-祖先なら elem A p (Suc k) ≥ elem A (s+j) (Suc k)
       - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (B) 構造補題 (signature 要再検討、 x=0 で reflexivity と衝突可能性)
     - 🚨 **Stage 2: ∀k. (iv)@k** `lemma_2_5_iv_main` (k-induction wrapper、 provides **IH(iv)**)
       - ✅ step `lemma_2_5_iv_clause_step` (入力: **IH(iv)** + **IH(ii)** = ∀k. (ii)@k via Stage 1) — body sorry-free、 全 case を 4 named lemmas に dispatch
