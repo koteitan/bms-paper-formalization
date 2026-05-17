@@ -85,13 +85,7 @@ graph LR
       - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous
       - 🚨 5 main lemmas (∀k. (i)(ii)(iii)(iv)(v)) の AND 構築
     - 🚨 **Stage 1: ∀k. (ii)@k** `lemma_2_5_ii_main_v2` (k-induction wrapper、 provides **IH(ii)**)
-      - 🚨 step `lemma_2_5_ii_clause_step_v2` (入力: **IH(ii)** = ∀k'<k. (ii)@k')
-        - ✅ scaffold: 4-way dispatch
-        - ✅ vacuous (n=0 / b0=None / i≥j) + k=0 t=0 + Suc k' k≥t: dispatch 済
-        - ✅ 11 sound k<t helpers (~1027 行)
-        - ✅ helpers' `asc_all` を `asc_chain` (per-cand chain conditional) に weaken
-        - ✅ asc_chain / not_asc_chain sub-sorry → named lemma 経由 derivation に置換
-        - ✅ k=0 0<t case → named lemma `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` に dispatch
+      - ✅ step `lemma_2_5_ii_clause_step_v2` (入力: **IH(ii)** = ∀k'<k. (ii)@k') — body sorry-free、 全て 3 named lemma 経由
       - 🚨 `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0 dichotomy (k=0 用 block-shift helpers 未実装)
       - 🚨 `bms_ascend_propagates_to_chain_ancestor` (x=0 case ✅) — Hunter dichotomy case (A) x>0 構造補題
       - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (B) 構造補題 (signature 要再検討、 x=0 で reflexivity と衝突可能性)
@@ -118,7 +112,6 @@ graph LR
       - 🚨 step `lemma_2_5_v_clause_step` (入力: (ii)(iii)(iv)@k via Stages 1-3; **IH 不要**)
         - ✅ scaffold + trivial cases (n≤1, b0=None)
         - 🚨 残: substantive case (BMS_Ancestry.thy:4476) — Hunter p.7 「last k-ancestor in B_{n_2}」
-    - 🚨 旧 (ii) step `lemma_2_5_ii_clause_step` (BMS_Ancestry.thy:3091) — 旧 5-AND IH 形式、 layered 完了後に削除予定
     - ✅ Lemma 2.5 helpers (proven infrastructure)
       - ✅ `elem_AEn_idx_B_value` (block-shift elem identity、 2026-05-18)
         - `elem (A[n]) (idx_B t j) k = (A!(s+j))!k + (if ascends A j k then t·δ_k else 0)`

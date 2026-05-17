@@ -3139,28 +3139,8 @@ proof (induct j arbitrary: i rule: less_induct)
 qed
 
 text \<open>
-  Step lemma for clause (ii): assumes IH (= full lemma_2_5_at at k' < k)
-  and proves clause (ii) at level k. Per dependency matrix, (ii) at k
-  uses only IH (no other clause at same k).
-\<close>
-
-lemma lemma_2_5_ii_clause_step:
-  fixes A :: array
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
-  shows "lemma_2_5_ii_clause A n k"
-  sorry
-
-text \<open>
-  === NEW SOUND APPROACH for (ii) (2026-05-17) ===
-
-  The existing @{thm lemma_2_5_ii_clause_step} above relies on the
-  unsound `bump_col_uniform_k_lt_t` (which derives bumping uniformity
-  from a false universal-ascending claim, refuted by yaBMS for the BMS
-  array \<open>(0,0,0)(1,1,1)(2,0,0)(1,1,1)\<close>).
-
-  Below is a sound replacement following Hunter's paper (arXiv:2307.04606v3)
-  page 5 case-split approach. Strategy:
+  Sound (ii) step lemma following Hunter's paper (arXiv:2307.04606v3)
+  page 5 case-split approach.
 
   Fix \<open>i, j\<close>. If \<open>j = 0\<close> or \<open>i \<ge> j\<close>, trivial. For \<open>i < j\<close>:
   define \<open>I = {i' < j : \<forall>k' < k. i' is k'-ancestor of j in B_0}\<close>.
@@ -4664,7 +4644,7 @@ proof -
         have IH_at_n: "\<forall>k'<k. lemma_2_5_at A (Suc n') k'" using IH_k by blast
         have IH_n_at_k: "lemma_2_5_at A (Suc n' - 1) k" using Suc.hyps by simp
         have ii: "lemma_2_5_ii_clause A (Suc n') k"
-          by (rule lemma_2_5_ii_clause_step[OF A_BMS A_ne IH_at_n])
+          by (rule lemma_2_5_ii_main_v2[OF A_BMS A_ne])
         have iii: "lemma_2_5_iii_clause A (Suc n') k"
           by (rule lemma_2_5_iii_clause_step[OF A_BMS A_ne IH_at_n IH_n_at_k ii])
         have iv: "lemma_2_5_iv_clause A (Suc n') k"
