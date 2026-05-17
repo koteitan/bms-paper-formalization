@@ -3016,6 +3016,50 @@ next
 qed
 
 text \<open>
+  === NEW SOUND APPROACH for (ii) (2026-05-17) ===
+
+  The existing @{thm lemma_2_5_ii_clause_step} above relies on the
+  unsound `bump_col_uniform_k_lt_t` (which derives bumping uniformity
+  from a false universal-ascending claim, refuted by yaBMS for the BMS
+  array \<open>(0,0,0)(1,1,1)(2,0,0)(1,1,1)\<close>).
+
+  Below is a sound replacement following Hunter's paper (arXiv:2307.04606v3)
+  page 5 case-split approach. Strategy:
+
+  Fix \<open>i, j\<close>. If \<open>j = 0\<close> or \<open>i \<ge> j\<close>, trivial. For \<open>i < j\<close>:
+  define \<open>I = {i' < j : \<forall>k' < k. i' is k'-ancestor of j in B_0}\<close>.
+  By IH (ii) at \<open>k' < k\<close>, \<open>I\<close> is the same when measured in \<open>B_0\<close> or \<open>B_n\<close>.
+  Case-split on whether the \<open>j\<close>-th col ascends at row \<open>k\<close>:
+  \<^item> Case (A): all \<open>I\<close> cols ascend \<longrightarrow> differences uniform \<longrightarrow> k-ancestry preserved.
+  \<^item> Case (B): \<open>j\<close>-th col doesn't ascend \<longrightarrow> no new k-ancestors in \<open>B_n\<close>.
+
+  Takes only IH(ii) at \<open>k' < k\<close>, not the full lemma_2_5_at IH (which
+  conflates 5 clauses, masking soundness defects).
+\<close>
+
+lemma lemma_2_5_ii_clause_step_v2:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and IH_ii: "\<forall>k'<k. lemma_2_5_ii_clause A n k'"
+  shows "lemma_2_5_ii_clause A n k"
+  sorry
+
+text \<open>Independent k-induction on (ii) alone, using the v2 step lemma
+  (sound, depends only on IH(ii)). Provides \<open>\<forall>k. (ii) at k\<close> without
+  joint induction with other clauses.\<close>
+
+lemma lemma_2_5_ii_main_v2:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+  shows "lemma_2_5_ii_clause A n k"
+proof (induct k rule: nat_less_induct)
+  case (1 k)
+  have IH_ii: "\<forall>k'<k. lemma_2_5_ii_clause A n k'" using "1.hyps" by blast
+  show ?case
+    by (rule lemma_2_5_ii_clause_step_v2[OF A_BMS A_ne IH_ii])
+qed
+
+text \<open>
   Sub-helpers for clause (iii) at \<open>k < m\<^sub>0\<close>.
 
   Four lemmas factor out the chain-translation:

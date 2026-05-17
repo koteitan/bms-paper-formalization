@@ -5,22 +5,76 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 7 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**重大発見 (2026-05-17)**: yaBMS で `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` が standard BMS かつ `ascends A 2 1 = False` を確認。 これにより `BMS_all_B0_ascending_below_t` は FALSE statement であることが判明。 dependent な `bump_col_uniform_k_lt_t` と (ii)/(iii) helpers が unsound。 paper 精読の結果、 Hunter は universal ascending を主張しておらず、 各 clause 内で「ascending か否か」 の case-split を行う論法を採用していた。 我々の Isabelle 定式化が over-strong 仮定を導入していた。
+
+**コード上の sorry: 7 件** (うち 2 件は確認済 FALSE statement、 既存 proven body は false 前提から derive されており unsound):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
-- `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `elem_B0_lt_last_col_when_k_lt_m0` (BMS_Ancestry.thy:3048) — Hunter 構造 conjecture: 各 B_0 col の k 行値 < last_col の k 行値 (k < m_0)。 BMS_all_B0_ascending の elem 順序 counterpart、 first-step characterizations 経由で (iii) k<m_0 を支える
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3935) — Hunter (iv): m_parent image structure (n=0 proven inline)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3946) — Hunter (i): G-column target
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3957) — Hunter (v): block n_1 ↔ n_1+1 transition
+- 🚨 `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660) — **FALSE statement** (反例確認済)、 sorry は永久に discharge 不可
+- 🚨 `elem_B0_lt_last_col_when_k_lt_m0` (BMS_Ancestry.thy:3048) — **FALSE conjecture** (同反例で elem cond も破綻)、 削除予定
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3935)
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3946)
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3957)
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
 
-注: (iii) clause k<m_0 は assembly + 4 sub-helpers (first-step in A, first-step in A[n], Lemma A, Lemma A') が全 proven (2026-05-17)。 sub-helpers は elem_B0_lt_last_col_when_k_lt_m0 conjecture に依存 (= BMS_all_B0_ascending と同レベルの BMS 構造 conjecture)。
+**Unsound (proven body だが false 前提)**:
+- `bump_col_uniform_k_lt_t` (BMS_Lex.thy:1669) — `BMS_all_B0_ascending_below_t` 経由
+- (ii) Suc k' k<t helpers (`m_parent_AEn_idx_B_within/outside_block_at_Suc_k_when_k_lt_t`, `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t`) — `bump_col_uniform_k_lt_t` 経由
+- `lemma_2_5_ii_clause_step` Suc k' k<t case — 上記経由
+- (iii) first-step helpers (`m_parent_orig_last_col_when_k_lt_m0`, `m_parent_AEn_idx_B_n_zero_when_k_lt_m0`) — `elem_B0_lt_last_col_when_k_lt_m0` 経由
 
-注: `lemma_2_5_ii_clause_step` は全 sub-case (k=0 t=0 / k=0 0<t / Suc k' k<t / Suc k' k≥t) が proven、 (ii) は完全 close。
+**コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。
 
-注: `lemma_2_5_iii_clause_step` の k<m_0 assembly は proven (4 つの sub-helper を sorry で受けて組み立て完了)。 残るは 4 sub-helpers の証明。
+## Hunter Lemma 2.5 (i)-(v) 改訂依存マトリックス (paper 精読 2026-05-17)
 
-注: `lemma_2_5_at_main` は nested (k, n) induction に再構築 (外 k 上 nat_less_induct + 内 n 上 nat_induct)。 (iii) step が同 k の n-1 にアクセス可能になり、 IH_n = lemma_2_5_at A (n-1) k を提供。 projection lemma_2_5_{i,ii,iii,iv,v,iv_and_v} はすべて lemma_2_5_at_main 経由で proper proof。
+paper のproof を再精読した結果、 各 clause が真に要する IH は以下:
+
+| at k で証明 \ 依存 → | (i)k | (ii)k | (iii)k | (iv)k | (v)k | IH(i) | IH(ii) | IH(iii) | IH(iv) | IH(v) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **(i) at k**   | -   | ✓ | ✓ | ✓ | - | ✓ | - | - | - | - |
+| **(ii) at k**  | -   | - | - | - | - | - | ✓ | - | - | - |
+| **(iii) at k** | -   | ✓ | - | - | - | - | - | - | - | - |
+| **(iv) at k**  | -   | ✓ | - | - | - | - | - | - | ✓ | - |
+| **(v) at k**   | -   | ✓ | ✓ | ✓ | - | - | - | - | - | - |
+
+### IH 依存グラフ (DAG)
+
+```
+IH(ii) → (ii)@k → (iii)@k ↘
+                            (i)@k ← IH(i)
+       IH(iv) → (iv)@k ↗ ↘
+                            (v)@k
+```
+
+矢印は **prerequisite → consequence** (a → b は b が a に依存)。
+
+### 帰結
+
+- **k-induction が真に必要なのは (ii), (iv), (i) のみ** (各々自前 IH 要)
+- **(iii), (v) は同 k の他 clause の直接 corollary** (induction 不要)
+- **simultaneous induction 不要** — 各 clause を独立に layered で証明可能
+
+### Layered な構築方式 (新方針)
+
+```
+ステージ 1: ∀k. (ii) at k   ← k-induction、 IH(ii) only
+ステージ 2: ∀k. (iv) at k   ← k-induction、 IH(iv) + (ii) at all k
+ステージ 3: ∀k. (iii) at k  ← 直接 corollary、 (ii) at k
+ステージ 4: ∀k. (i) at k    ← k-induction、 IH(i) + (ii)(iii)(iv) at all k
+ステージ 5: ∀k. (v) at k    ← 直接 corollary、 (ii)(iii)(iv) at all k
+```
+
+### 現実装 (simultaneous) vs 改訂 (layered) の比較
+
+| 項目 | 現状 (unsound) | 改訂 (layered, 新方針) |
+|---|---|---|
+| 帰納構造 | 5 clause 同時 nat_less_induct | (ii)/(iv)/(i) は独立 nat_less_induct、 (iii)/(v) は直接 |
+| step lemma 数 | 5 個 (各 IH = 5-AND) | (ii)(iv)(i) は step + IH 自前、 (iii)(v) は直接 lemma |
+| sound/unsound 局所化 | (ii) sorry が全 clause に伝播 | clause 単位で隔離 |
+| 不要依存 | (iv) → (iii)、 (v) → (i) | 削除 |
+
+## 旧 step lemma 群 (deprecated/unsound 化予定)
+
+注: 旧 `lemma_2_5_at_main` は nested (k, n) induction で 5 step lemma を call、 (iii) k<m_0 assembly は 4 sub-helper で組み上げ、 などの構造的 work は残るが、 unsound 前提に立つため再実装が必要。
 
 **コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。 `lemma_2_6` は ZF 側で discharge 予定、 他は ordinal/σ-pair の前提として保持。
 

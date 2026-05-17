@@ -1342,6 +1342,24 @@ proof -
   finally show ?thesis .
 qed
 
+text \<open>Sound ascending counterpart to @{thm bump_col_no_bump}. Takes
+  \<open>ascends A d k\<close> as an explicit hypothesis (rather than deriving it
+  from the false universal-ascending claim). This is the sound foundation
+  for replacing the unsound uniform-bumping lemma in (ii)/(iii) helpers.\<close>
+
+lemma bump_col_at_ascending_row:
+  assumes b0: "b0_start A = Some s"
+      and asc: "ascends A d k"
+      and len_k: "k < length (A ! (s + d))"
+  shows "(bump_col A d i) ! k = (A ! (s + d)) ! k + i * delta A k"
+proof -
+  have "(bump_col A d i) ! k
+      = (A ! (s + d)) ! k + (if ascends A d k then i * delta A k else 0)"
+    using bump_col_nth_general[OF b0 len_k] .
+  also have "\<dots> = (A ! (s + d)) ! k + i * delta A k" using asc by simp
+  finally show ?thesis .
+qed
+
 lemma bump_col_value_lt_m0:
   assumes b0: "b0_start A = Some s"
       and mp: "max_parent_level A = Some m\<^sub>0"
