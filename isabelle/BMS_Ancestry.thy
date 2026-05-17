@@ -3241,6 +3241,26 @@ lemma bms_not_ascend_propagates_to_chain_ancestor:
   shows "\<not> ascends A x (Suc k)"
   sorry
 
+text \<open>
+  Base case of the (ii) clause at \<open>k = 0\<close> when \<open>t > 0\<close> (the dual to
+  @{thm m_anc_zero_idx_B_in_block_shift_when_t_zero} which handles \<open>t = 0\<close>).
+  Hunter's dichotomy applies per-col at row 0 (paper p.5); the substantive
+  argument requires \<open>k = 0\<close> analogues of the Round 1 \<open>Suc k'\<close> block-shift
+  helpers, currently unimplemented.
+\<close>
+
+lemma lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and n_pos: "0 < n"
+      and i_lt: "i < l1 A" and j_lt: "j < l1 A" and i_lt_j: "i < j"
+  shows "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 j) (idx_B_in_expansion A 0 i)
+       \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n j) (idx_B_in_expansion A n i)"
+  sorry
+
 lemma lemma_2_5_ii_clause_step_v2:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -3344,18 +3364,14 @@ next
                       \<open>k = 0\<close> by simp
             next
               case (Suc t')
-              \<comment> \<open>\<open>k = 0, t = Suc t'\<close>: \<open>0 < t\<close>. Per-col case-split on
-                  \<open>ascends A j 0\<close> per Hunter's argument (paper p.5).
-                  Round 1 helpers only cover \<open>Suc k'\<close>; here we case-split
-                  but discharge of uniform \<open>asc_all\<close> at row 0 remains an
-                  open sub-goal (sub-\<open>sorry\<close>): in general not all columns
-                  \<open>x \<le> j\<close> share \<open>j\<close>'s ascending status at row 0, and
-                  \<open>ascends_invariant_along_chain\<close> only relates chain
-                  members. A proper fix requires a stronger
-                  per-candidate variant of the within/outside helpers
-                  or a uniform-ascending lemma for B_0 at row 0.\<close>
+              \<comment> \<open>\<open>k = 0, t = Suc t'\<close>: \<open>0 < t\<close>. Dispatched to
+                  @{thm lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos}
+                  (Hunter dichotomy at row 0; substantive proof there).\<close>
               have t_pos: "0 < t" using \<open>t = Suc t'\<close> by simp
-              show ?thesis sorry
+              show ?thesis
+                using lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos
+                        [OF A_BMS A_ne b0 mp t_pos n_pos i_lt j_lt i_lt_j]
+                      \<open>k = 0\<close> by simp
             qed
           next
             case (Suc k')

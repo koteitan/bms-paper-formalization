@@ -90,10 +90,11 @@ graph LR
         - ✅ vacuous (n=0 / b0=None / i≥j) + k=0 t=0 + Suc k' k≥t: dispatch 済
         - ✅ 11 sound k<t helpers (~1027 行)
         - ✅ helpers' `asc_all` を `asc_chain` (per-cand chain conditional) に weaken
-        - ✅ asc_chain / not_asc_chain sub-sorry → named lemma 経由 derivation に置換 (2026-05-18)
-        - 🚨 残: k=0 0<t (BMS_Ancestry.thy)
-      - 🚨 `bms_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (A) 構造補題
-      - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (B) 構造補題
+        - ✅ asc_chain / not_asc_chain sub-sorry → named lemma 経由 derivation に置換
+        - ✅ k=0 0<t case → named lemma `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` に dispatch
+      - 🚨 `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0 dichotomy (k=0 用 block-shift helpers 未実装)
+      - 🚨 `bms_ascend_propagates_to_chain_ancestor` (x=0 case ✅) — Hunter dichotomy case (A) x>0 構造補題
+      - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (B) 構造補題 (signature 要再検討、 x=0 で reflexivity と衝突可能性)
     - 🚨 **Stage 2: ∀k. (iv)@k** `lemma_2_5_iv_main` (k-induction wrapper、 provides **IH(iv)**)
       - 🚨 step `lemma_2_5_iv_clause_step` (入力: **IH(iv)** + **IH(ii)** = ∀k. (ii)@k via Stage 1)
         - ✅ n=0 case proven inline
