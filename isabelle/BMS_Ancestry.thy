@@ -2251,6 +2251,585 @@ proof (induct j arbitrary: i rule: less_induct)
 qed
 
 text \<open>
+  Elem equality across blocks at row \<open>k \<ge> t\<close>: at non-bumping
+  rows the value of any B-block column at row \<open>k\<close> is independent
+  of the block index. In-bounds (\<open>k < keep_of\<close>) use
+  @{thm elem_expansion_B_eq_orig_k_ge_t}; out-of-bounds use
+  uniform column length under @{thm strip_zero_rows_eq_map_take}
+  combined with @{thm nth_same_length_oob}.
+\<close>
+
+lemma elem_AEn_eq_at_row_k_ge_t_across_blocks:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_ge: "t \<le> k"
+      and a_le: "a \<le> n"
+      and b_le: "b \<le> n"
+      and x_lt: "x < l1 A"
+  shows "elem (A[n]) (idx_B_in_expansion A a x) k
+       = elem (A[n]) (idx_B_in_expansion A b x) k"
+proof -
+  let ?P = "G_block A @ Bs_concat A n"
+  let ?h = "keep_of ?P"
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have l1_pos: "0 < l1 A" using x_lt by linarith
+  have x_arr: "s + x < arr_len A"
+  proof -
+    have "x < last_col_idx A - s"
+      using x_lt b0 s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
+    hence "s + x < last_col_idx A" by linarith
+    thus ?thesis using last_lt_arr by linarith
+  qed
+  have len_Asx: "length (A ! (s + x)) = height A"
+    using length_col_arr[OF is_arr A_ne x_arr] .
+
+  have len_P: "length ?P = l0 A + Suc n * l1 A"
+    by (simp add: l0_def l1_def length_Bs_concat)
+  have idxBa_lt: "idx_B_in_expansion A a x < length ?P"
+  proof -
+    have "a * l1 A + x < Suc a * l1 A" using x_lt by simp
+    also have "\<dots> \<le> Suc n * l1 A" using a_le by simp
+    finally have "a * l1 A + x < Suc n * l1 A" .
+    thus ?thesis using len_P unfolding idx_B_in_expansion_def by simp
+  qed
+  have idxBb_lt: "idx_B_in_expansion A b x < length ?P"
+  proof -
+    have "b * l1 A + x < Suc b * l1 A" using x_lt by simp
+    also have "\<dots> \<le> Suc n * l1 A" using b_le by simp
+    finally have "b * l1 A + x < Suc n * l1 A" .
+    thus ?thesis using len_P unfolding idx_B_in_expansion_def by simp
+  qed
+  have P_ne: "?P \<noteq> []" using idxBa_lt by auto
+
+  \<comment> \<open>All cols of \<open>?P\<close> have length \<open>height A\<close>; hence all cols of
+      \<open>A[n]\<close> have length \<open>?h\<close>.\<close>
+  have all_A: "\<forall>c \<in> set A. length c = height A"
+    using is_arr unfolding is_array_def by blast
+  have all_G: "\<forall>c \<in> set (G_block A). length c = height A"
+    using G_block_subset_A all_A by blast
+  have all_Bs: "\<forall>c \<in> set (Bs_concat A n). length c = height A"
+    using Bs_concat_uniform[OF is_arr A_ne] .
+  have all_P: "\<forall>c \<in> set ?P. length c = height A"
+    using all_G all_Bs by auto
+
+  have An_eq: "A[n] = strip_zero_rows ?P"
+    using A_ne unfolding expansion_def by simp
+  have strip_eq: "strip_zero_rows ?P = map (\<lambda>c. take ?h c) ?P"
+    using P_ne by (rule strip_zero_rows_eq_map_take)
+  have An_eq2: "A[n] = map (\<lambda>c. take ?h c) ?P"
+    using An_eq strip_eq by simp
+  have An_at_a: "(A[n]) ! (idx_B_in_expansion A a x) = take ?h (?P ! (idx_B_in_expansion A a x))"
+  proof -
+    have "(A[n]) ! (idx_B_in_expansion A a x)
+        = (map (\<lambda>c. take ?h c) ?P) ! (idx_B_in_expansion A a x)"
+      using An_eq2 by simp
+    also have "\<dots> = take ?h (?P ! (idx_B_in_expansion A a x))"
+      using idxBa_lt by (rule nth_map)
+    finally show ?thesis .
+  qed
+  have An_at_b: "(A[n]) ! (idx_B_in_expansion A b x) = take ?h (?P ! (idx_B_in_expansion A b x))"
+  proof -
+    have "(A[n]) ! (idx_B_in_expansion A b x)
+        = (map (\<lambda>c. take ?h c) ?P) ! (idx_B_in_expansion A b x)"
+      using An_eq2 by simp
+    also have "\<dots> = take ?h (?P ! (idx_B_in_expansion A b x))"
+      using idxBb_lt by (rule nth_map)
+    finally show ?thesis .
+  qed
+
+  \<comment> \<open>Pre-strip values at our positions equal \<open>bump_col A x a\<close>
+      and \<open>bump_col A x b\<close>, which at row \<open>k \<ge> t\<close> have no
+      ascending bump and reduce to \<open>(A ! (s + x)) ! k\<close>.\<close>
+  have P_at_a: "?P ! (idx_B_in_expansion A a x) = bump_col A x a"
+  proof -
+    have "?P ! (idx_B_in_expansion A a x) = Bi_block A a ! x"
+      using pre_strip_nth_B[OF a_le x_lt] .
+    moreover have "Bi_block A a ! x = bump_col A x a"
+      unfolding Bi_block_def Let_def using x_lt unfolding l1_def by simp
+    ultimately show ?thesis by simp
+  qed
+  have P_at_b: "?P ! (idx_B_in_expansion A b x) = bump_col A x b"
+  proof -
+    have "?P ! (idx_B_in_expansion A b x) = Bi_block A b ! x"
+      using pre_strip_nth_B[OF b_le x_lt] .
+    moreover have "Bi_block A b ! x = bump_col A x b"
+      unfolding Bi_block_def Let_def using x_lt unfolding l1_def by simp
+    ultimately show ?thesis by simp
+  qed
+  have bump_a_len: "length (bump_col A x a) = length (A ! (s + x))"
+    unfolding bump_col_def Let_def using b0 by simp
+  have bump_b_len: "length (bump_col A x b) = length (A ! (s + x))"
+    unfolding bump_col_def Let_def using b0 by simp
+  have bump_a_len_H: "length (bump_col A x a) = height A"
+    using bump_a_len len_Asx by simp
+  have bump_b_len_H: "length (bump_col A x b) = height A"
+    using bump_b_len len_Asx by simp
+
+  \<comment> \<open>\<open>height ?P = height A\<close> via uniform col length.\<close>
+  have hd_in: "hd ?P \<in> set ?P" using P_ne by (cases ?P) auto
+  have hd_len: "length (hd ?P) = height A" using all_P hd_in by blast
+  have height_P_eq: "height ?P = height A" using P_ne hd_len by (cases ?P) auto
+  have h_le_HP: "?h \<le> height ?P" by (rule keep_of_le_height)
+  have h_le_HA: "?h \<le> height A" using h_le_HP height_P_eq by simp
+
+  show ?thesis
+  proof (cases "k < ?h")
+    case True
+    \<comment> \<open>In-bounds for \<open>A[n]\<close>'s column length \<open>?h\<close>.
+        Use @{thm elem_expansion_B_eq_orig_k_ge_t} on both sides.\<close>
+    have k_lt_HA: "k < height A" using True h_le_HA by linarith
+    have k_lt_col: "k < length (A ! (s + x))" using k_lt_HA len_Asx by simp
+    have a_eq: "elem (A[n]) (idx_B_in_expansion A a x) k = (A ! (s + x)) ! k"
+      using elem_expansion_B_eq_orig_k_ge_t[OF A_ne b0 mp k_ge a_le x_lt True k_lt_col] .
+    have b_eq: "elem (A[n]) (idx_B_in_expansion A b x) k = (A ! (s + x)) ! k"
+      using elem_expansion_B_eq_orig_k_ge_t[OF A_ne b0 mp k_ge b_le x_lt True k_lt_col] .
+    show ?thesis using a_eq b_eq by simp
+  next
+    case False
+    \<comment> \<open>Out-of-bounds: both columns of \<open>A[n]\<close> have length \<open>?h\<close>,
+        and \<open>k \<ge> ?h\<close>; apply @{thm nth_same_length_oob}.\<close>
+    hence k_ge_h: "?h \<le> k" by simp
+    have len_a: "length ((A[n]) ! (idx_B_in_expansion A a x)) = ?h"
+    proof -
+      have "length ((A[n]) ! (idx_B_in_expansion A a x))
+          = length (take ?h (?P ! (idx_B_in_expansion A a x)))"
+        using An_at_a by simp
+      also have "\<dots> = min ?h (length (?P ! (idx_B_in_expansion A a x)))" by simp
+      also have "length (?P ! (idx_B_in_expansion A a x)) = length (bump_col A x a)"
+        using P_at_a by simp
+      also have "\<dots> = height A" using bump_a_len_H .
+      finally show ?thesis using h_le_HA by simp
+    qed
+    have len_b: "length ((A[n]) ! (idx_B_in_expansion A b x)) = ?h"
+    proof -
+      have "length ((A[n]) ! (idx_B_in_expansion A b x))
+          = length (take ?h (?P ! (idx_B_in_expansion A b x)))"
+        using An_at_b by simp
+      also have "\<dots> = min ?h (length (?P ! (idx_B_in_expansion A b x)))" by simp
+      also have "length (?P ! (idx_B_in_expansion A b x)) = length (bump_col A x b)"
+        using P_at_b by simp
+      also have "\<dots> = height A" using bump_b_len_H .
+      finally show ?thesis using h_le_HA by simp
+    qed
+    have lens_eq: "length ((A[n]) ! (idx_B_in_expansion A a x))
+                 = length ((A[n]) ! (idx_B_in_expansion A b x))"
+      using len_a len_b by simp
+    have k_ge_a: "length ((A[n]) ! (idx_B_in_expansion A a x)) \<le> k"
+      using k_ge_h len_a by simp
+    have "((A[n]) ! (idx_B_in_expansion A a x)) ! k
+        = ((A[n]) ! (idx_B_in_expansion A b x)) ! k"
+      using nth_same_length_oob[OF lens_eq k_ge_a] .
+    thus ?thesis unfolding elem_def by simp
+  qed
+qed
+
+text \<open>
+  Within-block characterization of @{term m_parent} at row \<open>Suc k'\<close>
+  when \<open>Suc k' \<ge> t = max_parent_level A\<close>. The strict-less
+  comparison at row \<open>Suc k'\<close> is invariant in the block index via
+  @{thm elem_AEn_eq_at_row_k_ge_t_across_blocks}; the \<open>m_anc\<close>-at-\<open>k'\<close>
+  filter conjunct is handled via the same \<open>manc_inv\<close> parameter
+  technique as the \<open>k < t\<close> version.
+\<close>
+
+lemma m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_ge_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_ge_t: "t \<le> Suc k'"
+      and c_le: "c \<le> n"
+      and j_lt: "j < l1 A"
+      and manc_inv: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A c j)
+                                                  (idx_B_in_expansion A c x)
+                          \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 x)"
+      and S_ne: "[x \<leftarrow> [0..<j].
+                    elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+                      < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+                  \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                          (idx_B_in_expansion A 0 x)] \<noteq> []"
+  shows "m_parent (A[n]) (Suc k') (idx_B_in_expansion A c j)
+       = Some (idx_B_in_expansion A c
+            (last [x \<leftarrow> [0..<j].
+                    elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+                      < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+                  \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                          (idx_B_in_expansion A 0 x)]))"
+proof -
+  let ?i = "idx_B_in_expansion A c j"
+  let ?Cstart = "idx_B_in_expansion A c 0"
+  let ?vi = "elem (A[n]) ?i (Suc k')"
+  let ?cands = "[p \<leftarrow> [0..<?i]. elem (A[n]) p (Suc k') < ?vi
+                              \<and> m_ancestor (A[n]) k' ?i p]"
+  let ?S = "[x \<leftarrow> [0..<j].
+              elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+                < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+            \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                    (idx_B_in_expansion A 0 x)]"
+  have mp_eq: "m_parent (A[n]) (Suc k') ?i
+             = (if ?cands = [] then None else Some (last ?cands))"
+    by (simp add: Let_def)
+  have i_eq: "?i = ?Cstart + j" unfolding idx_B_in_expansion_def by simp
+  have range_split: "[0..<?i] = [0..<?Cstart] @ [?Cstart..<?i]"
+    using upt_add_eq_append[OF le0, of ?Cstart j] i_eq by simp
+  let ?pre = "filter (\<lambda>p. elem (A[n]) p (Suc k') < ?vi
+                       \<and> m_ancestor (A[n]) k' ?i p) [0..<?Cstart]"
+  let ?post = "filter (\<lambda>p. elem (A[n]) p (Suc k') < ?vi
+                        \<and> m_ancestor (A[n]) k' ?i p) [?Cstart..<?i]"
+  have cands_split: "?cands = ?pre @ ?post"
+    using range_split by simp
+  have post_range: "[?Cstart..<?i] = map (\<lambda>i. i + ?Cstart) [0..<j]"
+    using i_eq map_add_upt[of ?Cstart j] by (simp add: add.commute)
+  have post_map: "?post = map (\<lambda>i. i + ?Cstart)
+                   (filter (\<lambda>i. elem (A[n]) (i + ?Cstart) (Suc k') < ?vi
+                              \<and> m_ancestor (A[n]) k' ?i (i + ?Cstart)) [0..<j])"
+    using post_range by (simp add: filter_map o_def)
+  have filter_cong_eq:
+    "filter (\<lambda>i. elem (A[n]) (i + ?Cstart) (Suc k') < ?vi
+              \<and> m_ancestor (A[n]) k' ?i (i + ?Cstart)) [0..<j] = ?S"
+  proof (rule filter_cong[OF refl])
+    fix x assume x_in: "x \<in> set [0..<j]"
+    hence x_lt_j: "x < j" by simp
+    hence x_lt_l1: "x < l1 A" using j_lt by linarith
+    have idxBc_eq: "x + ?Cstart = idx_B_in_expansion A c x"
+      unfolding idx_B_in_expansion_def by simp
+    \<comment> \<open>elem at row Suc k' across blocks (via eq across blocks)\<close>
+    have elem_x_c: "elem (A[n]) (idx_B_in_expansion A c x) (Suc k')
+                  = elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')"
+      using elem_AEn_eq_at_row_k_ge_t_across_blocks
+              [OF A_BMS A_ne b0 mp k_ge_t c_le le0 x_lt_l1] .
+    have elem_j_c: "elem (A[n]) (idx_B_in_expansion A c j) (Suc k')
+                  = elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')"
+      using elem_AEn_eq_at_row_k_ge_t_across_blocks
+              [OF A_BMS A_ne b0 mp k_ge_t c_le le0 j_lt] .
+    have manc_x: "m_ancestor (A[n]) k' (idx_B_in_expansion A c j)
+                                        (idx_B_in_expansion A c x)
+                \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                        (idx_B_in_expansion A 0 x)"
+      using manc_inv x_lt_j by blast
+    show "(elem (A[n]) (x + ?Cstart) (Suc k') < ?vi
+            \<and> m_ancestor (A[n]) k' ?i (x + ?Cstart))
+       \<longleftrightarrow>
+          (elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+              < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+           \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                   (idx_B_in_expansion A 0 x))"
+      using idxBc_eq elem_x_c elem_j_c manc_x by simp
+  qed
+  have post_eq: "?post = map (\<lambda>i. i + ?Cstart) ?S"
+    using post_map filter_cong_eq by simp
+  have post_ne: "?post \<noteq> []" using post_eq S_ne by simp
+  have cands_ne: "?cands \<noteq> []" using cands_split post_ne by simp
+  have last_cands_eq: "last ?cands = last ?post"
+    using cands_split post_ne by (simp add: last_append)
+  have last_post_eq: "last ?post = last ?S + ?Cstart"
+    using post_eq S_ne by (simp add: last_map)
+  have last_S_idx: "last ?S + ?Cstart = idx_B_in_expansion A c (last ?S)"
+    unfolding idx_B_in_expansion_def by simp
+  show ?thesis
+    using mp_eq cands_ne last_cands_eq last_post_eq last_S_idx by simp
+qed
+
+text \<open>
+  Outside-block characterization of @{term m_parent} at row
+  \<open>Suc k'\<close> when \<open>Suc k' \<ge> t\<close>: same parameterized shape as
+  within-block, with \<open>manc_inv\<close> hypothesis.
+\<close>
+
+lemma m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_ge_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_ge_t: "t \<le> Suc k'"
+      and c_le: "c \<le> n"
+      and j_lt: "j < l1 A"
+      and manc_inv: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A c j)
+                                                  (idx_B_in_expansion A c x)
+                          \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 x)"
+      and S_empty: "[x \<leftarrow> [0..<j].
+                       elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+                         < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+                     \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                             (idx_B_in_expansion A 0 x)] = []"
+  shows "(case m_parent (A[n]) (Suc k') (idx_B_in_expansion A c j) of
+             None \<Rightarrow> True
+           | Some p \<Rightarrow> p < idx_B_in_expansion A c 0)"
+proof -
+  let ?i = "idx_B_in_expansion A c j"
+  let ?Cstart = "idx_B_in_expansion A c 0"
+  let ?vi = "elem (A[n]) ?i (Suc k')"
+  let ?cands = "[p \<leftarrow> [0..<?i]. elem (A[n]) p (Suc k') < ?vi
+                              \<and> m_ancestor (A[n]) k' ?i p]"
+  have mp_eq: "m_parent (A[n]) (Suc k') ?i
+             = (if ?cands = [] then None else Some (last ?cands))"
+    by (simp add: Let_def)
+  have all_lt: "\<forall>p \<in> set ?cands. p < ?Cstart"
+  proof
+    fix p assume p_in: "p \<in> set ?cands"
+    have p_lt_i: "p < ?i" using p_in by auto
+    have v_lt: "elem (A[n]) p (Suc k') < ?vi" using p_in by simp
+    have manc_p: "m_ancestor (A[n]) k' ?i p" using p_in by simp
+    show "p < ?Cstart"
+    proof (rule ccontr)
+      assume "\<not> p < ?Cstart"
+      hence p_ge: "?Cstart \<le> p" by simp
+      define x where "x = p - ?Cstart"
+      have p_eq: "p = ?Cstart + x" using p_ge x_def by simp
+      have x_lt_j: "x < j"
+      proof -
+        have "?Cstart + x < ?Cstart + j"
+          using p_eq p_lt_i unfolding idx_B_in_expansion_def by simp
+        thus ?thesis by simp
+      qed
+      have x_lt_l1: "x < l1 A" using x_lt_j j_lt by linarith
+      have p_as_idxBc: "p = idx_B_in_expansion A c x"
+        using p_eq unfolding idx_B_in_expansion_def by simp
+      have elem_x_c: "elem (A[n]) (idx_B_in_expansion A c x) (Suc k')
+                    = elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')"
+        using elem_AEn_eq_at_row_k_ge_t_across_blocks
+                [OF A_BMS A_ne b0 mp k_ge_t c_le le0 x_lt_l1] .
+      have elem_j_c: "elem (A[n]) (idx_B_in_expansion A c j) (Suc k')
+                    = elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')"
+        using elem_AEn_eq_at_row_k_ge_t_across_blocks
+                [OF A_BMS A_ne b0 mp k_ge_t c_le le0 j_lt] .
+      have v_lt2: "elem (A[n]) (idx_B_in_expansion A c x) (Suc k')
+                 < elem (A[n]) (idx_B_in_expansion A c j) (Suc k')"
+        using v_lt p_as_idxBc by simp
+      have block0_lt: "elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+                     < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')"
+        using v_lt2 elem_x_c elem_j_c by simp
+      have manc_at_c: "m_ancestor (A[n]) k' (idx_B_in_expansion A c j)
+                                              (idx_B_in_expansion A c x)"
+        using manc_p p_as_idxBc by simp
+      have manc_at_0: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                              (idx_B_in_expansion A 0 x)"
+        using manc_at_c manc_inv x_lt_j by blast
+      have x_in_upt: "x \<in> set [0..<j]" using x_lt_j by simp
+      have all_neg: "\<forall>y \<in> set [0..<j]. \<not> (elem (A[n]) (idx_B_in_expansion A 0 y) (Suc k')
+                            < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+                          \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 y))"
+        using S_empty filter_empty_conv by metis
+      have neg_x: "\<not> (elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+                       < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+                     \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                             (idx_B_in_expansion A 0 x))"
+        using all_neg x_in_upt by blast
+      thus False using block0_lt manc_at_0 by blast
+    qed
+  qed
+  show ?thesis
+  proof (cases "?cands = []")
+    case True
+    thus ?thesis using mp_eq by simp
+  next
+    case False
+    have "last ?cands \<in> set ?cands" using last_in_set[OF False] .
+    hence "last ?cands < ?Cstart" using all_lt by simp
+    thus ?thesis using mp_eq False by simp
+  qed
+qed
+
+text \<open>
+  Block-shift invariance of @{term m_ancestor} at row \<open>Suc k'\<close>
+  when \<open>Suc k' \<ge> t\<close>: chain induction applied at \<open>c = 0\<close>
+  (trivial manc_inv) and \<open>c = n\<close> (manc_inv from IH (ii) at \<open>k'\<close>).
+\<close>
+
+lemma m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_ge_t: "t \<le> Suc k'"
+      and IH_ii_kp: "lemma_2_5_ii_clause A n k'"
+      and i_lt: "i < l1 A"
+      and j_lt: "j < l1 A"
+      and i_lt_j: "i < j"
+  shows "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j) (idx_B_in_expansion A 0 i)
+       \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j) (idx_B_in_expansion A n i)"
+  using i_lt j_lt i_lt_j
+proof (induct j arbitrary: i rule: less_induct)
+  case (less j)
+  note IH_chain = less.hyps
+  note i_lt' = less.prems(1)
+  note j_lt' = less.prems(2)
+  note i_lt_j' = less.prems(3)
+  let ?S = "[x \<leftarrow> [0..<j].
+              elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+                < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+            \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                    (idx_B_in_expansion A 0 x)]"
+  have manc_inv_0: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 x)
+                          \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 x)"
+    by simp
+  have manc_inv_n: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A n j)
+                                                  (idx_B_in_expansion A n x)
+                          \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 x)"
+  proof (intro allI impI)
+    fix x assume x_lt_j: "x < j"
+    have x_lt_l1: "x < l1 A" using x_lt_j j_lt' by linarith
+    show "m_ancestor (A[n]) k' (idx_B_in_expansion A n j)
+                                (idx_B_in_expansion A n x)
+        \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                (idx_B_in_expansion A 0 x)"
+      using IH_ii_kp x_lt_l1 j_lt' unfolding lemma_2_5_ii_clause_def by blast
+  qed
+  show ?case
+  proof (cases "?S = []")
+    case True
+    have outA: "(case m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 j) of
+                  None \<Rightarrow> True
+                | Some p \<Rightarrow> p < idx_B_in_expansion A 0 0)"
+      using m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_ge_t
+            [OF A_BMS A_ne b0 mp k_ge_t le0 j_lt' manc_inv_0 True] .
+    have outB: "(case m_parent (A[n]) (Suc k') (idx_B_in_expansion A n j) of
+                  None \<Rightarrow> True
+                | Some p \<Rightarrow> p < idx_B_in_expansion A n 0)"
+      using m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_ge_t
+            [OF A_BMS A_ne b0 mp k_ge_t order.refl j_lt' manc_inv_n True] .
+    have lhs_F: "\<not> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j)
+                                          (idx_B_in_expansion A 0 i)"
+    proof (cases "m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 j)")
+      case None
+      thus ?thesis using m_anc_via_parent_none by metis
+    next
+      case (Some p)
+      have p_lt: "p < idx_B_in_expansion A 0 0"
+        using outA Some by simp
+      have tgt_ge: "idx_B_in_expansion A 0 0 \<le> idx_B_in_expansion A 0 i"
+        unfolding idx_B_in_expansion_def by simp
+      have p_ne_tgt: "p \<noteq> idx_B_in_expansion A 0 i"
+        using p_lt tgt_ge by linarith
+      have no_anc: "\<not> m_ancestor (A[n]) (Suc k') p (idx_B_in_expansion A 0 i)"
+      proof
+        assume "m_ancestor (A[n]) (Suc k') p (idx_B_in_expansion A 0 i)"
+        hence "idx_B_in_expansion A 0 i < p" by (rule m_ancestor_target_lt)
+        thus False using p_lt tgt_ge by linarith
+      qed
+      have iff_via: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j)
+                                          (idx_B_in_expansion A 0 i)
+                  \<longleftrightarrow> p = idx_B_in_expansion A 0 i
+                       \<or> m_ancestor (A[n]) (Suc k') p (idx_B_in_expansion A 0 i)"
+        using m_anc_via_parent_some[OF Some] .
+      thus ?thesis using p_ne_tgt no_anc by blast
+    qed
+    have rhs_F: "\<not> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j)
+                                          (idx_B_in_expansion A n i)"
+    proof (cases "m_parent (A[n]) (Suc k') (idx_B_in_expansion A n j)")
+      case None
+      thus ?thesis using m_anc_via_parent_none by metis
+    next
+      case (Some p)
+      have p_lt: "p < idx_B_in_expansion A n 0"
+        using outB Some by simp
+      have tgt_ge: "idx_B_in_expansion A n 0 \<le> idx_B_in_expansion A n i"
+        unfolding idx_B_in_expansion_def by simp
+      have p_ne_tgt: "p \<noteq> idx_B_in_expansion A n i"
+        using p_lt tgt_ge by linarith
+      have no_anc: "\<not> m_ancestor (A[n]) (Suc k') p (idx_B_in_expansion A n i)"
+      proof
+        assume "m_ancestor (A[n]) (Suc k') p (idx_B_in_expansion A n i)"
+        hence "idx_B_in_expansion A n i < p" by (rule m_ancestor_target_lt)
+        thus False using p_lt tgt_ge by linarith
+      qed
+      have iff_via: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j)
+                                          (idx_B_in_expansion A n i)
+                  \<longleftrightarrow> p = idx_B_in_expansion A n i
+                       \<or> m_ancestor (A[n]) (Suc k') p (idx_B_in_expansion A n i)"
+        using m_anc_via_parent_some[OF Some] .
+      thus ?thesis using p_ne_tgt no_anc by blast
+    qed
+    show ?thesis using lhs_F rhs_F by blast
+  next
+    case False
+    let ?p = "last ?S"
+    have p_in: "?p \<in> set ?S" using last_in_set[OF False] .
+    have p_lt_j: "?p < j" using p_in by auto
+    have p_lt_l1: "?p < l1 A" using p_lt_j j_lt' by linarith
+    have mpA: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 j)
+             = Some (idx_B_in_expansion A 0 ?p)"
+      using m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_ge_t
+            [OF A_BMS A_ne b0 mp k_ge_t le0 j_lt' manc_inv_0 False] .
+    have mpB: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A n j)
+             = Some (idx_B_in_expansion A n ?p)"
+      using m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_ge_t
+            [OF A_BMS A_ne b0 mp k_ge_t order.refl j_lt' manc_inv_n False] .
+    have lhs_iff: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j)
+                                        (idx_B_in_expansion A 0 i)
+                \<longleftrightarrow> idx_B_in_expansion A 0 ?p = idx_B_in_expansion A 0 i
+                  \<or> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 ?p)
+                                          (idx_B_in_expansion A 0 i)"
+      using m_anc_via_parent_some[OF mpA] .
+    have rhs_iff: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j)
+                                        (idx_B_in_expansion A n i)
+                \<longleftrightarrow> idx_B_in_expansion A n ?p = idx_B_in_expansion A n i
+                  \<or> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n ?p)
+                                          (idx_B_in_expansion A n i)"
+      using m_anc_via_parent_some[OF mpB] .
+    show ?thesis
+    proof (cases "i = ?p")
+      case True
+      have eqA: "idx_B_in_expansion A 0 ?p = idx_B_in_expansion A 0 i"
+        using True by simp
+      have eqB: "idx_B_in_expansion A n ?p = idx_B_in_expansion A n i"
+        using True by simp
+      show ?thesis using lhs_iff rhs_iff eqA eqB by blast
+    next
+      case False
+      hence i_ne_p: "i \<noteq> ?p" .
+      have neqA: "idx_B_in_expansion A 0 ?p \<noteq> idx_B_in_expansion A 0 i"
+        using i_ne_p unfolding idx_B_in_expansion_def by simp
+      have neqB: "idx_B_in_expansion A n ?p \<noteq> idx_B_in_expansion A n i"
+        using i_ne_p unfolding idx_B_in_expansion_def by simp
+      show ?thesis
+      proof (cases "i < ?p")
+        case True
+        have IH_at: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 ?p)
+                                          (idx_B_in_expansion A 0 i)
+                   \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n ?p)
+                                          (idx_B_in_expansion A n i)"
+          using IH_chain[OF p_lt_j i_lt' p_lt_l1 True] .
+        show ?thesis using lhs_iff rhs_iff IH_at neqA neqB by blast
+      next
+        case False
+        hence p_lt_i: "?p < i" using i_ne_p by linarith
+        have no_ancA: "\<not> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 ?p)
+                                                (idx_B_in_expansion A 0 i)"
+        proof
+          assume "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 ?p)
+                                       (idx_B_in_expansion A 0 i)"
+          hence "idx_B_in_expansion A 0 i < idx_B_in_expansion A 0 ?p"
+            by (rule m_ancestor_target_lt)
+          thus False using p_lt_i unfolding idx_B_in_expansion_def by simp
+        qed
+        have no_ancB: "\<not> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n ?p)
+                                                (idx_B_in_expansion A n i)"
+        proof
+          assume "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n ?p)
+                                       (idx_B_in_expansion A n i)"
+          hence "idx_B_in_expansion A n i < idx_B_in_expansion A n ?p"
+            by (rule m_ancestor_target_lt)
+          thus False using p_lt_i unfolding idx_B_in_expansion_def by simp
+        qed
+        show ?thesis using lhs_iff rhs_iff neqA neqB no_ancA no_ancB by blast
+      qed
+    qed
+  qed
+qed
+
+text \<open>
   Step lemma for clause (ii): assumes IH (= full lemma_2_5_at at k' < k)
   and proves clause (ii) at level k. Per dependency matrix, (ii) at k
   uses only IH (no other clause at same k).
@@ -2412,10 +2991,22 @@ next
             next
               case False
               hence k_ge_t: "t \<le> k" by simp
-              \<comment> \<open>\<open>k \<ge> t\<close>: no ascending, bumping=0 at row k.
-                  Values unchanged, strict-less invariant trivially.
-                  Combined with IH (ii) at \<open>k'\<close>, chain corresponds.\<close>
-              show ?thesis sorry
+              \<comment> \<open>\<open>k \<ge> t\<close>: no bumping at row k. Dispatch via
+                  @{thm m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t}
+                  (chain induction + elem invariance at row \<open>\<ge> t\<close>,
+                  using IH (ii) at \<open>k'\<close> for the m_anc-at-\<open>k'\<close>
+                  filter conjunct).\<close>
+              have IH_ii_kp: "lemma_2_5_ii_clause A n k'"
+                using IH_at_k' unfolding lemma_2_5_at_def by blast
+              have k_ge_t': "t \<le> Suc k'" using k_ge_t \<open>k = Suc k'\<close> by simp
+              show ?thesis
+                using m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t
+                        [OF A_BMS A_ne \<open>b0_start A = Some s\<close>
+                            \<open>max_parent_level A = Some t\<close>
+                            k_ge_t' IH_ii_kp
+                            i_lt j_lt i_lt_j]
+                      \<open>k = Suc k'\<close>
+                by simp
             qed
           qed
         qed

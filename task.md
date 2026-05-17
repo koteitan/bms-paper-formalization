@@ -5,15 +5,16 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 8 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**コード上の sorry: 7 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
 - `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `lemma_2_5_ii_clause_step` Suc k' k≥t (BMS_Ancestry.thy:2418)
-- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:2477)
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:2549) — Hunter (iv): m_parent image structure (n=0 proven inline)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:2560) — Hunter (i): G-column target
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:2571) — Hunter (v): block n_1 ↔ n_1+1 transition
+- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:3068)
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3140) — Hunter (iv): m_parent image structure (n=0 proven inline)
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3151) — Hunter (i): G-column target
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3162) — Hunter (v): block n_1 ↔ n_1+1 transition
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
+
+注: `lemma_2_5_ii_clause_step` は全 sub-case (k=0 t=0 / k=0 0<t / Suc k' k<t / Suc k' k≥t) が proven、 (ii) は完全 close。
 
 注: `lemma_2_5_at_main` は 5 step lemma 上で assembly proven (sorry 化解除)。 projection lemma_2_5_{i,ii,iii,iv,v,iv_and_v} はすべて lemma_2_5_at_main 経由で proper proof。
 
@@ -29,7 +30,7 @@
   - ✅ `lemma_2_5_v_clause_n_le_one`: n≤1 で (v) vacuous [ID 63]
   - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous [ID 64]
   - 🚨 (i) step lemma (`lemma_2_5_i_clause_step` stub、 sorry)
-  - 🚨 (ii) step lemma (`lemma_2_5_ii_clause_step`)
+  - ✅ (ii) step lemma (`lemma_2_5_ii_clause_step`) — 全 sub-case proven
     - ✅ scaffold: 8-way case split (n=0/None/i≥j proven) [ID 70]
     - ✅ k=0 0<t: helper 完全 close (2026-05-17、 uniform bumping + block-shift invariance)
       - ✅ `keep_of_pre_strip_pos_of_t_pos_and_n_pos`: B_1 row 0 > 0 で keep_of > 0 を establish
@@ -48,7 +49,11 @@
       - ✅ `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_lt_t`: m_parent within-block 特化、 manc_inv parameter で c⟷0 invariance
       - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_lt_t`: m_parent outside-block 特化、 manc_inv parameter
       - ✅ `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t`: chain induction (c=0 trivial / c=n via IH (ii) at k')
-    - 🚨 Suc k' k≥t: no bumping at row k
+    - ✅ Suc k' k≥t: helper 完全 close (2026-05-17、 elem 等式 in-bounds + OOB の uniform 処理)
+      - ✅ `elem_AEn_eq_at_row_k_ge_t_across_blocks`: elem 値の block 不変性 (in-bounds via elem_expansion_B_eq_orig_k_ge_t、 OOB via nth_same_length_oob)
+      - ✅ `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_ge_t`
+      - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_ge_t`
+      - ✅ `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t`: chain induction
   - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
     - ✅ scaffold: 5-way case split (n=0/None/k≥m_0 proven) [ID 71]
     - 🚨 k<m_0: (ii) at same k 経由

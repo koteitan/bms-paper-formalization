@@ -1,8 +1,8 @@
-Close (ii) Suc k' k<t case via parameterized chain induction
+Close (ii) Suc k' k>=t case, finishing clause (ii) end-to-end
 
-- Add `keep_of_pre_strip_ge_max_parent_level`: strengthen the previous `0 < keep_of` bound to `t \<le> keep_of (G_block A @ Bs_concat A n)`, by exhibiting `bump_col A 0 1 ! m > 0` for every `m < t` (rows below the trim point cannot all be zero) and applying `keep_of_row_zero` for contradiction
-- Add `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_lt_t`: parameterized helper that takes a `manc_inv` hypothesis (block-`c`-to-block-0 `m_ancestor` at `k'` equivalence) and concludes the within-block `m_parent` characterization at row `Suc k'`
-- Add `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_lt_t`: parameterized outside-block characterization with the same `manc_inv` hypothesis, derives the contradiction via `filter_empty_conv` (avoiding `m_ancestor.simps` auto-unfolding)
-- Add `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t`: chain induction that applies the helpers at `c = 0` (trivial `manc_inv`) and `c = n` (`manc_inv` from IH (ii) at `k'`)
-- Dispatch the `lemma_2_5_ii_clause_step` Suc k' k<t sorry (BMS_Ancestry.thy:1844) via the chain-induction helper above
-- Sorry count 9 -> 8
+- Add `elem_AEn_eq_at_row_k_ge_t_across_blocks`: block-shift invariance of `elem (A[n]) (idx_B c x) k` at row `k >= t`, dispatched on `k < keep_of` (in-bounds via `elem_expansion_B_eq_orig_k_ge_t`) vs `k >= keep_of` (out-of-bounds via `nth_same_length_oob`, since all `A[n]` columns share the same trimmed length)
+- Add `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_ge_t`: within-block `m_parent` characterization at row `Suc k' >= t`, parameterized by the same `manc_inv` hypothesis as the `k < t` variant
+- Add `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_ge_t`: outside-block counterpart, deriving the contradiction via `filter_empty_conv`
+- Add `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t`: chain induction applied at `c = 0` (trivial `manc_inv`) and `c = n` (`manc_inv` from IH (ii) at `k'`)
+- Dispatch the `lemma_2_5_ii_clause_step` Suc k' k>=t sorry via the chain-induction helper above; clause (ii) is now closed across all four sub-cases (k=0 t=0, k=0 0<t, Suc k' k<t, Suc k' k>=t)
+- Sorry count 8 -> 7
