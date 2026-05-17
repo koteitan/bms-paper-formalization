@@ -1982,7 +1982,148 @@ lemma lemma_2_5_ii_clause_step_v2:
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and IH_ii: "\<forall>k'<k. lemma_2_5_ii_clause A n k'"
   shows "lemma_2_5_ii_clause A n k"
-  sorry
+proof (cases "b0_start A")
+  case None
+  \<comment> \<open>No \<open>B\<^sub>0\<close> block: \<open>l1 A = 0\<close>, all quantifiers vacuous.\<close>
+  have l1z: "l1 A = 0" by (rule l1_zero_of_no_b0[OF None])
+  show ?thesis using l1z by (simp add: lemma_2_5_ii_clause_def)
+next
+  case (Some s)
+  note b0 = this
+  \<comment> \<open>\<open>b0_start = Some s\<close> forces \<open>max_parent_level A = Some t\<close> for some \<open>t\<close>.\<close>
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def
+    by (auto split: option.splits)
+  show ?thesis
+  proof (cases n)
+    case 0
+    \<comment> \<open>\<open>n = 0\<close>: \<open>idx_B_in_expansion A 0 _ = idx_B_in_expansion A n _\<close>; trivially reflexive.\<close>
+    show ?thesis using \<open>n = 0\<close> by (simp add: lemma_2_5_ii_clause_def)
+  next
+    case (Suc n')
+    hence n_pos: "0 < n" by simp
+    show ?thesis
+    unfolding lemma_2_5_ii_clause_def
+    proof (intro allI impI)
+      fix i j
+      assume ij: "i < l1 A \<and> j < l1 A"
+      have i_lt: "i < l1 A" using ij by simp
+      have j_lt: "j < l1 A" using ij by simp
+      \<comment> \<open>Case-split on the relationship between \<open>i\<close> and \<open>j\<close>.\<close>
+      show "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_B_in_expansion A 0 i)
+          \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_B_in_expansion A n i)"
+      proof (cases "i = j")
+        case True
+        \<comment> \<open>\<open>i = j\<close>: both sides are \<open>m_ancestor _ k p p\<close>, which is False
+            (irreflexive: target_lt requires strict \<open>q < p\<close>).\<close>
+        have lhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                                (idx_B_in_expansion A 0 i)"
+        proof
+          assume H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                                (idx_B_in_expansion A 0 i)"
+          have "idx_B_in_expansion A 0 i < idx_B_in_expansion A 0 j"
+            by (rule m_ancestor_target_lt[OF H])
+          thus False using True by simp
+        qed
+        have rhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                                (idx_B_in_expansion A n i)"
+        proof
+          assume H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                                (idx_B_in_expansion A n i)"
+          have "idx_B_in_expansion A n i < idx_B_in_expansion A n j"
+            by (rule m_ancestor_target_lt[OF H])
+          thus False using True by simp
+        qed
+        show ?thesis using lhs_F rhs_F by blast
+      next
+        case False
+        show ?thesis
+        proof (cases "j < i")
+          case True
+          \<comment> \<open>\<open>j < i\<close>: \<open>idx_B(c, j) < idx_B(c, i)\<close>, so
+              \<open>m_anc _ k (idx_B(c,j)) (idx_B(c,i))\<close> contradicts target_lt.\<close>
+          have lhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 i)"
+          proof
+            assume H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                                  (idx_B_in_expansion A 0 i)"
+            have "idx_B_in_expansion A 0 i < idx_B_in_expansion A 0 j"
+              by (rule m_ancestor_target_lt[OF H])
+            thus False using True unfolding idx_B_in_expansion_def by simp
+          qed
+          have rhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                                  (idx_B_in_expansion A n i)"
+          proof
+            assume H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                                  (idx_B_in_expansion A n i)"
+            have "idx_B_in_expansion A n i < idx_B_in_expansion A n j"
+              by (rule m_ancestor_target_lt[OF H])
+            thus False using True unfolding idx_B_in_expansion_def by simp
+          qed
+          show ?thesis using lhs_F rhs_F by blast
+        next
+          case False
+          hence i_lt_j: "i < j" using \<open>i \<noteq> j\<close> by linarith
+          \<comment> \<open>The substantive case \<open>i < j\<close>. Split on \<open>k\<close> (zero vs Suc) and on \<open>t\<close>.\<close>
+          show ?thesis
+          proof (cases k)
+            case 0
+            \<comment> \<open>\<open>k = 0\<close>: split on \<open>t = 0\<close> vs \<open>0 < t\<close>.\<close>
+            show ?thesis
+            proof (cases t)
+              case 0
+              \<comment> \<open>\<open>k = 0, t = 0\<close>: use chain-shift helper.\<close>
+              have mp0: "max_parent_level A = Some 0" using mp \<open>t = 0\<close> by simp
+              show ?thesis
+                using m_anc_zero_idx_B_in_block_shift_when_t_zero
+                        [OF A_BMS A_ne b0 mp0 le0 order.refl i_lt j_lt i_lt_j]
+                      \<open>k = 0\<close> by simp
+            next
+              case (Suc t')
+              \<comment> \<open>\<open>k = 0, t = Suc t'\<close>: \<open>k < t\<close>; pending sub-helper
+                  using Hunter's per-col case-split (paper p.5).
+                  The k=0 0<t case requires showing that
+                  \<open>m_parent (A[n]) 0 (idx_B(c, j))\<close> matches across blocks c.
+                  This is subtle because row-0 elems DO differ between blocks
+                  when columns ascend at row 0 (bumping by \<open>i * delta\<close>).
+                  Per-col case-split on \<open>ascends A j 0\<close>:
+                  - If \<open>ascends A j 0\<close>: all ancestors in \<open>I\<close> also ascend at row 0,
+                    so the strict-less comparison is preserved under uniform shift.
+                  - If \<open>\<not> ascends A j 0\<close>: no new row-0-strict ancestors appear
+                    in any later block.\<close>
+              show ?thesis sorry
+            qed
+          next
+            case (Suc k')
+            \<comment> \<open>\<open>k = Suc k'\<close>: split on \<open>t \<le> Suc k'\<close> vs \<open>Suc k' < t\<close>.\<close>
+            show ?thesis
+            proof (cases "t \<le> Suc k'")
+              case True
+              \<comment> \<open>\<open>Suc k' \<ge> t\<close>: use chain-shift helper.\<close>
+              have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
+              have IH_kp: "lemma_2_5_ii_clause A n k'"
+                using IH_ii k'_lt by blast
+              show ?thesis
+                using m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t
+                        [OF A_BMS A_ne b0 mp True IH_kp i_lt j_lt i_lt_j]
+                      \<open>k = Suc k'\<close> by simp
+            next
+              case False
+              hence Sk_lt_t: "Suc k' < t" by simp
+              \<comment> \<open>\<open>k = Suc k', Suc k' < t\<close>: pending sub-helper
+                  using Hunter's per-col case-split (paper p.5).
+                  Same per-col split as the k=0 0<t case: elem at row
+                  \<open>Suc k' < t\<close> may differ across blocks when the col
+                  ascends; the IH(ii) at \<open>k'\<close> handles the m_anc-filter
+                  conjunct of the parent characterization.\<close>
+              show ?thesis sorry
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
 
 text \<open>Independent k-induction on (ii) alone, using the v2 step lemma
   (sound, depends only on IH(ii)). Provides \<open>\<forall>k. (ii) at k\<close> without
