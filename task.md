@@ -174,6 +174,9 @@ IH(ii) → (ii)@k → (iii)@k ↘
 - 🚨 Final: `lemma_2_5_at_main` 5-stage assembly
 
 ### Lemma 2.5 helpers (proven infra)
+- ✅ `elem_AEn_idx_B_value` (block-shift elem identity、 2026-05-18 追加):
+  - `elem (A[n]) (idx_B t j) k = (A!(s+j))!k + (if ascends A j k then t·δ_k else 0)`
+  - 用途: (iii) bridge、 (iv) k=0 row-0 monotonicity、 block-shift 推論
 - ✅ 9 件 chain/value helpers [ID 73]:
   - `m_ancestor_target_lt`, `m_ancestor_chain_linear`, `ascends_invariant_along_chain`
   - `bump_col_uniform_k_lt_t`, `bump_col_no_bump`

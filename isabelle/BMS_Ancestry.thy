@@ -332,6 +332,32 @@ lemma elem_expansion_B_via_bump:
         elem_Bi_block_via_bump_col[OF j_lt] by simp
 
 text \<open>
+  Explicit value of \<open>elem (A[n]) (idx_B t j) k\<close> in terms of the
+  underlying original column and the bump amount. Combines
+  @{thm elem_expansion_B_via_bump} with @{thm bump_col_nth_general}
+  to expose the closed-form formula
+  \<open>(A ! (s + j)) ! k + (if ascends A j k then t * delta A k else 0)\<close>.
+  Foundation for block-shift reasoning (iii bridge, iv row-0 monotonicity).
+\<close>
+
+lemma elem_AEn_idx_B_value:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and t_le: "t \<le> n" and j_lt: "j < l1 A"
+      and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and k_lt_col: "k < length (A ! (s + j))"
+  shows "elem (A[n]) (idx_B_in_expansion A t j) k
+       = (A ! (s + j)) ! k + (if ascends A j k then t * delta A k else 0)"
+proof -
+  have via_bump: "elem (A[n]) (idx_B_in_expansion A t j) k = (bump_col A j t) ! k"
+    using elem_expansion_B_via_bump[OF A_ne t_le j_lt k_lt_keep] .
+  have nth_general: "(bump_col A j t) ! k
+                   = (A ! (s + j)) ! k + (if ascends A j k then t * delta A k else 0)"
+    using bump_col_nth_general[OF b0 k_lt_col] .
+  show ?thesis using via_bump nth_general by simp
+qed
+
+text \<open>
   At row \<open>k \<ge> t\<close> (no ascending), the elem at any B-block
   column equals the original B_0 column elem. Bumping has zero
   effect since \<open>ascends A x k = False\<close>.
