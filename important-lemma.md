@@ -77,69 +77,107 @@ $$
 \text{Anc}_k(\boldsymbol{S}[n],\ \text{idx}_B(n_1 + 1, j),\ \text{idx}_B(n_0, i)) \Bigr]
 $$
 
-## clause 間の依存関係 (Hunter の同時帰納順)
+## clause 間の依存関係 (改訂版: paper 精読 2026-05-17)
 
-Hunter の証明は $k$ に関する帰納 (IH: 全 $k' < k$ で `lemma_2_5_at` 成立) で、 各 $k$ で以下の順:
+**重要発見**: paper page 5-7 を精読した結果、 Hunter は universal ascending 仮定を使っておらず、 各 clause 内で「j 列が ascend するか否か」 の case-split を行う論法を採用していた。 我々の旧 Isabelle 定式化が over-strong 仮定 (`BMS_all_B0_ascending_below_t`) を導入していたため unsound 化、 2026-05-17 に削除済。
 
-$$
-\text{(ii)}_k \to \text{(iii)}_k \to \text{(iv)}_k \to \text{(i)}_k \to \text{(v)}_k
-$$
+## clause (i)-(v) × IH の改訂依存マトリックス
 
-各 sub-case は同 $k$ の先行 clause と IH at $k' < k$ を使う。 5 つを **同時に** 証明する。
+行 = 「at $k$ で証明」、 左 5 列 = 「同 $k$ で使う」、 右 5 列 = 「IH at $k' < k$ で当該 clause を使う」。 `✓` = 依存、 `-` = なし。
 
-## clause (i)-(v) の依存関係 matrix
+| at $k$ で証明 \ 依存 | (i)$k$ | (ii)$k$ | (iii)$k$ | (iv)$k$ | (v)$k$ | IH(i) | IH(ii) | IH(iii) | IH(iv) | IH(v) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **(i)**   | - | ✓ | ✓ | ✓ | - | ✓ | - | - | - | - |
+| **(ii)**  | - | - | - | - | - | - | ✓ | - | - | - |
+| **(iii)** | - | ✓ | - | - | - | - | - | - | - | - |
+| **(iv)**  | - | ✓ | - | - | - | - | - | - | ✓ | - |
+| **(v)**   | - | ✓ | ✓ | ✓ | - | - | - | - | - | - |
 
-行 = 「この clause を 行 $k$ で証明する」、 列 = 「同 $k$ で使う他 clause」。 `✓` = 依存あり、 `-` = なし。 **IH (= 全 clause at $k' < k$)** は全行で使う (列省略)。
+### 旧版からの変更
 
-|         | (i) | (ii) | (iii) | (iv) | (v) | IH at $k' < k$ |
-|---------|:---:|:---:|:---:|:---:|:---:|:---:|
-| **(i)**   | - | ✓  | ✓ | ✓ | - | ✓ |
-| **(ii)**  | - | -  | - | - | - | ✓ |
-| **(iii)** | - | ✓  | - | - | - | ✓ |
-| **(iv)**  | - | ✓  | ✓ | - | - | ✓ |
-| **(v)**   | ✓ | ✓  | ✓ | ✓ | - | ✓ |
+- **(iv)**: 旧 `(iii) at $k$` 依存削除 (paper page 6: (ii) at k のみ使用)
+- **(v)**: 旧 `(i) at $k$` 依存削除 (paper page 7: (ii)(iii)(iv) at k のみ使用)
+- **(iii), (v)**: 自前 IH 不要 (= k-induction 不要、 同 $k$ の他 clause からの direct corollary)
+- **(ii), (iv), (i)**: 各々自前 IH 要 (= 各自 k-induction)
 
-### 重要点
+### Hunter 論法の核心 (page 5)
 
-- **線形順序 (循環なし)**: 本実装では (ii) → (iii) → (iv) → (i) → (v) の linear 順で組み立て、 joint lemma 不使用。 (iv) step lemma の signature には (v) at k なし
-- **(ii) が最も独立**: 同 k で他 clause 不要、 IH のみで attempt 可能。 ただし IH 内で (iv) at $k' < k$ を使うので「真に独立」 ではない
-- **(i) は (ii)(iii)(iv) に依存**: 同 k で 3 clause を要する。 単独証明は困難 (我々の attempt で確認済)
-- **(iv) の (v) 非依存は未検証**: Hunter は (iv) at k で (v) at k を暗黙利用と読める論証をするが、 本実装は (v) なしで (iv) を proof する方針。 (iv) step lemma は現在 sorry、 attempt 時に独自戦略 (例: n=0 case は trivially) が要求される。 n=0 case は 2026-05-17 で proven (block 0 のみで positions trivial 分割)
+> "either the k-th elements of all columns in B_0 with indices in **I** ascend or the k-th element of the j-th column in B_0 doesn't ascend"
 
-### Hunter のオリジナル順序 vs 我々の実装順序
+ここで I = {i' < j : ∀k'<k. i' は j 列の k'-ancestor}。 (ii) at k の proof は I の ascending 状態で **2 case** に分割:
+- **case (A)**: I 内全 col が row k で ascend → B_n で difference uniform → k-ancestry 不変
+- **case (B)**: j 列が row k で ascend しない → B_n に新規 k-ancestor なし
+
+(iii)(iv)(i)(v) も同様に per-col case-split (paper 該当箇所参照)。
+
+### Layered な構築方式 (新方針、 simultaneous induction 不要)
+
+```
+ステージ 1: ∀k. (ii) at k   ← k-induction、 IH(ii) only
+ステージ 2: ∀k. (iv) at k   ← k-induction、 IH(iv) + (ii) at all k
+ステージ 3: ∀k. (iii) at k  ← 直接 corollary、 (ii) at k
+ステージ 4: ∀k. (i) at k    ← k-induction、 IH(i) + (ii)(iii)(iv) at all k
+ステージ 5: ∀k. (v) at k    ← 直接 corollary、 (ii)(iii)(iv) at all k
+```
+
+各 stage 独立に sub-agent 並列実装可能。
+
+### Isabelle 実装順序
 
 | 順序 | (1) | (2) | (3) | (4) | (5) |
 |---|---|---|---|---|---|
 | Hunter (paper) | (ii) | (iii) | (iv) | (i) | (v) |
-| Isabelle (本実装) | (ii) | (iii) | (iv) | (i) | (v) |
+| Isabelle 旧 (unsound、 削除済) | (ii) | (iii) | (iv) | (i) | (v) |
+| Isabelle 新 (layered) | (ii) | (iv) | (iii) | (i) | (v) |
 
-両者同じ linear 順。 過去に検討した (iv)+(v) joint 案は不採用。
+新実装では (iv) を先に (= (iii) 不要)、 (iii)(v) は直接 corollary。
 
 ### 詳細
 
 #### (i) at $k$
-- IH + **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$**
+- IH(i) + **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$**
 - 内容: G への祖先関係が block index に依らない
-- 依存 3 つ: (ii) で B 内 chain、 (iii) で chain の翻訳、 (iv) で chain の中間 block escape 排除
+- paper page 7: "by (i) for k'" を明示使用 → 自前 IH 要
 
 #### (ii) at $k$
-- IH のみ使用 (= 全 clause at $k' < k$)
+- IH(ii) のみ
 - 内容: B 内部の祖先関係が block index に依らない
-- 直接攻撃: m_ancestor を IH 経由で walking、 bumping の uniform shift を利用
+- paper page 5: per-col ascending case-split で証明、 universal ascending 不要
 
 #### (iii) at $k$
-- IH + **(ii) at $k$**
+- **(ii) at $k$** のみ (自前 IH 不要)
 - 内容: 元 array と展開後の祖先関係対応
-- (ii) を使う理由: 元 $S$ の `last_col → B_0[i]` 連鎖を $S[n]$ の `B_n[0] → B_{n-1}[i]` 連鎖に翻訳する際、 (ii) の block-invariance を介して
+- paper page 5: "trivially extended" — (ii) の proof を流用
 
 #### (iv) at $k$
-- IH + **(ii) at $k$** + **(iii) at $k$** (本実装 signature; (v) at k は不要としている)
+- IH(iv) + **(ii) at $k$** (旧版の (iii) 依存削除)
 - 内容: 最上位 block の parent は中間 block に居ない
-- Hunter は (v) at k を暗黙利用しているように読めるが、 本実装では (v) 非依存で discharge する方針 (戦略未確定、 現在 sorry)
-- ✅ n=0 case proven inline (block 0 が唯一の B-block、 positions trivial 分割)
+- paper page 6: "by (iv) for k'" + "(ii) for k" を明示使用
+- ✅ n=0 case proven inline
 
 #### (v) at $k$
-- IH + **(i) at $k$** + **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$** (linear、 (iv) 完了後)
+- **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$** (旧版の (i) 依存削除、 自前 IH 不要)
 - 内容: block index の上方 shift で祖先関係が不変
-- (iv) を使う理由: shift 先の parent が中間 block に escape しないことを (iv) で保証
+- paper page 7: "by application of (iii)" + "(ii) for k" + (iv) 使用
+
+## ⚠️ 削除済の unsound infrastructure (2026-05-17)
+
+旧版で導入した universal ascending 仮定 (`BMS_all_B0_ascending_below_t`、 統一 bumping `bump_col_uniform_k_lt_t`) は yaBMS で反例 `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` を確認し全削除。 依存していた:
+- `elem_expansion_B_lt_invariant_in_block` (= block 間 strict-less 不変)
+- (ii) k=0 0<t / Suc k' k<t chain helpers
+- (iii) first-step in A / A[n]
+- `elem_B0_lt_last_col_when_k_lt_m0` (新規追加された FALSE conjecture)
+
+も全削除。 影響: `lemma_2_5_ii_clause_step` と `lemma_2_5_iii_clause_step` の本体は現在 sorry (signature のみ残存、 layered 再実装待ち)。
+
+## ✅ 保持された sound infrastructure
+
+- `bump_col_at_ascending_row`, `bump_col_no_bump` (per-col 形式、 ascends を explicit に取る)
+- (ii) k=0 t=0 chain (m_0=0 で bumping 完全 0、 sound)
+- (ii) Suc k' k≥t chain (k≥t で bumping なし、 sound)
+- Lemma A (`m_anc_orig_eq_AEn_shared_B0`): A vs A[n] の m_anc 一致 (shared cols、 chain induction)
+- Lemma A' (`m_anc_AEn_minus_1_eq_AEn_shared`): A[n-1] vs A[n] の m_anc 一致
+- `keep_of_pre_strip_ge_max_parent_level`
+- 全 elem_expansion 系 (bump multiplier 0 or k≥t)
+- (iv) n=0 case (inline、 構造のみ使用)
 

@@ -7,20 +7,25 @@
 
 **重大発見 (2026-05-17)**: yaBMS で `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` が standard BMS かつ `ascends A 2 1 = False` を確認。 これにより `BMS_all_B0_ascending_below_t` は FALSE statement であることが判明。 dependent な `bump_col_uniform_k_lt_t` と (ii)/(iii) helpers が unsound。 paper 精読の結果、 Hunter は universal ascending を主張しておらず、 各 clause 内で「ascending か否か」 の case-split を行う論法を採用していた。 我々の Isabelle 定式化が over-strong 仮定を導入していた。
 
-**コード上の sorry: 7 件** (うち 2 件は確認済 FALSE statement、 既存 proven body は false 前提から derive されており unsound):
+**コード上の sorry: 8 件** (全 honest sorry、 false statement 0):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
-- 🚨 `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660) — **FALSE statement** (反例確認済)、 sorry は永久に discharge 不可
-- 🚨 `elem_B0_lt_last_col_when_k_lt_m0` (BMS_Ancestry.thy:3048) — **FALSE conjecture** (同反例で elem cond も破綻)、 削除予定
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3935)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3946)
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3957)
+- `lemma_2_5_ii_clause_step` (BMS_Ancestry.thy:1956) — 旧 signature 残存、 body sorry 化 (削除前は unsound)
+- `lemma_2_5_ii_clause_step_v2` (BMS_Ancestry.thy:1985) — 新 sound scaffold (Hunter case-split)
+- `lemma_2_5_iii_clause_step` (BMS_Ancestry.thy:2447) — 旧 signature 残存、 body sorry 化
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:2511)
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:2522)
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:2533)
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
 
-**Unsound (proven body だが false 前提)**:
-- `bump_col_uniform_k_lt_t` (BMS_Lex.thy:1669) — `BMS_all_B0_ascending_below_t` 経由
-- (ii) Suc k' k<t helpers (`m_parent_AEn_idx_B_within/outside_block_at_Suc_k_when_k_lt_t`, `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t`) — `bump_col_uniform_k_lt_t` 経由
-- `lemma_2_5_ii_clause_step` Suc k' k<t case — 上記経由
-- (iii) first-step helpers (`m_parent_orig_last_col_when_k_lt_m0`, `m_parent_AEn_idx_B_n_zero_when_k_lt_m0`) — `elem_B0_lt_last_col_when_k_lt_m0` 経由
+**削除済の unsound infrastructure (2026-05-17 commit)**:
+- 🗑️ `BMS_all_B0_ascending_below_t` (FALSE statement、 反例 `(0,0,0)(1,1,1)(2,0,0)(1,1,1)`)
+- 🗑️ `bump_col_uniform_k_lt_t` (上記経由、 statement も false)
+- 🗑️ `elem_expansion_B_lt_invariant_in_block` (上記経由)
+- 🗑️ (ii) k=0 0<t helpers (within / outside / shift)
+- 🗑️ (ii) Suc k' k<t helpers (within / outside / shift)
+- 🗑️ `elem_B0_lt_last_col_when_k_lt_m0` (FALSE conjecture)
+- 🗑️ `m_parent_orig_last_col_when_k_lt_m0` (first-step in A)
+- 🗑️ `m_parent_AEn_idx_B_n_zero_when_k_lt_m0` (first-step in A[n])
 
 **コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。
 
