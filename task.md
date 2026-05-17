@@ -5,17 +5,16 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 10 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**コード上の sorry: 7 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
 - `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `m_parent_orig_last_col_when_k_lt_m0` (BMS_Ancestry.thy:3042) — (iii) sub-helper: first step in A
-- `m_parent_AEn_idx_B_n_zero_when_k_lt_m0` (BMS_Ancestry.thy:3054) — (iii) sub-helper: first step in A[n]
-- `m_anc_orig_eq_AEn_shared_B0` (BMS_Ancestry.thy:3064) — (iii) sub-helper Lemma A: m_anc A ↔ m_anc A[n] for shared cols
-- `m_anc_AEn_minus_1_eq_AEn_shared` (BMS_Ancestry.thy:3075) — (iii) sub-helper Lemma A': m_anc A[n-1] ↔ m_anc A[n] for shared cols
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3312) — Hunter (iv): m_parent image structure (n=0 proven inline)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3323) — Hunter (i): G-column target
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3334) — Hunter (v): block n_1 ↔ n_1+1 transition
+- `elem_B0_lt_last_col_when_k_lt_m0` (BMS_Ancestry.thy:3048) — Hunter 構造 conjecture: 各 B_0 col の k 行値 < last_col の k 行値 (k < m_0)。 BMS_all_B0_ascending の elem 順序 counterpart、 first-step characterizations 経由で (iii) k<m_0 を支える
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3935) — Hunter (iv): m_parent image structure (n=0 proven inline)
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3946) — Hunter (i): G-column target
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3957) — Hunter (v): block n_1 ↔ n_1+1 transition
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
+
+注: (iii) clause k<m_0 は assembly + 4 sub-helpers (first-step in A, first-step in A[n], Lemma A, Lemma A') が全 proven (2026-05-17)。 sub-helpers は elem_B0_lt_last_col_when_k_lt_m0 conjecture に依存 (= BMS_all_B0_ascending と同レベルの BMS 構造 conjecture)。
 
 注: `lemma_2_5_ii_clause_step` は全 sub-case (k=0 t=0 / k=0 0<t / Suc k' k<t / Suc k' k≥t) が proven、 (ii) は完全 close。
 
@@ -65,10 +64,19 @@
       - ✅ `lemma_2_5_at_main` nested (k, n) induction 化 (IH_n = lemma_2_5_at A (n-1) k を提供)
       - ✅ `lemma_2_5_iii_clause_step` signature に IH_n_minus_1 追加
       - ✅ assembly: first-step in A + first-step in A[n] + Lemma A + Lemma A' + (ii) for A[n-1] at k で chain translation
-      - 🚨 sub-helper: `m_parent_orig_last_col_when_k_lt_m0` (first step in A)
-      - 🚨 sub-helper: `m_parent_AEn_idx_B_n_zero_when_k_lt_m0` (first step in A[n])
-      - 🚨 sub-helper Lemma A: `m_anc_orig_eq_AEn_shared_B0` (orig vs A[n] for shared cols ≤ idx_B(0, l_1)-1)
-      - 🚨 sub-helper Lemma A': `m_anc_AEn_minus_1_eq_AEn_shared` (A[n-1] vs A[n] for shared cols ≤ idx_B(n-1, l_1)-1)
+      - ✅ sub-helper: `m_parent_orig_last_col_when_k_lt_m0` (first step in A) [2026-05-17 close]
+        - ✅ induct k less_induct + cases k=0/Suc k': cand X-2 (= ?p) は largest cand、 elem cond + m_anc cond (Suc 経由 IH at k')
+        - 依存: `elem_B0_lt_last_col_when_k_lt_m0` (Hunter 構造 conjecture、 sorry)
+      - ✅ sub-helper: `m_parent_AEn_idx_B_n_zero_when_k_lt_m0` (first step in A[n]) [2026-05-17 close]
+        - ✅ 同構造 (less_induct on k) + bumping arithmetic で elem cond を導出
+        - 依存: `elem_B0_lt_last_col_when_k_lt_m0` + `bump_col_uniform_k_lt_t` + `BMS_all_B0_ascending_below_t`
+      - ✅ sub-helper Lemma A: `m_anc_orig_eq_AEn_shared_B0` (orig vs A[n] for shared cols ≤ idx_B(0, l_1)-1) [2026-05-17 close]
+        - ✅ `elem_orig_eq_AEn_shared_below_l1` (G/B_0 case split via elem_expansion_G_lt_keep + elem_expansion_B0_via_orig)
+        - ✅ chain induction: outer less_induct on k + inner less_induct on p、 m_parent match via filter cong + IH at k'
+      - ✅ sub-helper Lemma A': `m_anc_AEn_minus_1_eq_AEn_shared` (A[n-1] vs A[n] for shared cols ≤ idx_B(n-1, l_1)-1) [2026-05-17 close]
+        - ✅ `elem_AEn_minus_1_eq_AEn_shared`: pre-strip cols match (G/B-block case split) + strip preserves elem for k < t ≤ keep_of (both)
+        - ✅ chain induction (same structure as Lemma A)、 precondition `n_minus_1_pos: 0 < n - 1` (n ≥ 2) で両 keep_of bound を保証
+        - ✅ (iii) substantive case を `n - 1 = 0` (n=1) と `0 < n - 1` (n≥2) で case-split: n=1 では chain が step1 (Lemma A) に collapse、 n≥2 では step1+Lemma A'+(ii) at A[n-1]+Lemma A'
   - 🚨 (iv) step lemma (`lemma_2_5_iv_clause_step`)
     - ✅ n=0 case proven inline (block 0 = only B-block, positions trivially split G + block 0)
     - 🚨 n>0 case: BMS structural property要 (block n partial cand 存在保証)
