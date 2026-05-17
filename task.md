@@ -99,14 +99,12 @@ graph LR
       - ✅ step `lemma_2_5_iii_clause_step` (入力: (ii)@k via Stage 1; **IH 不要**) — body sorry-free、 STEP 1 + n=1 + n≥2 全て dispatch
       - 🚨 `iii_block_shift_bridge_n_ge_2` — n≥2 「(n-1)-block bridge」 構造補題
     - 🚨 **Stage 4: ∀k. (i)@k** `lemma_2_5_i_main` (k-induction wrapper、 provides **IH(i)**)
-      - 🚨 step `lemma_2_5_i_clause_step` (入力: **IH(i)** + (ii)(iii)(iv)@k via Stages 1-3)
-        - ✅ scaffold + trivial cases (n=0, b0=None) + iff 構造
-        - 🚨 残: forward direction sub-sorry (BMS_Ancestry.thy:4411)
-        - 🚨 残: backward direction sub-sorry (BMS_Ancestry.thy:4419)
+      - ✅ step `lemma_2_5_i_clause_step` (入力: **IH(i)** + (ii)(iii)(iv)@k via Stages 1-3) — body sorry-free、 trivial + iff 構造で 2 named lemmas に dispatch
+      - 🚨 `lemma_2_5_i_clause_step_forward` — forward direction (Hunter p.7 ascending case-split)
+      - 🚨 `lemma_2_5_i_clause_step_backward` — backward direction (dual to forward)
     - 🚨 **Stage 5: ∀k. (v)@k** `lemma_2_5_v_main` (induction 不要、 直接 corollary)
-      - 🚨 step `lemma_2_5_v_clause_step` (入力: (ii)(iii)(iv)@k via Stages 1-3; **IH 不要**)
-        - ✅ scaffold + trivial cases (n≤1, b0=None)
-        - 🚨 残: substantive case (BMS_Ancestry.thy:4476) — Hunter p.7 「last k-ancestor in B_{n_2}」
+      - ✅ step `lemma_2_5_v_clause_step` (入力: (ii)(iii)(iv)@k via Stages 1-3; **IH 不要**) — body sorry-free、 trivial + substantive dispatch
+      - 🚨 `lemma_2_5_v_clause_step_substantive` — Hunter p.7 「last k-ancestor in B_{n_2}」 layered corollary
     - ✅ Lemma 2.5 helpers (proven infrastructure)
       - ✅ `elem_AEn_idx_B_value` (block-shift elem identity、 2026-05-18)
         - `elem (A[n]) (idx_B t j) k = (A!(s+j))!k + (if ascends A j k then t·δ_k else 0)`

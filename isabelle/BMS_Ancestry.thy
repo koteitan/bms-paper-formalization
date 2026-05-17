@@ -4600,6 +4600,47 @@ next
   qed
 qed
 
+text \<open>
+  Forward direction of (i) at \<open>k\<close>, substantive case (n > 0, b0_start = Some s):
+  chain from \<open>B_0[j]\<close> reaching \<open>G[i]\<close> transfers to a chain from \<open>B_n[j]\<close>.
+  Uses (iv) at \<open>k\<close>, (ii) at \<open>k\<close>, and IH (i) at \<open>k' < k\<close>; per-col
+  ascending case-split on column \<open>j\<close> (Hunter paper page 7).
+\<close>
+
+lemma lemma_2_5_i_clause_step_forward:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and n_pos: "0 < n"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+      and i_lt: "i < l0 A" and j_lt: "j < l1 A"
+      and H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+  sorry
+
+text \<open>
+  Backward direction of (i) at \<open>k\<close>, dual to the forward direction.
+\<close>
+
+lemma lemma_2_5_i_clause_step_backward:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and n_pos: "0 < n"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+      and i_lt: "i < l0 A" and j_lt: "j < l1 A"
+      and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+  sorry
+
 lemma lemma_2_5_i_clause_step:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -4616,6 +4657,7 @@ proof (cases n)
     unfolding lemma_2_5_i_clause_def using \<open>n = 0\<close> by simp
 next
   case (Suc n')
+  hence n_pos: "0 < n" by simp
   show ?thesis
   proof (cases "b0_start A")
     case None
@@ -4634,22 +4676,6 @@ next
       show ?thesis
         using b0 s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
     qed
-    \<comment> \<open>Substantive case (Hunter, paper page 7). We show, for each
-        \<open>i < l_0\<close> and \<open>j < l_1\<close>, that \<open>G[i]\<close> is a \<open>k\<close>-ancestor
-        of \<open>B_0[j]\<close> iff it is a \<open>k\<close>-ancestor of \<open>B_n[j]\<close>.
-        The proof case-splits on whether column \<open>j\<close> of \<open>B\<^sub>0\<close>
-        ascends at any level (i.e. \<open>\<exists>m. ascends A j m\<close>).
-        (1) If \<open>j\<close> does not ascend, then for every \<open>t\<close> the column
-        \<open>idx_B_in_expansion A t j\<close> has the same elements as
-        \<open>idx_B_in_expansion A 0 j\<close>; clause (iv) at \<open>k\<close> forces
-        each \<open>k\<close>-parent on the chain to land in \<open>B_n \<union> G\<close>, and
-        IH (i) at \<open>k' < k\<close> together with clause (ii) at \<open>k\<close>
-        transports the chain back to \<open>B_0\<close>.
-        (2) If \<open>j\<close> ascends, clause (ii) at \<open>k\<close> aligns the chain
-        between \<open>B_0\<close> and \<open>B_n\<close> at level \<open>k\<close>; descending to
-        lower levels uses IH (i) at \<open>k' < k\<close>. The hard
-        sub-arguments are left as \<open>sorry\<close> pending implementation
-        of the per-col ascending case-split helpers.\<close>
     show ?thesis
       unfolding lemma_2_5_i_clause_def
     proof (intro allI impI)
@@ -4662,24 +4688,48 @@ next
       show "m_ancestor (A[n]) k ?src0 ?tgt
             \<longleftrightarrow> m_ancestor (A[n]) k ?srcn ?tgt"
       proof
-        \<comment> \<open>Forward direction: chain from \<open>B_0[j]\<close> reaching
-            \<open>G[i]\<close> transfers to a chain from \<open>B_n[j]\<close>. Uses
-            (iv) at \<open>k\<close> to constrain intermediate cols and
-            (ii) at \<open>k\<close> + IH (i) at \<open>k' < k\<close> to shift indices.\<close>
+        \<comment> \<open>Forward direction: dispatch to
+            @{thm lemma_2_5_i_clause_step_forward}.\<close>
         assume H: "m_ancestor (A[n]) k ?src0 ?tgt"
-        show "m_ancestor (A[n]) k ?srcn ?tgt" sorry
+        show "m_ancestor (A[n]) k ?srcn ?tgt"
+          by (rule lemma_2_5_i_clause_step_forward
+                    [OF A_BMS A_ne b0 l1_pos n_pos IH
+                        clause_ii_at_k clause_iii_at_k clause_iv_at_k i_lt j_lt H])
       next
-        \<comment> \<open>Backward direction: dual to the forward direction.
-            By (iv) at \<open>k\<close>, each \<open>k\<close>-parent on the chain from
-            \<open>B_n[j]\<close> lies in \<open>B_n \<union> G\<close>; (ii) at \<open>k\<close> and
-            IH (i) at \<open>k' < k\<close> project the chain back to
-            \<open>B_0\<close>, ending at \<open>G[i]\<close>.\<close>
+        \<comment> \<open>Backward direction: dispatch to
+            @{thm lemma_2_5_i_clause_step_backward}.\<close>
         assume H: "m_ancestor (A[n]) k ?srcn ?tgt"
-        show "m_ancestor (A[n]) k ?src0 ?tgt" sorry
+        show "m_ancestor (A[n]) k ?src0 ?tgt"
+          by (rule lemma_2_5_i_clause_step_backward
+                    [OF A_BMS A_ne b0 l1_pos n_pos IH
+                        clause_ii_at_k clause_iii_at_k clause_iv_at_k i_lt j_lt H])
       qed
     qed
   qed
 qed
+
+text \<open>
+  Substantive case of (v) at \<open>k\<close> (n \<ge> 2, b0_start = Some s): direct
+  corollary using clauses (ii), (iii), (iv) at \<open>k\<close> as oracle.
+  Walk back through the chain to find the last column in \<open>B_{n_2}\<close>;
+  by (iv) its parent is outside \<open>B_{n_2}\<close>; by chain-linearity the chain
+  passes through \<open>idx_B(n_2, 0)\<close>; (iii) and (ii) at \<open>k\<close> transfer
+  the chain to \<open>idx_B(n_3, 0)\<close>; combined with (iv)-derived parent step
+  we conclude. Reverse direction symmetric. Hunter paper page 7.
+\<close>
+
+lemma lemma_2_5_v_clause_step_substantive:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and n_ge_2: "2 \<le> n"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_i_at_k: "lemma_2_5_i_clause A n k"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+  shows "lemma_2_5_v_clause A n k"
+  sorry
 
 lemma lemma_2_5_v_clause_step:
   fixes A :: array
@@ -4709,30 +4759,11 @@ next
   next
     case (Some s)
     note b0 = Some
-    \<comment> \<open>Substantive case (paper page 7): direct corollary using
-        clauses (ii), (iii), (iv) at \<open>k\<close> as oracle. The argument:
-        let \<open>{n\<^sub>2, n\<^sub>3} = {n\<^sub>1, n\<^sub>1 + 1}\<close>; assume
-        \<open>m_anc (A[n]) k (idx_B(n\<^sub>2, j)) (idx_B(n\<^sub>0, i))\<close>.
-        Walk back through the chain from \<open>idx_B(n\<^sub>2, j)\<close> to
-        \<open>idx_B(n\<^sub>0, i)\<close>; the last column visited that still lies
-        in \<open>B_{n\<^sub>2}\<close> has its \<open>k\<close>-parent outside \<open>B_{n\<^sub>2}\<close>,
-        so by clause (iv) at \<open>k\<close> the parent is in some \<open>B_t\<close>
-        (\<open>t \<le> n\<close>) or in \<open>G\<close>. Linearity + transitivity
-        (\<open>m_ancestor_chain_linear\<close>, \<open>m_ancestor_trans\<close>) then forces
-        the chain to pass through the first column
-        \<open>idx_B(n\<^sub>2, 0)\<close>. If \<open>k \<ge> m\<^sub>0\<close> we obtain a contradiction
-        with clause (iv); otherwise \<open>k < m\<^sub>0\<close> and we apply
-        clauses (iii) and (ii) at \<open>k\<close> to transfer the
-        \<open>idx_B(n\<^sub>2, 0)\<close>-to-\<open>idx_B(n\<^sub>0, i)\<close> chain to a
-        corresponding chain rooted at \<open>idx_B(n\<^sub>3, 0)\<close>; combined
-        with the (iv)-derived parent step from \<open>idx_B(n\<^sub>3, q')\<close>
-        we conclude \<open>m_anc (A[n]) k (idx_B(n\<^sub>3, j)) (idx_B(n\<^sub>0, i))\<close>.
-        The reverse direction is symmetric.
-
-        This argument is left as a single \<open>sorry\<close>; the trivial
-        boundary cases above are discharged, isolating the
-        substantive content to the layered-corollary core.\<close>
-    show ?thesis sorry
+    \<comment> \<open>Dispatch to @{thm lemma_2_5_v_clause_step_substantive}.\<close>
+    show ?thesis
+      by (rule lemma_2_5_v_clause_step_substantive
+                [OF A_BMS A_ne b0 n_ge_2 IH
+                    clause_i_at_k clause_ii_at_k clause_iii_at_k clause_iv_at_k])
   qed
 qed
 
