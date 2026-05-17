@@ -3154,6 +3154,34 @@ text \<open>
 \<close>
 
 text \<open>
+  BMS chain level lift: if column \<open>s+j\<close> has an \<open>(Suc k)\<close>-chain to
+  \<open>s\<close>, and \<open>(s+x)\<close> is on \<open>(s+j)\<close>'s \<open>k\<close>-chain (with \<open>0 < x < j\<close>),
+  then \<open>(s+x)\<close> also has an \<open>(Suc k)\<close>-chain to \<open>s\<close>.
+
+  This is the structural BMS claim underlying Hunter's dichotomy case (A)
+  (paper p.5). The naive direction of going from a \<open>k\<close>-chain to an
+  \<open>(Suc k)\<close>-chain is invalid (\<open>m_ancestor_mono\<close> goes the other way),
+  so this lift requires BMS standard-form specifics. Proof obligation
+  pending an explicit BMS row-monotonicity helper.
+\<close>
+
+lemma bms_chain_level_lift:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and Sk_lt_t: "Suc k < t"
+      and n_pos: "0 < n"
+      and j_lt: "j < l1 A"
+      and asc_j_chain: "m_ancestor A (Suc k) (s + j) s"
+      and chain_AEn: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                          (idx_B_in_expansion A 0 x)"
+      and x_pos: "0 < x"
+      and x_lt_j: "x < j"
+  shows "m_ancestor A (Suc k) (s + x) s"
+  sorry
+
+text \<open>
   Hunter dichotomy, case (A) (paper page 5, applied to m = Suc k):
   if the j-th column of B_0 ascends at level (Suc k) (= the first column
   s is the (Suc k)-ancestor of j), then for every k-ancestor x of j
@@ -3191,11 +3219,29 @@ proof (cases "x = 0")
     using True b0 mp Sk_lt_t nsa unfolding ascends_def by simp
 next
   case False
-  \<comment> \<open>\<open>x > 0\<close>: substantive Hunter dichotomy case (A) — first column \<open>s\<close>
-      being the \<open>(Suc k)\<close>-ancestor of \<open>j\<close> forces \<open>s\<close> to be the
-      \<open>(Suc k)\<close>-ancestor of \<open>(s+x)\<close> as well, via BMS row-monotonicity
-      across columns in the intermediate range. (Substantive proof pending.)\<close>
-  show ?thesis sorry
+  \<comment> \<open>\<open>x > 0\<close>: derive via @{thm bms_chain_level_lift} (chain transfer
+      from \<open>A[n]\<close> to \<open>A\<close> internalized in the lift lemma). Step 1: extract
+      \<open>(Suc k)\<close>-chain from \<open>(s+j)\<close> to \<open>s\<close> from \<open>asc_j\<close>. Step 2: apply
+      level lift to get \<open>(Suc k)\<close>-chain from \<open>(s+x)\<close> to \<open>s\<close>.
+      Step 3: repackage as \<open>ascends A x (Suc k)\<close>.\<close>
+  have x_pos: "0 < x" using False by simp
+  have j_pos: "0 < j" using x_pos x_lt_j by linarith
+  have Sk_lt_t: "Suc k < t"
+    using asc_j b0 mp unfolding ascends_def by simp
+  have sj_ne_s: "s + j \<noteq> s" using j_pos by simp
+  \<comment> \<open>Step 1: \<open>asc_j\<close> gives \<open>m_anc A (Suc k) (s + j) s\<close>.\<close>
+  have asc_j_chain: "m_ancestor A (Suc k) (s + j) s"
+    using asc_j b0 mp sj_ne_s
+    unfolding ascends_def non_strict_ancestor_def by simp
+  \<comment> \<open>Step 2: apply the level lift (chain transfer internalized).\<close>
+  have asc_x_chain: "m_ancestor A (Suc k) (s + x) s"
+    using bms_chain_level_lift
+            [OF A_BMS A_ne b0 mp Sk_lt_t n_pos j_lt asc_j_chain chain_AEn x_pos x_lt_j] .
+  \<comment> \<open>Step 3: repackage as \<open>ascends\<close>.\<close>
+  have nsa: "non_strict_ancestor A (Suc k) (s + x) s"
+    using asc_x_chain unfolding non_strict_ancestor_def by simp
+  show ?thesis
+    using b0 mp Sk_lt_t nsa unfolding ascends_def by simp
 qed
 
 text \<open>
