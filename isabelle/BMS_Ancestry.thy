@@ -3200,6 +3200,29 @@ lemma bms_ascend_propagates_to_chain_ancestor:
   shows "ascends A x (Suc k)"
   sorry
 
+text \<open>
+  Hunter dichotomy contrapositive (case (B) shape for the not-ascending
+  branch): if the j-th column does not ascend at (Suc k), no k-chain
+  ancestor of j ascends at (Suc k) either. (If some x in the k-chain
+  did ascend at (Suc k), then by the previous lemma applied symmetrically
+  j would also ascend, contradicting not_asc_j.)
+\<close>
+
+lemma bms_not_ascend_propagates_to_chain_ancestor:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_lt_t: "k < t"
+      and n_pos: "0 < n"
+      and not_asc_j: "\<not> ascends A j (Suc k)"
+      and j_lt: "j < l1 A"
+      and x_lt_j: "x < j"
+      and chain_AEn: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                          (idx_B_in_expansion A 0 x)"
+  shows "\<not> ascends A x (Suc k)"
+  sorry
+
 lemma lemma_2_5_ii_clause_step_v2:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -3379,6 +3402,7 @@ next
               qed
               have j_len: "Suc k' < length (A ! (s + j))"
                 using x_len_all j_lt by blast
+              have k'_lt_t: "k' < t" using Sk_lt_t by simp
               show ?thesis
               proof (cases "ascends A j (Suc k')")
                 case True
@@ -3388,7 +3412,6 @@ next
                     every \<open>k'\<close>-ancestor of \<open>j\<close> in \<open>I\<close> also ascends.
                     Derive \<open>asc_chain\<close> by Lemma A (transfer chain from
                     \<open>A[n]\<close> to \<open>A\<close>) + @{thm bms_ascend_propagates_to_chain_ancestor}.\<close>
-                have k'_lt_t: "k' < t" using Sk_lt_t by simp
                 have asc_chain: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
                                                               (idx_B_in_expansion A 0 x)
                                        \<longrightarrow> ascends A x (Suc k')"
@@ -3408,12 +3431,22 @@ next
               next
                 case False
                 note not_asc_j = this
-                \<comment> \<open>Sub-\<open>sorry\<close> (Round 2 follow-up after Round 1.5 weakening):
-                    chain-conditional non-ascending hypothesis.\<close>
+                \<comment> \<open>Hunter dichotomy case (B) (paper page 5, applied to
+                    \<open>m = Suc k'\<close>): since \<open>j\<close>-th col does not ascend at
+                    \<open>Suc k'\<close>, no \<open>k'\<close>-chain ancestor of \<open>j\<close> ascends at
+                    \<open>Suc k'\<close>. Derive via
+                    @{thm bms_not_ascend_propagates_to_chain_ancestor}.\<close>
                 have not_asc_chain: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
                                                                   (idx_B_in_expansion A 0 x)
                                           \<longrightarrow> \<not> ascends A x (Suc k')"
-                  sorry
+                proof (intro allI impI)
+                  fix x assume x_lt: "x < j"
+                  assume chain_AEn: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                          (idx_B_in_expansion A 0 x)"
+                  show "\<not> ascends A x (Suc k')"
+                    using bms_not_ascend_propagates_to_chain_ancestor
+                            [OF A_BMS A_ne b0 mp k'_lt_t n_pos not_asc_j j_lt x_lt chain_AEn] .
+                qed
                 show ?thesis
                   using m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc
                           [OF A_BMS A_ne b0 mp Sk_lt_t IH_kp not_asc_j not_asc_chain
