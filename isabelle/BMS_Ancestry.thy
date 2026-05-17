@@ -4299,6 +4299,28 @@ text \<open>
   strict-less analysis using @{thm elem_AEn_idx_B_value}.
 \<close>
 
+text \<open>
+  Auxiliary for the (iv) intermediate case at \<open>k = Suc k_0\<close>, ancestor-of-G
+  sub-case: when some \<open>k' < k\<close> has the \<open>k'\<close>-parent of the \<open>i\<close>-th col in
+  \<open>G\<close>, by IH (iv) at \<open>k'\<close> all \<open>k'\<close>-ancestors lie in \<open>G\<close>, including the
+  \<open>k\<close>-parent \<open>p\<close>, contradicting \<open>p = idx_B(t, j)\<close>.
+\<close>
+
+text \<open>
+  Auxiliary for the (iv) intermediate case at \<open>k = Suc k_0\<close>, chain-through-
+  first sub-case: when every \<open>k' < k\<close> has the \<open>k'\<close>-parent in \<open>B_n\<close> AND
+  the first col of \<open>B_n\<close> is a \<open>k'\<close>-ancestor of the \<open>i\<close>-th col, transfer
+  chain to \<open>B_0\<close> via (ii) at each \<open>k' < k\<close>, then use (ii) and (iii) at
+  \<open>k\<close> to deduce \<open>k\<close>-parent lies in \<open>B_n \<union> G\<close>, contradicting \<open>p \<in> B_t\<close>.
+\<close>
+
+text \<open>
+  Auxiliary for the (iv) intermediate case at \<open>k = Suc k_0\<close>, chain-break
+  sub-case: when some \<open>k' < k\<close> witnesses chain breakage (the first col of
+  \<open>B_n\<close> is NOT a \<open>k'\<close>-ancestor of the \<open>i\<close>-th col), apply IH (iv) at
+  \<open>k'\<close> on the witness to derive contradiction.
+\<close>
+
 lemma clause_iv_intermediate_B_t_impossible_at_zero:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -4309,6 +4331,63 @@ lemma clause_iv_intermediate_B_t_impossible_at_zero:
       and t_lt_n: "t < n"
       and j_lt: "j < l1 A"
       and p_eq: "p = idx_B_in_expansion A t j"
+  shows "False"
+  sorry
+
+lemma clause_iv_intermediate_B_t_impossible_when_G_parent_exists:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and k_pos: "0 < k"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and i_pos: "0 < i" and i_lt: "i < l1 A"
+      and mp_eq: "m_parent (A[n]) k (idx_B_in_expansion A n i) = Some p"
+      and t_lt_n: "t < n"
+      and j_lt: "j < l1 A"
+      and p_eq: "p = idx_B_in_expansion A t j"
+      and G_parent_exists: "\<exists>k' < k. \<exists>q. m_parent (A[n]) k' (idx_B_in_expansion A n i)
+                                            = Some q \<and> (\<exists>g < l0 A. q = idx_G A g)"
+  shows "False"
+  sorry
+
+lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and k_pos: "0 < k"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and i_pos: "0 < i" and i_lt: "i < l1 A"
+      and mp_eq: "m_parent (A[n]) k (idx_B_in_expansion A n i) = Some p"
+      and t_lt_n: "t < n"
+      and j_lt: "j < l1 A"
+      and p_eq: "p = idx_B_in_expansion A t j"
+      and no_G_parent: "\<not> (\<exists>k' < k. \<exists>q. m_parent (A[n]) k' (idx_B_in_expansion A n i)
+                                           = Some q \<and> (\<exists>g < l0 A. q = idx_G A g))"
+      and chain_through_Bn0: "\<forall>k' < k. m_ancestor (A[n]) k' (idx_B_in_expansion A n i)
+                                                            (idx_B_in_expansion A n 0)"
+  shows "False"
+  sorry
+
+lemma clause_iv_intermediate_B_t_impossible_chain_breaks:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and k_pos: "0 < k"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and i_pos: "0 < i" and i_lt: "i < l1 A"
+      and mp_eq: "m_parent (A[n]) k (idx_B_in_expansion A n i) = Some p"
+      and t_lt_n: "t < n"
+      and j_lt: "j < l1 A"
+      and p_eq: "p = idx_B_in_expansion A t j"
+      and no_G_parent: "\<not> (\<exists>k' < k. \<exists>q. m_parent (A[n]) k' (idx_B_in_expansion A n i)
+                                           = Some q \<and> (\<exists>g < l0 A. q = idx_G A g))"
+      and chain_breaks: "\<not> (\<forall>k' < k. m_ancestor (A[n]) k' (idx_B_in_expansion A n i)
+                                                          (idx_B_in_expansion A n 0))"
   shows "False"
   sorry
 
@@ -4348,36 +4427,29 @@ proof -
     proof (cases "\<exists>k' < k. \<exists>q. m_parent (A[n]) k' (idx_B_in_expansion A n i)
                                   = Some q \<and> (\<exists>g < l0 A. q = idx_G A g)")
       case True
-      \<comment> \<open>Some \<open>k' < k\<close> has the \<open>k'\<close>-parent of the \<open>i\<close>-th col
-          in \<open>G\<close>; deferred sub-\<open>sorry\<close>: ancestor-of-G-is-G lemma
-          shows \<open>p\<close> must also be in \<open>G\<close>, contradicting
-          \<open>p = idx_B(t,j)\<close>.\<close>
-      show False sorry
+      \<comment> \<open>Dispatch to @{thm clause_iv_intermediate_B_t_impossible_when_G_parent_exists}.\<close>
+      show False
+        by (rule clause_iv_intermediate_B_t_impossible_when_G_parent_exists
+                  [OF A_BMS A_ne b0 l1_pos k_pos IH i_pos i_lt mp_eq t_lt_n j_lt p_eq True])
     next
       case False
       note no_G_parent = False
-      \<comment> \<open>\<open>\<forall>k' < k\<close>, the \<open>k'\<close>-parent of the \<open>i\<close>-th col is
-          NOT in \<open>G\<close>. Combined with IH (iv) at every \<open>k' < k\<close>
-          (which forces the \<open>k'\<close>-parent into \<open>B_n \<union> G\<close>), this
-          gives \<open>\<forall>k' < k\<close>, the \<open>k'\<close>-parent lies in \<open>B_n\<close>.
-          Further case-split on the chain-existence condition.\<close>
       show False
       proof (cases "\<forall>k' < k. m_ancestor (A[n]) k' (idx_B_in_expansion A n i)
                                               (idx_B_in_expansion A n 0)")
         case True
-        \<comment> \<open>Chain through first col of \<open>B_n\<close> exists at every
-            \<open>k' < k\<close>. Hunter's "first sub-case": transfer chain
-            to \<open>B_0\<close> via (ii), use (iii) and (ii) at \<open>k\<close> to
-            deduce \<open>k\<close>-parent must be in \<open>B_n\<close> or \<open>G\<close>.
-            Deferred sub-\<open>sorry\<close>.\<close>
-        show False sorry
+        \<comment> \<open>Dispatch to @{thm clause_iv_intermediate_B_t_impossible_chain_through_Bn_first}.\<close>
+        show False
+          by (rule clause_iv_intermediate_B_t_impossible_chain_through_Bn_first
+                    [OF A_BMS A_ne b0 l1_pos k_pos IH clause_ii_at_k clause_iii_at_k
+                        i_pos i_lt mp_eq t_lt_n j_lt p_eq no_G_parent True])
       next
         case False
-        \<comment> \<open>Hunter's "second sub-case": some \<open>k' < k\<close> witnesses
-            the chain breaking. Use IH (iv) at this \<open>k'\<close> on the
-            witness ancestor to derive a contradiction. Deferred
-            sub-\<open>sorry\<close>.\<close>
-        show False sorry
+        \<comment> \<open>Dispatch to @{thm clause_iv_intermediate_B_t_impossible_chain_breaks}.\<close>
+        show False
+          by (rule clause_iv_intermediate_B_t_impossible_chain_breaks
+                    [OF A_BMS A_ne b0 l1_pos k_pos IH i_pos i_lt mp_eq t_lt_n j_lt p_eq
+                        no_G_parent False])
       qed
     qed
   qed

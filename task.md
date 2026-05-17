@@ -90,15 +90,11 @@ graph LR
       - 🚨 `bms_ascend_propagates_to_chain_ancestor` (x=0 case ✅) — Hunter dichotomy case (A) x>0 構造補題
       - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (B) 構造補題 (signature 要再検討、 x=0 で reflexivity と衝突可能性)
     - 🚨 **Stage 2: ∀k. (iv)@k** `lemma_2_5_iv_main` (k-induction wrapper、 provides **IH(iv)**)
-      - 🚨 step `lemma_2_5_iv_clause_step` (入力: **IH(iv)** + **IH(ii)** = ∀k. (ii)@k via Stage 1)
-        - ✅ n=0 case proven inline
-        - ✅ Suc n' 部分: b0_start=None + G case + B_n case discharge
-        - ✅ auxiliary `clause_iv_intermediate_B_t_impossible` で intermediate B_t case を Hunter page 6 case-split に scaffold
-        - ✅ k=0 case → named lemma `clause_iv_intermediate_B_t_impossible_at_zero` に dispatch
-        - 🚨 残: ancestor-of-G-is-G case (Suc k_0、 G parent exists)
-        - 🚨 残: chain through B_n[0] case (Suc k_0、 chain at all k'<k)
-        - 🚨 残: chain break case (Suc k_0、 some k' witnesses break)
+      - ✅ step `lemma_2_5_iv_clause_step` (入力: **IH(iv)** + **IH(ii)** = ∀k. (ii)@k via Stage 1) — body sorry-free、 全 case を 4 named lemmas に dispatch
       - 🚨 `clause_iv_intermediate_B_t_impossible_at_zero` — k=0 row-0 strict monotonicity 構造補題
+      - 🚨 `clause_iv_intermediate_B_t_impossible_when_G_parent_exists` — Suc k_0、 ancestor-of-G case
+      - 🚨 `clause_iv_intermediate_B_t_impossible_chain_through_Bn_first` — Suc k_0、 chain through B_n[0] case
+      - 🚨 `clause_iv_intermediate_B_t_impossible_chain_breaks` — Suc k_0、 chain break case
     - 🚨 **Stage 3: ∀k. (iii)@k** `lemma_2_5_iii_main` (induction 不要、 直接 corollary)
       - ✅ step `lemma_2_5_iii_clause_step` (入力: (ii)@k via Stage 1; **IH 不要**) — body sorry-free、 STEP 1 + n=1 + n≥2 全て dispatch
       - 🚨 `iii_block_shift_bridge_n_ge_2` — n≥2 「(n-1)-block bridge」 構造補題
