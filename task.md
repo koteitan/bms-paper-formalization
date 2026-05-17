@@ -94,10 +94,11 @@ graph LR
         - ✅ n=0 case proven inline
         - ✅ Suc n' 部分: b0_start=None + G case + B_n case discharge
         - ✅ auxiliary `clause_iv_intermediate_B_t_impossible` で intermediate B_t case を Hunter page 6 case-split に scaffold
-        - 🚨 残: k=0 row-0 monotonicity (BMS_Ancestry.thy:4155)
-        - 🚨 残: ancestor-of-G-is-G lemma (BMS_Ancestry.thy:4168)
-        - 🚨 残: chain transfer via (ii)/(iii) (BMS_Ancestry.thy:4186)
-        - 🚨 残: IH (iv) at offending k' on witness (BMS_Ancestry.thy:4193)
+        - ✅ k=0 case → named lemma `clause_iv_intermediate_B_t_impossible_at_zero` に dispatch
+        - 🚨 残: ancestor-of-G-is-G case (Suc k_0、 G parent exists)
+        - 🚨 残: chain through B_n[0] case (Suc k_0、 chain at all k'<k)
+        - 🚨 残: chain break case (Suc k_0、 some k' witnesses break)
+      - 🚨 `clause_iv_intermediate_B_t_impossible_at_zero` — k=0 row-0 strict monotonicity 構造補題
     - 🚨 **Stage 3: ∀k. (iii)@k** `lemma_2_5_iii_main` (induction 不要、 直接 corollary)
       - ✅ step `lemma_2_5_iii_clause_step` (入力: (ii)@k via Stage 1; **IH 不要**) — body sorry-free、 STEP 1 + n=1 + n≥2 全て dispatch
       - 🚨 `iii_block_shift_bridge_n_ge_2` — n≥2 「(n-1)-block bridge」 構造補題

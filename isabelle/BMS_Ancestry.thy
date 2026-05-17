@@ -4290,6 +4290,28 @@ text \<open>
   each tagged with the helper it awaits.
 \<close>
 
+text \<open>
+  Auxiliary for the (iv) intermediate case at \<open>k = 0\<close>: m_parent at level
+  0 is just the greatest predecessor with strictly smaller row-0 elem. The
+  proof obligation is to show that the first column of \<open>B_n\<close>
+  (\<open>idx_B n 0\<close>) qualifies as a candidate (so the actual m_parent must be
+  in \<open>B_n\<close> or later, not in earlier \<open>B_t\<close>). Requires row-0
+  strict-less analysis using @{thm elem_AEn_idx_B_value}.
+\<close>
+
+lemma clause_iv_intermediate_B_t_impossible_at_zero:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and i_pos: "0 < i" and i_lt: "i < l1 A"
+      and mp_eq: "m_parent (A[n]) 0 (idx_B_in_expansion A n i) = Some p"
+      and t_lt_n: "t < n"
+      and j_lt: "j < l1 A"
+      and p_eq: "p = idx_B_in_expansion A t j"
+  shows "False"
+  sorry
+
 lemma clause_iv_intermediate_B_t_impossible:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -4312,10 +4334,12 @@ proof -
   show False
   proof (cases k)
     case 0
-    \<comment> \<open>\<open>k = 0\<close>: deferred sub-\<open>sorry\<close>; the row-0 strict
-        monotonicity for B-block columns is not yet available
-        (would be a Round 1.5 / Round 1.6 helper).\<close>
-    show False sorry
+    \<comment> \<open>\<open>k = 0\<close>: dispatch to
+        @{thm clause_iv_intermediate_B_t_impossible_at_zero}.\<close>
+    show False
+      using clause_iv_intermediate_B_t_impossible_at_zero
+              [OF A_BMS A_ne b0 l1_pos i_pos i_lt _ t_lt_n j_lt p_eq]
+            mp_eq \<open>k = 0\<close> by simp
   next
     case (Suc k_0)
     note k_eq = Suc
