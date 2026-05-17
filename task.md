@@ -92,7 +92,7 @@ graph LR
       - ✅ `bms_chain_level_lift_A` — pure A 形式の lift、 j に関する強い帰納 + chain linearity で 3 case を dispatch
       - ✅ `bms_chain_level_lift_A_above_q1` — case 2 (s+x>q1) 専用 sub-lemma、 y に関する強い帰納 + maximality
       - ✅ `bms_max_elem_above_q1` — maximality 補題: m_parent A (Suc k) (s+j) = Some q_1 のとき q_1<p<s+j かつ p が s+j の k-祖先なら elem A p (Suc k) ≥ elem A (s+j) (Suc k)
-      - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (B) 構造補題 (signature 要再検討、 x=0 で reflexivity と衝突可能性)
+      - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — signature 過剰: x=0 case で `ascends A 0 (Suc k) = True` (反射) が成立し主張が偽となるため、 helper m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc の再設計、 または v2 step の not_asc 分岐の別 path 構築が必要
     - 🚨 **Stage 2: ∀k. (iv)@k** `lemma_2_5_iv_main` (k-induction wrapper、 provides **IH(iv)**)
       - ✅ step `lemma_2_5_iv_clause_step` (入力: **IH(iv)** + **IH(ii)** = ∀k. (ii)@k via Stage 1) — body sorry-free、 全 case を 4 named lemmas に dispatch
       - 🚨 `clause_iv_intermediate_B_t_impossible_at_zero` — k=0 row-0 strict monotonicity 構造補題
