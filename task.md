@@ -5,18 +5,23 @@
 
 ## 現在のステータス
 
-**コード上の sorry: 7 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
+**コード上の sorry: 10 件** (`grep -rn "^[[:space:]]*sorry\|sorry$" isabelle/*.thy`):
 - `seed_descendants_total_strong` N≥2 case (BMS_Lex.thy:1369)
 - `BMS_all_B0_ascending_below_t` inductive case (BMS_Lex.thy:1660)
-- `lemma_2_5_iii_clause_step` k<m_0 (BMS_Ancestry.thy:3068)
-- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3140) — Hunter (iv): m_parent image structure (n=0 proven inline)
-- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3151) — Hunter (i): G-column target
-- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3162) — Hunter (v): block n_1 ↔ n_1+1 transition
+- `m_parent_orig_last_col_when_k_lt_m0` (BMS_Ancestry.thy:3042) — (iii) sub-helper: first step in A
+- `m_parent_AEn_idx_B_n_zero_when_k_lt_m0` (BMS_Ancestry.thy:3054) — (iii) sub-helper: first step in A[n]
+- `m_anc_orig_eq_AEn_shared_B0` (BMS_Ancestry.thy:3064) — (iii) sub-helper Lemma A: m_anc A ↔ m_anc A[n] for shared cols
+- `m_anc_AEn_minus_1_eq_AEn_shared` (BMS_Ancestry.thy:3075) — (iii) sub-helper Lemma A': m_anc A[n-1] ↔ m_anc A[n] for shared cols
+- `lemma_2_5_iv_clause_step` n>0 case (BMS_Ancestry.thy:3312) — Hunter (iv): m_parent image structure (n=0 proven inline)
+- `lemma_2_5_i_clause_step` 全体 (BMS_Ancestry.thy:3323) — Hunter (i): G-column target
+- `lemma_2_5_v_clause_step` 全体 (BMS_Ancestry.thy:3334) — Hunter (v): block n_1 ↔ n_1+1 transition
 - `stable_rep_extend_strict` Suc n' Some s (BMS_WellOrdered.thy:410)
 
 注: `lemma_2_5_ii_clause_step` は全 sub-case (k=0 t=0 / k=0 0<t / Suc k' k<t / Suc k' k≥t) が proven、 (ii) は完全 close。
 
-注: `lemma_2_5_at_main` は 5 step lemma 上で assembly proven (sorry 化解除)。 projection lemma_2_5_{i,ii,iii,iv,v,iv_and_v} はすべて lemma_2_5_at_main 経由で proper proof。
+注: `lemma_2_5_iii_clause_step` の k<m_0 assembly は proven (4 つの sub-helper を sorry で受けて組み立て完了)。 残るは 4 sub-helpers の証明。
+
+注: `lemma_2_5_at_main` は nested (k, n) induction に再構築 (外 k 上 nat_less_induct + 内 n 上 nat_induct)。 (iii) step が同 k の n-1 にアクセス可能になり、 IH_n = lemma_2_5_at A (n-1) k を提供。 projection lemma_2_5_{i,ii,iii,iv,v,iv_and_v} はすべて lemma_2_5_at_main 経由で proper proof。
 
 **コード上の axiom: 6 件** — `ord_lt_irrefl`, `ord_lt_trans`, `ord_wf`, `sigma_pair_exists`, `lemma_2_6`, `o_of_def`。 `lemma_2_6` は ZF 側で discharge 予定、 他は ordinal/σ-pair の前提として保持。
 
@@ -56,7 +61,14 @@
       - ✅ `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t`: chain induction
   - 🚨 (iii) step lemma (`lemma_2_5_iii_clause_step`)
     - ✅ scaffold: 5-way case split (n=0/None/k≥m_0 proven) [ID 71]
-    - 🚨 k<m_0: (ii) at same k 経由
+    - ✅ k<m_0 assembly: 4 sub-helper を経由した chain translation 組み立て (2026-05-17)
+      - ✅ `lemma_2_5_at_main` nested (k, n) induction 化 (IH_n = lemma_2_5_at A (n-1) k を提供)
+      - ✅ `lemma_2_5_iii_clause_step` signature に IH_n_minus_1 追加
+      - ✅ assembly: first-step in A + first-step in A[n] + Lemma A + Lemma A' + (ii) for A[n-1] at k で chain translation
+      - 🚨 sub-helper: `m_parent_orig_last_col_when_k_lt_m0` (first step in A)
+      - 🚨 sub-helper: `m_parent_AEn_idx_B_n_zero_when_k_lt_m0` (first step in A[n])
+      - 🚨 sub-helper Lemma A: `m_anc_orig_eq_AEn_shared_B0` (orig vs A[n] for shared cols ≤ idx_B(0, l_1)-1)
+      - 🚨 sub-helper Lemma A': `m_anc_AEn_minus_1_eq_AEn_shared` (A[n-1] vs A[n] for shared cols ≤ idx_B(n-1, l_1)-1)
   - 🚨 (iv) step lemma (`lemma_2_5_iv_clause_step`)
     - ✅ n=0 case proven inline (block 0 = only B-block, positions trivially split G + block 0)
     - 🚨 n>0 case: BMS structural property要 (block n partial cand 存在保証)

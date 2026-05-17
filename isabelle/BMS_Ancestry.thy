@@ -3016,14 +3016,76 @@ next
 qed
 
 text \<open>
-  Step lemma for clause (iii): assumes IH (= full lemma_2_5_at at k' < k)
-  AND clause (ii) at same level k (per dependency matrix).
+  Sub-helpers for clause (iii) at \<open>k < m\<^sub>0\<close>.
+
+  Four lemmas factor out the chain-translation:
+  \<^item> \<open>m_parent_orig_last_col_when_k_lt_m0\<close>: in original \<open>A\<close>,
+    \<open>m_parent A k (last_col_idx A)\<close> returns the last \<open>B_0\<close> col.
+  \<^item> \<open>m_parent_AEn_idx_B_n_zero_when_k_lt_m0\<close>: in expansion \<open>A[n]\<close>,
+    \<open>m_parent (A[n]) k (idx_B_in_expansion A n 0)\<close> returns the last \<open>B_{n-1}\<close> col.
+  \<^item> \<open>m_anc_orig_eq_AEn_shared_B0\<close> (Lemma A): \<open>m_ancestor A k p q\<close>
+    matches \<open>m_ancestor (A[n]) k p q\<close> for cols \<open>p\<close> in the shared
+    range \<open>[0..idx_B(0, l_1) - 1]\<close>.
+  \<^item> \<open>m_anc_AEn_minus_1_eq_AEn_shared\<close> (Lemma A'): \<open>m_ancestor (A[n-1]) k p q\<close>
+    matches \<open>m_ancestor (A[n]) k p q\<close> for cols \<open>p\<close> in the shared
+    range \<open>[0..idx_B(n-1, l_1) - 1]\<close>.
+\<close>
+
+lemma m_parent_orig_last_col_when_k_lt_m0:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and l1_pos: "0 < l1 A"
+  shows "m_parent A k (last_col_idx A) = Some (idx_B0_in_orig A (l1 A - 1))"
+  sorry
+
+lemma m_parent_AEn_idx_B_n_zero_when_k_lt_m0:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and n_pos: "0 < n"
+      and l1_pos: "0 < l1 A"
+  shows "m_parent (A[n]) k (idx_B_in_expansion A n 0)
+       = Some (idx_B_in_expansion A (n - 1) (l1 A - 1))"
+  sorry
+
+lemma m_anc_orig_eq_AEn_shared_B0:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and p_lt: "p < idx_B_in_expansion A 0 (l1 A)"
+  shows "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
+  sorry
+
+lemma m_anc_AEn_minus_1_eq_AEn_shared:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and n_pos: "0 < n"
+      and p_lt: "p < idx_B_in_expansion A (n - 1) (l1 A)"
+  shows "m_ancestor (expansion A (n - 1)) k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
+  sorry
+
+text \<open>
+  Step lemma for clause (iii): assumes IH (= full lemma_2_5_at at k' < k),
+  IH at \<open>n-1\<close> for same \<open>k\<close>, AND clause (ii) at same level \<open>k\<close>
+  (per dependency matrix; IH at \<open>n-1\<close> provides \<open>lemma_2_5_ii_clause A (n-1) k\<close>,
+  used in chain translation).
 \<close>
 
 lemma lemma_2_5_iii_clause_step:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and IH_n_minus_1: "lemma_2_5_at A (n - 1) k"
       and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
   shows "lemma_2_5_iii_clause A n k"
 proof (cases n)
@@ -3063,9 +3125,119 @@ next
         show ?thesis by (rule lemma_2_5_iii_clause_when_k_ge_m0[OF all_ge])
       next
         case True
-        \<comment> \<open>Truly substantive: \<open>k < m\<^sub>0\<close>. Hunter's proof uses
-            (ii) at k for chain translation, plus IH for chain at k-1.\<close>
-        show ?thesis sorry
+        \<comment> \<open>Truly substantive: \<open>k < m\<^sub>0\<close>. Strategy combines four
+            sub-helpers: first-step in \<open>A\<close>, first-step in \<open>A[n]\<close>,
+            Lemma A (orig vs A[n] shared cols), Lemma A' (A[n-1] vs A[n] shared cols),
+            plus (ii) for \<open>A[n-1]\<close> at \<open>k\<close> via IH at n-1.\<close>
+        have k_lt_m0: "k < m\<^sub>0" using True .
+        have n_pos: "0 < n" using \<open>n = Suc n'\<close> by simp
+        show ?thesis
+          unfolding lemma_2_5_iii_clause_def
+        proof (intro allI impI)
+          fix m_0' i
+          assume h: "0 < n \<and> max_parent_level A = Some m_0' \<and> k < m_0' \<and> i < l1 A"
+          hence i_lt: "i < l1 A" by simp
+          have l1_pos: "0 < l1 A" using i_lt by linarith
+          let ?L = "l1 A - 1"
+          have L_lt: "?L < l1 A" using l1_pos by simp
+          \<comment> \<open>First step in \<open>A\<close>.\<close>
+          have first_A: "m_parent A k (last_col_idx A) = Some (idx_B0_in_orig A ?L)"
+            by (rule m_parent_orig_last_col_when_k_lt_m0
+                  [OF A_BMS A_ne \<open>b0_start A = Some s\<close>
+                      \<open>max_parent_level A = Some m\<^sub>0\<close> k_lt_m0 l1_pos])
+          \<comment> \<open>First step in \<open>A[n]\<close>.\<close>
+          have first_AEn: "m_parent (A[n]) k (idx_B_in_expansion A n 0)
+                         = Some (idx_B_in_expansion A (n - 1) ?L)"
+            by (rule m_parent_AEn_idx_B_n_zero_when_k_lt_m0
+                  [OF A_BMS A_ne \<open>b0_start A = Some s\<close>
+                      \<open>max_parent_level A = Some m\<^sub>0\<close> k_lt_m0 n_pos l1_pos])
+          \<comment> \<open>LHS chain decomposition.\<close>
+          have LHS_iff: "m_ancestor A k (last_col_idx A) (idx_B0_in_orig A i)
+                      \<longleftrightarrow> (idx_B0_in_orig A ?L = idx_B0_in_orig A i)
+                          \<or> m_ancestor A k (idx_B0_in_orig A ?L) (idx_B0_in_orig A i)"
+            using m_anc_via_parent_some[OF first_A] .
+          \<comment> \<open>RHS chain decomposition.\<close>
+          have RHS_iff: "m_ancestor (A[n]) k (idx_B_in_expansion A n 0)
+                                              (idx_B_in_expansion A (n - 1) i)
+                      \<longleftrightarrow> (idx_B_in_expansion A (n - 1) ?L = idx_B_in_expansion A (n - 1) i)
+                          \<or> m_ancestor (A[n]) k (idx_B_in_expansion A (n - 1) ?L)
+                                                (idx_B_in_expansion A (n - 1) i)"
+            using m_anc_via_parent_some[OF first_AEn] .
+          \<comment> \<open>Equality of the two disjuncts (both reduce to \<open>l_1 - 1 = i\<close>).\<close>
+          have eq_iff: "(idx_B0_in_orig A ?L = idx_B0_in_orig A i)
+                      \<longleftrightarrow> (idx_B_in_expansion A (n - 1) ?L = idx_B_in_expansion A (n - 1) i)"
+            unfolding idx_B0_in_orig_def idx_B_in_expansion_def by simp
+          \<comment> \<open>Identify \<open>idx_B0_in_orig\<close> with \<open>idx_B_in_expansion ... 0\<close>.\<close>
+          have B0_eq_BEn0_L: "idx_B0_in_orig A ?L = idx_B_in_expansion A 0 ?L"
+            unfolding idx_B0_in_orig_def idx_B_in_expansion_def by simp
+          have B0_eq_BEn0_i: "idx_B0_in_orig A i = idx_B_in_expansion A 0 i"
+            unfolding idx_B0_in_orig_def idx_B_in_expansion_def by simp
+          \<comment> \<open>Step 1: Lemma A translates the original-A chain to A[n].\<close>
+          have step1: "m_ancestor A k (idx_B0_in_orig A ?L) (idx_B0_in_orig A i)
+                    \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A 0 ?L)
+                                            (idx_B_in_expansion A 0 i)"
+          proof -
+            have p_lt: "idx_B0_in_orig A ?L < idx_B_in_expansion A 0 (l1 A)"
+              using L_lt unfolding idx_B0_in_orig_def idx_B_in_expansion_def by simp
+            have lemA: "m_ancestor A k (idx_B0_in_orig A ?L) (idx_B0_in_orig A i)
+                      \<longleftrightarrow> m_ancestor (A[n]) k (idx_B0_in_orig A ?L) (idx_B0_in_orig A i)"
+              by (rule m_anc_orig_eq_AEn_shared_B0
+                    [OF A_BMS A_ne \<open>b0_start A = Some s\<close>
+                        \<open>max_parent_level A = Some m\<^sub>0\<close> k_lt_m0 p_lt])
+            show ?thesis using lemA B0_eq_BEn0_L B0_eq_BEn0_i by simp
+          qed
+          \<comment> \<open>Step 2: Lemma A' translates A[n] chain to A[n-1] chain.\<close>
+          have step2: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 ?L)
+                                          (idx_B_in_expansion A 0 i)
+                    \<longleftrightarrow> m_ancestor (expansion A (n - 1)) k (idx_B_in_expansion A 0 ?L)
+                                              (idx_B_in_expansion A 0 i)"
+          proof -
+            have p_lt: "idx_B_in_expansion A 0 ?L < idx_B_in_expansion A (n - 1) (l1 A)"
+              using L_lt unfolding idx_B_in_expansion_def by simp
+            show ?thesis
+              using m_anc_AEn_minus_1_eq_AEn_shared
+                      [OF A_BMS A_ne \<open>b0_start A = Some s\<close>
+                          \<open>max_parent_level A = Some m\<^sub>0\<close> k_lt_m0 n_pos p_lt]
+              by blast
+          qed
+          \<comment> \<open>Step 3: (ii) for A[n-1] at k (from IH_n_minus_1) shifts blocks.\<close>
+          have step3: "m_ancestor (expansion A (n - 1)) k (idx_B_in_expansion A 0 ?L)
+                                            (idx_B_in_expansion A 0 i)
+                    \<longleftrightarrow> m_ancestor (expansion A (n - 1)) k (idx_B_in_expansion A (n - 1) ?L)
+                                              (idx_B_in_expansion A (n - 1) i)"
+          proof -
+            have ii_at_nm1: "lemma_2_5_ii_clause A (n - 1) k"
+              using IH_n_minus_1 unfolding lemma_2_5_at_def by blast
+            have BEnm1_L_eq: "idx_B_in_expansion A (n - 1) ?L
+                            = idx_B_in_expansion A (n - 1) (l1 A - 1)" by simp
+            show ?thesis
+              using ii_at_nm1 L_lt i_lt
+              unfolding lemma_2_5_ii_clause_def by blast
+          qed
+          \<comment> \<open>Step 4: Lemma A' back to A[n].\<close>
+          have step4: "m_ancestor (expansion A (n - 1)) k (idx_B_in_expansion A (n - 1) ?L)
+                                            (idx_B_in_expansion A (n - 1) i)
+                    \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (n - 1) ?L)
+                                            (idx_B_in_expansion A (n - 1) i)"
+          proof -
+            have p_lt: "idx_B_in_expansion A (n - 1) ?L < idx_B_in_expansion A (n - 1) (l1 A)"
+              using L_lt unfolding idx_B_in_expansion_def by simp
+            show ?thesis
+              by (rule m_anc_AEn_minus_1_eq_AEn_shared
+                    [OF A_BMS A_ne \<open>b0_start A = Some s\<close>
+                        \<open>max_parent_level A = Some m\<^sub>0\<close> k_lt_m0 n_pos p_lt])
+          qed
+          \<comment> \<open>Combine chain translations.\<close>
+          have intermediate:
+            "m_ancestor A k (idx_B0_in_orig A ?L) (idx_B0_in_orig A i)
+            \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (n - 1) ?L)
+                                    (idx_B_in_expansion A (n - 1) i)"
+            using step1 step2 step3 step4 by simp
+          show "m_ancestor A k (last_col_idx A) (idx_B0_in_orig A i)
+              \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A n 0)
+                                      (idx_B_in_expansion A (n - 1) i)"
+            using LHS_iff RHS_iff intermediate eq_iff by blast
+        qed
       qed
     qed
   qed
@@ -3165,20 +3337,40 @@ lemma lemma_2_5_at_main:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
   shows "lemma_2_5_at A n k"
-proof (induct k rule: nat_less_induct)
-  case (1 k)
-  have IH: "\<forall>k'<k. lemma_2_5_at A n k'" using "1.hyps" by blast
-  have ii: "lemma_2_5_ii_clause A n k"
-    by (rule lemma_2_5_ii_clause_step[OF A_BMS A_ne IH])
-  have iii: "lemma_2_5_iii_clause A n k"
-    by (rule lemma_2_5_iii_clause_step[OF A_BMS A_ne IH ii])
-  have iv: "lemma_2_5_iv_clause A n k"
-    by (rule lemma_2_5_iv_clause_step[OF A_BMS A_ne IH ii iii])
-  have i: "lemma_2_5_i_clause A n k"
-    by (rule lemma_2_5_i_clause_step[OF A_BMS A_ne IH ii iii iv])
-  have v: "lemma_2_5_v_clause A n k"
-    by (rule lemma_2_5_v_clause_step[OF A_BMS A_ne IH i ii iii iv])
-  show ?case unfolding lemma_2_5_at_def using i ii iii iv v by blast
+proof -
+  \<comment> \<open>Outer induction on \<open>k\<close>; for each \<open>k\<close>, nested induction on
+      \<open>n\<close> to provide @{thm lemma_2_5_iii_clause_step} access to
+      \<open>lemma_2_5_at A (n-1) k\<close> (same level, smaller expansion).\<close>
+  have "\<forall>n. lemma_2_5_at A n k"
+  proof (induct k rule: nat_less_induct)
+    case (1 k)
+    have IH_k: "\<forall>k'<k. \<forall>n. lemma_2_5_at A n k'" using "1.hyps" by blast
+    show ?case
+    proof (intro allI)
+      fix n
+      show "lemma_2_5_at A n k"
+      proof (induct n)
+        case 0
+        show ?case using lemma_2_5_at_n_zero[OF A_ne] by simp
+      next
+        case (Suc n')
+        have IH_at_n: "\<forall>k'<k. lemma_2_5_at A (Suc n') k'" using IH_k by blast
+        have IH_n_at_k: "lemma_2_5_at A (Suc n' - 1) k" using Suc.hyps by simp
+        have ii: "lemma_2_5_ii_clause A (Suc n') k"
+          by (rule lemma_2_5_ii_clause_step[OF A_BMS A_ne IH_at_n])
+        have iii: "lemma_2_5_iii_clause A (Suc n') k"
+          by (rule lemma_2_5_iii_clause_step[OF A_BMS A_ne IH_at_n IH_n_at_k ii])
+        have iv: "lemma_2_5_iv_clause A (Suc n') k"
+          by (rule lemma_2_5_iv_clause_step[OF A_BMS A_ne IH_at_n ii iii])
+        have i: "lemma_2_5_i_clause A (Suc n') k"
+          by (rule lemma_2_5_i_clause_step[OF A_BMS A_ne IH_at_n ii iii iv])
+        have v: "lemma_2_5_v_clause A (Suc n') k"
+          by (rule lemma_2_5_v_clause_step[OF A_BMS A_ne IH_at_n i ii iii iv])
+        show ?case unfolding lemma_2_5_at_def using i ii iii iv v by blast
+      qed
+    qed
+  qed
+  thus ?thesis by simp
 qed
 
 
