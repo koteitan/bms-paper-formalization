@@ -99,10 +99,8 @@ graph LR
         - 🚨 残: chain transfer via (ii)/(iii) (BMS_Ancestry.thy:4186)
         - 🚨 残: IH (iv) at offending k' on witness (BMS_Ancestry.thy:4193)
     - 🚨 **Stage 3: ∀k. (iii)@k** `lemma_2_5_iii_main` (induction 不要、 直接 corollary)
-      - 🚨 step `lemma_2_5_iii_clause_step` (入力: (ii)@k via Stage 1; **IH 不要**)
-        - ✅ Lemma A、 Lemma A' (m_anc 同等性 for shared cols)
-        - ✅ 2 new helpers + (iii) re-implement、 STEP 1 + n=1 case rigorous
-        - 🚨 残: n≥2 「(n-1)-block bridge」 sorry (BMS_Ancestry.thy:4078)
+      - ✅ step `lemma_2_5_iii_clause_step` (入力: (ii)@k via Stage 1; **IH 不要**) — body sorry-free、 STEP 1 + n=1 + n≥2 全て dispatch
+      - 🚨 `iii_block_shift_bridge_n_ge_2` — n≥2 「(n-1)-block bridge」 構造補題
     - 🚨 **Stage 4: ∀k. (i)@k** `lemma_2_5_i_main` (k-induction wrapper、 provides **IH(i)**)
       - 🚨 step `lemma_2_5_i_clause_step` (入力: **IH(i)** + (ii)(iii)(iv)@k via Stages 1-3)
         - ✅ scaffold + trivial cases (n=0, b0=None) + iff 構造

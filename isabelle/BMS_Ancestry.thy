@@ -4125,6 +4125,26 @@ proof (induct k arbitrary: q rule: less_induct)
 qed
 
 text \<open>
+  Block-shift bridge for (iii) at \<open>n \<ge> 2\<close>: shift both source and target
+  of an \<open>A[n]\<close>-ancestry chain by \<open>(n-1)\<close> blocks. Hunter's "trivial
+  extension" generalization of (ii); substantive structural lemma about
+  block-translation within \<open>A[n]\<close>.
+\<close>
+
+lemma iii_block_shift_bridge_n_ge_2:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and n_ge_2: "2 \<le> n"
+      and i_lt: "i < l1 A"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A 1 0) (idx_B_in_expansion A 0 i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A n 0)
+                                 (idx_B_in_expansion A (n - 1) i)"
+  sorry
+
+text \<open>
   Step lemma for clause (iii): assumes IH (= full lemma_2_5_at at k' < k),
   IH at \<open>n-1\<close> for same \<open>k\<close>, AND clause (ii) at same level \<open>k\<close>
   (per dependency matrix; IH at \<open>n-1\<close> provides \<open>lemma_2_5_ii_clause A (n-1) k\<close>,
@@ -4215,10 +4235,10 @@ proof (intro allI impI)
     next
       case (Suc n'')
       have n_ge_2: "2 \<le> n" using \<open>n = Suc n'\<close> \<open>n' = Suc n''\<close> by simp
-      \<comment> \<open>Substantive bridge for \<open>n \<ge> 2\<close>: shift both endpoints
-          of an \<open>A[n]\<close>-ancestry chain by \<open>(n-1)\<close> blocks.
-          Pending generalized block-translation helper.\<close>
-      show ?thesis sorry
+      \<comment> \<open>Substantive bridge for \<open>n \<ge> 2\<close>: dispatch to
+          @{thm iii_block_shift_bridge_n_ge_2}.\<close>
+      show ?thesis
+        by (rule iii_block_shift_bridge_n_ge_2[OF A_BMS A_ne b0 mp k_lt n_ge_2 i_lt])
     qed
   qed
   \<comment> \<open>Combine STEP 1 + STEP 2.\<close>
