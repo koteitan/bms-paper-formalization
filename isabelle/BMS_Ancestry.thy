@@ -3702,6 +3702,79 @@ proof
   thus False using not_asc_j_chain by simp
 qed
 
+text \<open>
+  Hunter case B at chain level (Suc k): if \<open>j\<close> does not ascend at \<open>Suc k\<close>
+  and \<open>x\<close> is a (Suc k)-chain ancestor of (s+j) with \<open>x > 0\<close>, then \<open>x\<close>
+  does not ascend at (Suc k). Direct from
+  @{thm bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends}.
+\<close>
+
+lemma bms_not_ascend_propagates_to_suc_k_chain_ancestor:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and Sk_lt_t: "Suc k < t"
+      and n_pos: "0 < n"
+      and not_asc_j: "\<not> ascends A j (Suc k)"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+      and x_pos: "0 < x"
+      and x_lt_j: "x < j"
+      and chain_AEn_at_Suc_k: "m_ancestor (A[n]) (Suc k) (idx_B_in_expansion A 0 j)
+                                                          (idx_B_in_expansion A 0 x)"
+  shows "\<not> ascends A x (Suc k)"
+proof -
+  \<comment> \<open>Transfer chain from A[n] to A via Lemma A.\<close>
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s"
+    using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have sj_eq: "idx_B_in_expansion A 0 j = s + j"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  have sx_eq: "idx_B_in_expansion A 0 x = s + x"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  have sj_lt: "s + j < idx_B_in_expansion A 0 (l1 A)"
+    using j_lt l0_eq unfolding idx_B_in_expansion_def by simp
+  have chain_A: "m_ancestor A (Suc k) (s + j) (s + x)"
+    using m_anc_orig_eq_AEn_shared_B0
+            [OF A_BMS A_ne b0 mp Sk_lt_t n_pos sj_lt]
+          chain_AEn_at_Suc_k sj_eq sx_eq by simp
+  \<comment> \<open>From \<open>not_asc_j\<close>, derive \<open>\<not> m_ancestor A (Suc k) (s+j) s\<close>.\<close>
+  have sj_ne_s: "s + j \<noteq> s" using j_pos by simp
+  have not_anc_to_s: "\<not> m_ancestor A (Suc k) (s + j) s"
+  proof
+    assume H: "m_ancestor A (Suc k) (s + j) s"
+    have nsa: "non_strict_ancestor A (Suc k) (s + j) s"
+      using H unfolding non_strict_ancestor_def by simp
+    have "ascends A j (Suc k)"
+      using b0 mp Sk_lt_t nsa unfolding ascends_def by simp
+    thus False using not_asc_j by simp
+  qed
+  \<comment> \<open>Apply the chain-trans-based lemma.\<close>
+  have not_anc_x_to_s: "\<not> m_ancestor A (Suc k) (s + x) s"
+    by (rule bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends
+              [OF chain_A not_anc_to_s])
+  \<comment> \<open>Repackage \<open>\<not> ascends A x (Suc k)\<close>.\<close>
+  have sx_ne_s: "s + x \<noteq> s" using x_pos by simp
+  show ?thesis
+  proof
+    assume H: "ascends A x (Suc k)"
+    have nsa: "non_strict_ancestor A (Suc k) (s + x) s"
+      using H b0 mp unfolding ascends_def by simp
+    have "m_ancestor A (Suc k) (s + x) s"
+      using nsa sx_ne_s unfolding non_strict_ancestor_def by simp
+    thus False using not_anc_x_to_s by simp
+  qed
+qed
+
+text \<open>
+  k-level chain version: pending Hunter case B correspondence (relies on
+  the BMS-specific claim that k-chain to s + Suc k < m_0 ⟹ (Suc k)-chain
+  to s under j-not-ascending context, which doesn't hold in general).
+\<close>
+
 lemma bms_not_ascend_propagates_to_chain_ancestor:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"

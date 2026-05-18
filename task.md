@@ -93,7 +93,8 @@ graph LR
       - ✅ `bms_chain_level_lift_A_above_q1` — case 2 (s+x>q1) 専用 sub-lemma、 y に関する強い帰納 + maximality
       - ✅ `bms_max_elem_above_q1` — maximality 補題: m_parent A (Suc k) (s+j) = Some q_1 のとき q_1<p<s+j かつ p が s+j の k-祖先なら elem A p (Suc k) ≥ elem A (s+j) (Suc k)
       - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — signature 過剰: x=0 case で `ascends A 0 (Suc k) = True` (反射) が成立し主張が偽となるため、 helper m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc の再設計、 または v2 step の not_asc 分岐の別 path 構築が必要
-      - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)、 case B 再設計の足掛かり
+      - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)
+      - ✅ `bms_not_ascend_propagates_to_suc_k_chain_ancestor` — Lemma A 経由 chain transfer + 上記 基礎 lemma で証明 (chain at (Suc k) 版)、 case B 完全再設計の代替 path として次セッションで活用予定
     - 🚨 **Stage 2: ∀k. (iv)@k** `lemma_2_5_iv_main` (k-induction wrapper、 provides **IH(iv)**)
       - ✅ step `lemma_2_5_iv_clause_step` (入力: **IH(iv)** + **IH(ii)** = ∀k. (ii)@k via Stage 1) — body sorry-free、 全 case を 4 named lemmas に dispatch
       - 🚨 `clause_iv_intermediate_B_t_impossible_at_zero` — k=0 row-0 strict monotonicity 構造補題
