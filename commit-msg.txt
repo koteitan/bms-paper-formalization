@@ -1,7 +1,7 @@
-Factor at_zero_when_t_pos via (H) + case-A helpers; empirical foundation
+Prove m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc (case A body)
 
-- Add verify/verify_clause_ii_at_zero_when_t_pos.py — yaBMS BFS verification of the (ii) clause at k=0 with t>0; 8 seed + 328 BFS BMS, 0 violations
-- Add verify/verify_row0_always_ascends_when_t_pos.py — empirical check of (H): t>0 ⟹ ∀j<l1. ascends A j 0; 1737 BMS / 8 distinct seeds, 0 counter-examples
-- Add verify/verify_b0_row0_strict_above_s.py — empirical check of (*): elem A (s+j) 0 > elem A s 0 for j ∈ [1, l1-1]; 785 BMS, 0 counter-examples (auxiliary basis for (H) inductive proof)
-- Refactor lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos into 3-line wrapper that dispatches to two named sub-sorries: bms_all_b0_ascend_row0_when_t_pos (= (H), case-B vacuity) + m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc (case-A body, structurally analogous to m_anc_zero_idx_B_in_block_shift_when_t_zero with elem_AEn_lt_block_invariant_when_both_ascend replacing the elem equality)
-- task.md: mark at_zero_when_t_pos ✅ (wrapper) with 2 named sub-🚨 helpers underneath
+- Add m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc — within-block m_parent characterization at row 0 under all_asc; analogue of m_parent_AEn_zero_idx_B_within_block_when_t_zero with elem_AEn_lt_block_invariant_when_both_ascend replacing the elem equality, side conditions discharged via keep_of_pre_strip_pos_of_t_pos_and_n_pos and BMS_is_array
+- Add m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc — outside-block m_parent characterization at row 0 under all_asc; same strict-less invariance argument for the outside-block contradiction
+- Discharge m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc via less_induct on j with (=) / (<) / (>) case-split on i vs last S; uses the two new m_parent helpers and the standard m_anc_via_parent {none,some} unfolding pattern
+- Add n_pos: 0 < n to the case-A helper signature (required by keep_of_pre_strip_pos_of_t_pos_and_n_pos); update at_zero_when_t_pos wrapper invocation accordingly
+- Net: at_zero_when_t_pos remaining gap collapses to a single empirically-verified sorry (bms_all_b0_ascend_row0_when_t_pos = (H))
