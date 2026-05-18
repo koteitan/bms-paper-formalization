@@ -3682,6 +3682,26 @@ text \<open>
   j would also ascend, contradicting not_asc_j.)
 \<close>
 
+text \<open>
+  Hunter case B core claim: if column \<open>j\<close> does not ascend at \<open>Suc k\<close>
+  (= no (Suc k)-chain from (s+j) to s), then any (Suc k)-ancestor \<open>y\<close>
+  of (s+j) also does not ascend at \<open>Suc k\<close>. Provable by chain
+  transitivity: if \<open>y\<close> ascended, the trans of (s+j) → y → s gives
+  (s+j) → s, contradicting not-ascending.
+\<close>
+
+lemma bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends:
+  fixes A :: array and s :: nat and k :: nat and j :: nat and y :: nat
+  assumes asc_j_to_y: "m_ancestor A (Suc k) (s + j) y"
+      and not_asc_j_chain: "\<not> m_ancestor A (Suc k) (s + j) s"
+  shows "\<not> m_ancestor A (Suc k) y s"
+proof
+  assume H: "m_ancestor A (Suc k) y s"
+  have "m_ancestor A (Suc k) (s + j) s"
+    by (rule m_ancestor_trans[OF asc_j_to_y H])
+  thus False using not_asc_j_chain by simp
+qed
+
 lemma bms_not_ascend_propagates_to_chain_ancestor:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
