@@ -1,5 +1,5 @@
-Empirical verification of Hunter clause (ii) across all k
+Delete broken bms_not_ascend_propagates_to_chain_ancestor; localize gap
 
-- Add verify/verify_clause_ii_all_k.py — BFS from Hunter seeds {seed 2, seed 3, seed 4, seed 5}, test m_anc invariance across blocks for all (n, k, i<j<l1) tuples; 441 BMSs tested, 0 violations
-- Confirms Hunter clause (ii) holds empirically (separate from at_zero_when_t_pos which only covers k=0 case)
-- Sanity boundary: initial run with non-seed BMSs in seed list (e.g. (0,0,0,0)(1,0,1,1)(2,1,2,1)) produced 22 yaBMS-generated violations with huge values (17439, ...) and negative numbers, ruled out as Bashicu-style expansions outside Hunter BMS set
+- Delete bms_not_ascend_propagates_to_chain_ancestor — empirically refuted lemma whose sorry was misleading (claimed to "prove" a false statement); see verify/verify_bms_not_ascend.py
+- Inline the not_asc_chain derivation in lemma_2_5_ii_clause_step_v2 case-B branch as a sorry with documented refutation context, surfacing the gap at the actual proof site
+- task.md: update Stage 1 entry to reflect the relocated gap (Hunter case B not_asc_chain) and clarify why the proven Suc-k variant cannot substitute (chain level mismatch: helper wants k', _suc_k version supplies Suc k')

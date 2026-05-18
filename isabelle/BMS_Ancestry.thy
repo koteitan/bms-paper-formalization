@@ -3770,27 +3770,6 @@ proof -
 qed
 
 text \<open>
-  k-level chain version: pending Hunter case B correspondence (relies on
-  the BMS-specific claim that k-chain to s + Suc k < m_0 ⟹ (Suc k)-chain
-  to s under j-not-ascending context, which doesn't hold in general).
-\<close>
-
-lemma bms_not_ascend_propagates_to_chain_ancestor:
-  fixes A :: array and n :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-      and k_lt_t: "k < t"
-      and n_pos: "0 < n"
-      and not_asc_j: "\<not> ascends A j (Suc k)"
-      and j_lt: "j < l1 A"
-      and x_lt_j: "x < j"
-      and chain_AEn: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
-                                          (idx_B_in_expansion A 0 x)"
-  shows "\<not> ascends A x (Suc k)"
-  sorry
-
-text \<open>
   Sufficient row-0 condition (*): when \<open>t > 0\<close> and \<open>j \<in> [1, l1-1]\<close>,
   the row-0 value at column \<open>s+j\<close> strictly exceeds that at \<open>s\<close>.
   Empirically verified across 785 BMSs (no counter-example); see
@@ -4479,21 +4458,21 @@ next
                 case False
                 note not_asc_j = this
                 \<comment> \<open>Hunter dichotomy case (B) (paper page 5, applied to
-                    \<open>m = Suc k'\<close>): since \<open>j\<close>-th col does not ascend at
-                    \<open>Suc k'\<close>, no \<open>k'\<close>-chain ancestor of \<open>j\<close> ascends at
-                    \<open>Suc k'\<close>. Derive via
-                    @{thm bms_not_ascend_propagates_to_chain_ancestor}.\<close>
+                    \<open>m = Suc k'\<close>). The Hunter helper
+                    @{thm m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc}
+                    requires \<open>not_asc_chain\<close>: every \<open>k'\<close>-chain ancestor of
+                    \<open>j\<close> in \<open>A[n]\<close> does NOT ascend at \<open>Suc k'\<close>. Empirically
+                    refuted in isolation (e.g., \<open>(0,0,0)(1,1,1)(2,0,0)(1,1,1)\<close>
+                    at \<open>j=2, k'=0, x \<in> {0,1}\<close>: \<open>x=0\<close> ascends via reflexivity,
+                    \<open>x=1\<close> has an independent level-1 chain to \<open>s\<close>); see
+                    \<open>verify/verify_bms_not_ascend.py\<close>. The proven Suc-k chain
+                    variant @{thm bms_not_ascend_propagates_to_suc_k_chain_ancestor}
+                    is too strong (requires chain at \<open>Suc k'\<close>, not \<open>k'\<close>) to
+                    substitute. Helper-internal sorry pending case-B redesign.\<close>
                 have not_asc_chain: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
                                                                   (idx_B_in_expansion A 0 x)
                                           \<longrightarrow> \<not> ascends A x (Suc k')"
-                proof (intro allI impI)
-                  fix x assume x_lt: "x < j"
-                  assume chain_AEn: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
-                                                          (idx_B_in_expansion A 0 x)"
-                  show "\<not> ascends A x (Suc k')"
-                    using bms_not_ascend_propagates_to_chain_ancestor
-                            [OF A_BMS A_ne b0 mp k'_lt_t n_pos not_asc_j j_lt x_lt chain_AEn] .
-                qed
+                  sorry
                 show ?thesis
                   using m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc
                           [OF A_BMS A_ne b0 mp Sk_lt_t IH_kp not_asc_j not_asc_chain

@@ -97,9 +97,9 @@ graph LR
       - ✅ `bms_chain_level_lift_A` — pure A 形式の lift、 j に関する強い帰納 + chain linearity で 3 case を dispatch
       - ✅ `bms_chain_level_lift_A_above_q1` — case 2 (s+x>q1) 専用 sub-lemma、 y に関する強い帰納 + maximality
       - ✅ `bms_max_elem_above_q1` — maximality 補題: m_parent A (Suc k) (s+j) = Some q_1 のとき q_1<p<s+j かつ p が s+j の k-祖先なら elem A p (Suc k) ≥ elem A (s+j) (Suc k)
-      - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — signature 過剰、 経験的反例: BMS `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` で `j=2, k=0, x ∈ {0, 1}` で違反 (x=0 は反射、 x=1 は col 1 が level-1 chain で s に届く); `x_pos` を加えても済まず、 helper m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc の Hunter case B correspondence-based 再設計が必須 (verify/verify_bms_not_ascend.py で確認可能)
+      - 🚨 case B 内 `not_asc_chain` derivation (lemma_2_5_ii_clause_step_v2 内 inline sorry) — Hunter helper `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc` の入力 `not_asc_chain` が経験的に偽 (BMS `(0,0,0)(1,1,1)(2,0,0)(1,1,1)`、 j=2, k'=0, x∈{0,1} で違反: x=0 は反射、 x=1 は独立 level-1 chain で s に届く、 verify/verify_bms_not_ascend.py); 旧 broken lemma `bms_not_ascend_propagates_to_chain_ancestor` は misleading なので削除、 case B 全体の再設計が必要
       - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)
-      - ✅ `bms_not_ascend_propagates_to_suc_k_chain_ancestor` — Lemma A 経由 chain transfer + 上記 基礎 lemma で証明 (chain at (Suc k) 版)、 case B 完全再設計の代替 path として次セッションで活用予定
+      - ✅ `bms_not_ascend_propagates_to_suc_k_chain_ancestor` — Lemma A 経由 chain transfer + 上記 基礎 lemma で証明 (chain at (Suc k) 版)、 case B 再設計の代替 path として活用予定 (chain at Suc k' を要求するので Hunter helper の chain at k' とは不整合)
     - 🚨 **Stage 2: ∀k. (iv)@k** `lemma_2_5_iv_main` (k-induction wrapper、 provides **IH(iv)**)
       - ✅ step `lemma_2_5_iv_clause_step` (入力: **IH(iv)** + **IH(ii)** = ∀k. (ii)@k via Stage 1) — body sorry-free、 全 case を 4 named lemmas に dispatch
       - 🚨 `clause_iv_intermediate_B_t_impossible_at_zero` — k=0 row-0 strict monotonicity 構造補題
