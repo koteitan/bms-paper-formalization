@@ -87,8 +87,10 @@ graph LR
     - 🚨 **Stage 1: ∀k. (ii)@k** `lemma_2_5_ii_main_v2` (k-induction wrapper、 provides **IH(ii)**)
       - ✅ step `lemma_2_5_ii_clause_step_v2` (入力: **IH(ii)** = ∀k'<k. (ii)@k') — body sorry-free、 全て 3 named lemma 経由
       - ✅ `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0、 経験的に真 (verify/verify_clause_ii_at_zero_when_t_pos.py: 8 seed + 328 BFS BMS、 違反 0)、 (H) と case A helper の 2 sub-helper で wrap
-        - 🚨 `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0 (case B vacuity)、 経験的に真 (verify/verify_row0_always_ascends_when_t_pos.py: 1737 BMS / 8 seed、 違反 0)、 BMS 帰納で証明予定
-        - 🚨 `m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc` — case (A) 本体 helper: 全 col ascend at row 0 仮定で row-0 chain block 不変、 t=0 helper の構造を `elem_AEn_lt_block_invariant_when_both_ascend` で書き換えて証明予定
+        - 🚨 `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0 (case B vacuity)、 経験的に真 (verify/verify_row0_always_ascends_when_t_pos.py: 1737 BMS / 8 seed、 違反 0); 必要十分条件 (*): elem(s+j,0)>elem(s,0) for j∈[1,l1-1] も 785 BMS で経験真; (*) を補助に less_induct で (H) を導く設計だが (*) 自体が BMS structural 補題で別途証明要
+        - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc` — case (A) 本体 helper: 全 col ascend at row 0 仮定で row-0 chain block 不変、 less_induct on j + within/outside m_parent helpers で証明 (~300 line)
+        - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc` — within-block m_parent at row 0 under all_asc、 elem_AEn_lt_block_invariant_when_both_ascend で filter_cong
+        - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc` — outside-block m_parent at row 0 under all_asc、 contradiction via candidate-in-block ⇒ in S contradiction
       - ✅ `bms_ascend_propagates_to_chain_ancestor` — Hunter dichotomy case (A)、 x=0 inline + x>0 は `bms_chain_level_lift` 経由
       - ✅ `bms_chain_level_lift` — A[n] wrapper、 Lemma A で chain transfer + `bms_chain_level_lift_A` 呼び出し
       - ✅ `bms_chain_level_lift_A` — pure A 形式の lift、 j に関する強い帰納 + chain linearity で 3 case を dispatch

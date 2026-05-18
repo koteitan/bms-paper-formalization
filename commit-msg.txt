@@ -1,7 +1,4 @@
-Prove m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc (case A body)
+task.md: mark case-A proven; clarify (H) remaining gap
 
-- Add m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc — within-block m_parent characterization at row 0 under all_asc; analogue of m_parent_AEn_zero_idx_B_within_block_when_t_zero with elem_AEn_lt_block_invariant_when_both_ascend replacing the elem equality, side conditions discharged via keep_of_pre_strip_pos_of_t_pos_and_n_pos and BMS_is_array
-- Add m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc — outside-block m_parent characterization at row 0 under all_asc; same strict-less invariance argument for the outside-block contradiction
-- Discharge m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc via less_induct on j with (=) / (<) / (>) case-split on i vs last S; uses the two new m_parent helpers and the standard m_anc_via_parent {none,some} unfolding pattern
-- Add n_pos: 0 < n to the case-A helper signature (required by keep_of_pre_strip_pos_of_t_pos_and_n_pos); update at_zero_when_t_pos wrapper invocation accordingly
-- Net: at_zero_when_t_pos remaining gap collapses to a single empirically-verified sorry (bms_all_b0_ascend_row0_when_t_pos = (H))
+- at_zero_when_t_pos sub-tree updated: case-A helper m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc ✅ + within/outside m_parent helpers ✅
+- Remaining: (H) bms_all_b0_ascend_row0_when_t_pos — empirically true (1737 BMS / 8 seeds + 785 BMS for the sufficient condition (*) elem(s+j,0)>elem(s,0)); structural BMS proof pending
