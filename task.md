@@ -92,7 +92,7 @@ graph LR
       - ✅ `bms_chain_level_lift_A` — pure A 形式の lift、 j に関する強い帰納 + chain linearity で 3 case を dispatch
       - ✅ `bms_chain_level_lift_A_above_q1` — case 2 (s+x>q1) 専用 sub-lemma、 y に関する強い帰納 + maximality
       - ✅ `bms_max_elem_above_q1` — maximality 補題: m_parent A (Suc k) (s+j) = Some q_1 のとき q_1<p<s+j かつ p が s+j の k-祖先なら elem A p (Suc k) ≥ elem A (s+j) (Suc k)
-      - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — signature 過剰: x=0 case で `ascends A 0 (Suc k) = True` (反射) が成立し主張が偽となるため、 helper m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc の再設計、 または v2 step の not_asc 分岐の別 path 構築が必要
+      - 🚨 `bms_not_ascend_propagates_to_chain_ancestor` — signature 過剰、 経験的反例: BMS `(0,0,0)(1,1,1)(2,0,0)(1,1,1)` で `j=2, k=0, x ∈ {0, 1}` で違反 (x=0 は反射、 x=1 は col 1 が level-1 chain で s に届く); `x_pos` を加えても済まず、 helper m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc の Hunter case B correspondence-based 再設計が必須 (verify/verify_bms_not_ascend.py で確認可能)
       - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)
       - ✅ `bms_not_ascend_propagates_to_suc_k_chain_ancestor` — Lemma A 経由 chain transfer + 上記 基礎 lemma で証明 (chain at (Suc k) 版)、 case B 完全再設計の代替 path として次セッションで活用予定
     - 🚨 **Stage 2: ∀k. (iv)@k** `lemma_2_5_iv_main` (k-induction wrapper、 provides **IH(iv)**)
