@@ -1,4 +1,6 @@
-task.md: mark case-A proven; clarify (H) remaining gap
+Add bms_b0_row0_gt_s = (*) as sorry sub-helper for (H)
 
-- at_zero_when_t_pos sub-tree updated: case-A helper m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc ✅ + within/outside m_parent helpers ✅
-- Remaining: (H) bms_all_b0_ascend_row0_when_t_pos — empirically true (1737 BMS / 8 seeds + 785 BMS for the sufficient condition (*) elem(s+j,0)>elem(s,0)); structural BMS proof pending
+- Add bms_b0_row0_gt_s — empirically true (*) (785 BMS / 8 seeds, 0 violations): t>0 ⟹ elem A s 0 < elem A (s+j) 0 for j∈[1,l1-1]
+- Document (H) proof strategy in lemma text: (*) + less_induct closes (H) since (*) guarantees that at each step m_parent A 0 (s+j) lands at greatest q∈[s, s+j-1] with elem<elem(s+j), letting IH chain to s
+- task.md: factor (H) sub-tree into (H) [empirical] + (*) [empirical, structural BMS proof pending via lex order + first-diff-row analysis]
+- (H) proof attempted with cleaner tactics (no metis, explicit nth-mono); BMS_Ancestry elaboration stayed >30 min so reverted to sorry; next session: investigate slow elaboration root cause or break (H) into smaller helpers

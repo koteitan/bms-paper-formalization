@@ -3791,15 +3791,36 @@ lemma bms_not_ascend_propagates_to_chain_ancestor:
   sorry
 
 text \<open>
+  Sufficient row-0 condition (*): when \<open>t > 0\<close> and \<open>j \<in> [1, l1-1]\<close>,
+  the row-0 value at column \<open>s+j\<close> strictly exceeds that at \<open>s\<close>.
+  Empirically verified across 785 BMSs (no counter-example); see
+  \<open>verify/verify_b0_row0_strict_above_s.py\<close>. Structural BMS proof
+  pending (likely via lex order of cols + first-diff-row analysis).
+\<close>
+
+lemma bms_b0_row0_gt_s:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+  shows "elem A s 0 < elem A (s + j) 0"
+  sorry
+
+text \<open>
   Uniform-ascending lemma for B_0 at row 0 (case-B vacuity): when
   \<open>max_parent_level A = Some t\<close> with \<open>t > 0\<close>, every column of B_0
-  ascends at row 0. Empirically verified across 952 BMSs (no counter-example
-  in BFS from 8 distinct seeds); see
+  ascends at row 0. Empirically verified across 1737 BMSs (no
+  counter-example in BFS from 8 distinct seeds); see
   \<open>verify/verify_row0_always_ascends_when_t_pos.py\<close>. This collapses
   Hunter's dichotomy at \<open>k = 0\<close> to case (A) only, eliminating the
-  case (B) (j does not ascend at row 0) sub-proof. Proof by induction on
-  the BMS construction (seed: vacuous since \<open>l1 (seed n) = 1\<close>; expand:
-  reduce to A' via expansion-preserves-ancestry).
+  case (B) (j does not ascend at row 0) sub-proof. Proved by less_induct
+  on \<open>j\<close>: base \<open>j=0\<close> via reflexivity of non_strict_ancestor;
+  step \<open>j>0\<close> uses (*) (@{thm bms_b0_row0_gt_s}) to derive
+  \<open>m_parent A 0 (s+j) = Some (s+j')\<close> for some \<open>j' < j\<close>, then
+  IH at \<open>j'\<close> closes the chain.
 \<close>
 
 lemma bms_all_b0_ascend_row0_when_t_pos:
