@@ -1,8 +1,7 @@
-Close (ii) Suc k' k>=t case, finishing clause (ii) end-to-end
+Factor at_zero_when_t_pos via (H) + case-A helpers; empirical foundation
 
-- Add `elem_AEn_eq_at_row_k_ge_t_across_blocks`: block-shift invariance of `elem (A[n]) (idx_B c x) k` at row `k >= t`, dispatched on `k < keep_of` (in-bounds via `elem_expansion_B_eq_orig_k_ge_t`) vs `k >= keep_of` (out-of-bounds via `nth_same_length_oob`, since all `A[n]` columns share the same trimmed length)
-- Add `m_parent_AEn_idx_B_within_block_at_Suc_k_when_k_ge_t`: within-block `m_parent` characterization at row `Suc k' >= t`, parameterized by the same `manc_inv` hypothesis as the `k < t` variant
-- Add `m_parent_AEn_idx_B_outside_block_at_Suc_k_when_k_ge_t`: outside-block counterpart, deriving the contradiction via `filter_empty_conv`
-- Add `m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t`: chain induction applied at `c = 0` (trivial `manc_inv`) and `c = n` (`manc_inv` from IH (ii) at `k'`)
-- Dispatch the `lemma_2_5_ii_clause_step` Suc k' k>=t sorry via the chain-induction helper above; clause (ii) is now closed across all four sub-cases (k=0 t=0, k=0 0<t, Suc k' k<t, Suc k' k>=t)
-- Sorry count 8 -> 7
+- Add verify/verify_clause_ii_at_zero_when_t_pos.py — yaBMS BFS verification of the (ii) clause at k=0 with t>0; 8 seed + 328 BFS BMS, 0 violations
+- Add verify/verify_row0_always_ascends_when_t_pos.py — empirical check of (H): t>0 ⟹ ∀j<l1. ascends A j 0; 1737 BMS / 8 distinct seeds, 0 counter-examples
+- Add verify/verify_b0_row0_strict_above_s.py — empirical check of (*): elem A (s+j) 0 > elem A s 0 for j ∈ [1, l1-1]; 785 BMS, 0 counter-examples (auxiliary basis for (H) inductive proof)
+- Refactor lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos into 3-line wrapper that dispatches to two named sub-sorries: bms_all_b0_ascend_row0_when_t_pos (= (H), case-B vacuity) + m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc (case-A body, structurally analogous to m_anc_zero_idx_B_in_block_shift_when_t_zero with elem_AEn_lt_block_invariant_when_both_ascend replacing the elem equality)
+- task.md: mark at_zero_when_t_pos ✅ (wrapper) with 2 named sub-🚨 helpers underneath

@@ -3791,11 +3791,57 @@ lemma bms_not_ascend_propagates_to_chain_ancestor:
   sorry
 
 text \<open>
+  Uniform-ascending lemma for B_0 at row 0 (case-B vacuity): when
+  \<open>max_parent_level A = Some t\<close> with \<open>t > 0\<close>, every column of B_0
+  ascends at row 0. Empirically verified across 952 BMSs (no counter-example
+  in BFS from 8 distinct seeds); see
+  \<open>verify/verify_row0_always_ascends_when_t_pos.py\<close>. This collapses
+  Hunter's dichotomy at \<open>k = 0\<close> to case (A) only, eliminating the
+  case (B) (j does not ascend at row 0) sub-proof. Proof by induction on
+  the BMS construction (seed: vacuous since \<open>l1 (seed n) = 1\<close>; expand:
+  reduce to A' via expansion-preserves-ancestry).
+\<close>
+
+lemma bms_all_b0_ascend_row0_when_t_pos:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+  shows "\<forall>j < l1 A. ascends A j 0"
+  sorry
+
+text \<open>
+  Case (A) main helper: when every B_0 col ascends at row 0 (= the
+  \<open>all_asc\<close> hypothesis, supplied by
+  @{thm bms_all_b0_ascend_row0_when_t_pos}), the row-0 chain at \<open>(A[n])\<close>
+  is block-invariant. Structurally an analogue of
+  @{thm m_anc_zero_idx_B_in_block_shift_when_t_zero}: the within-block
+  candidate set characterization carries over because strict-less under
+  uniform shift is preserved (cf.\ @{thm elem_AEn_lt_block_invariant_when_both_ascend}).
+\<close>
+
+lemma m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and all_asc: "\<forall>x < l1 A. ascends A x 0"
+      and a_le: "a \<le> n" and b_le: "b \<le> n"
+      and i_lt: "i < l1 A"
+      and j_lt: "j < l1 A"
+      and i_lt_j: "i < j"
+  shows "m_ancestor (A[n]) 0 (idx_B_in_expansion A a j) (idx_B_in_expansion A a i)
+       \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A b j) (idx_B_in_expansion A b i)"
+  sorry
+
+text \<open>
   Base case of the (ii) clause at \<open>k = 0\<close> when \<open>t > 0\<close> (the dual to
   @{thm m_anc_zero_idx_B_in_block_shift_when_t_zero} which handles \<open>t = 0\<close>).
-  Hunter's dichotomy applies per-col at row 0 (paper p.5); the substantive
-  argument requires \<open>k = 0\<close> analogues of the Round 1 \<open>Suc k'\<close> block-shift
-  helpers, currently unimplemented.
+  Hunter's dichotomy reduces to case (A) only via
+  @{thm bms_all_b0_ascend_row0_when_t_pos}; case-A is discharged by
+  @{thm m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc}.
 \<close>
 
 lemma lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos:
@@ -3808,7 +3854,14 @@ lemma lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos:
       and i_lt: "i < l1 A" and j_lt: "j < l1 A" and i_lt_j: "i < j"
   shows "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 j) (idx_B_in_expansion A 0 i)
        \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n j) (idx_B_in_expansion A n i)"
-  sorry
+proof -
+  have all_asc: "\<forall>x < l1 A. ascends A x 0"
+    using bms_all_b0_ascend_row0_when_t_pos[OF A_BMS A_ne b0 mp t_pos] .
+  have n_le: "n \<le> n" by simp
+  show ?thesis
+    using m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc
+            [OF A_BMS A_ne b0 mp t_pos all_asc le0 n_le i_lt j_lt i_lt_j] .
+qed
 
 lemma lemma_2_5_ii_clause_step_v2:
   fixes A :: array
