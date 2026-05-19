@@ -1813,6 +1813,33 @@ lemma bms_b0_col_clex_lt: \<comment> \<open>(*)-equivalent lex statement\<close>
   shows "(A ! s) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x (A ! (s + j))"
   sorry
 
+text \<open>
+  Strict-at-row-0 form of \<open>bms_b0_col_clex_lt\<close>. This is the
+  primary lex-side reformulation of (*) used by BMS_Ancestry.thy
+  to discharge the expand_in_BMS case without a recursive BMS
+  induction (which was empirically refuted; see header text of
+  this section). The conclusion is exactly Hunter's (*) inequality
+  at row 0, recast as a pure column-element strict order.
+
+  STATEMENT-ONLY (sorry): empirical verification across 785 BMSs
+  (\<open>verify/verify_b0_row0_strict_above_s.py\<close> and
+  \<open>verify/verify_lex_b0_col_clex_lt.py\<close>); structural BMS proof
+  pending. Once proven, \<open>bms_b0_row0_gt_s\<close> in BMS_Ancestry.thy
+  follows directly without induction, eliminating the inductive
+  sorry there.
+\<close>
+
+lemma bms_b0_col_clex_strict_row0: \<comment> \<open>strict (*)-equivalent lex statement\<close>
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < arr_len (B0_block A)"
+      and j_pos: "0 < j"
+  shows "(A ! s) ! 0 < (A ! (s + j)) ! 0"
+  sorry
+
 
 subsection \<open>Reverse direction: col_lt at row 0 to elem inequality\<close>
 
