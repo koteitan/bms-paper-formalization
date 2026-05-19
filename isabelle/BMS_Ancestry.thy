@@ -3371,7 +3371,7 @@ text \<open>
 \<close>
 
 text \<open>
-  Maximality sub-lemma for case 2 of @{thm bms_chain_level_lift_A}:
+  Maximality sub-lemma for case 2 of \<open>bms_chain_level_lift_A\<close> (defined below):
   given a single-step (Suc k)-parent \<open>m_parent A (Suc k) (s+j) = Some q_1\<close>,
   and \<open>p\<close> a position with \<open>q_1 < p < s+j\<close> AND \<open>p\<close> is a k-ancestor of \<open>s+j\<close>,
   then \<open>elem A (s+j) (Suc k) \<le> elem A p (Suc k)\<close> (otherwise \<open>p\<close>
@@ -3393,16 +3393,29 @@ proof (rule ccontr)
   let ?cands = "filter ?P [0..<s + j]"
   have p_P: "?P p" using p_elem_lt p_chain by simp
   have p_in_cands: "p \<in> set ?cands" using p_lt_sj p_P by simp
-  have cands_ne: "?cands \<noteq> []" using p_in_cands by auto
+  have cands_ne: "?cands \<noteq> []"
+    using length_pos_if_in_set[OF p_in_cands] by simp
   have mp_eq_last: "m_parent A (Suc k) (s + j) = Some (last ?cands)"
     using cands_ne by (simp add: Let_def)
   hence q1_eq: "q_1 = last ?cands" using mp_sj by simp
-  have sorted_cands: "sorted ?cands" by (simp add: sorted_filter)
+  have sorted_cands: "sorted ?cands"
+    by (rule sorted_wrt_filter[OF sorted_upt])
   have all_le_last: "\<forall>y \<in> set ?cands. y \<le> last ?cands"
-    using sorted_cands cands_ne
-    by (metis last_in_set sorted_iff_nth_mono_less
-              in_set_conv_nth length_pos_if_in_set le_refl
-              less_imp_le_nat nat_le_linear)
+  proof
+    fix y assume y_in: "y \<in> set ?cands"
+    have ex_k: "\<exists>k<length ?cands. ?cands ! k = y"
+      using y_in unfolding in_set_conv_nth by blast
+    obtain k where k_lt: "k < length ?cands" and yk_eq: "?cands ! k = y"
+      using ex_k by blast
+    have len_pos: "0 < length ?cands" using cands_ne by simp
+    have k_le: "k \<le> length ?cands - 1" using k_lt by linarith
+    have last_lt: "length ?cands - 1 < length ?cands" using len_pos by simp
+    have "?cands ! k \<le> ?cands ! (length ?cands - 1)"
+      using sorted_cands k_le last_lt by (simp add: sorted_iff_nth_mono)
+    moreover have "last ?cands = ?cands ! (length ?cands - 1)"
+      using cands_ne by (simp add: last_conv_nth)
+    ultimately show "y \<le> last ?cands" using yk_eq by simp
+  qed
   have "p \<le> last ?cands" using all_le_last p_in_cands by blast
   thus False using p_gt_q1 q1_eq by simp
 qed
@@ -3457,7 +3470,7 @@ proof (intro allI)
       have q1_in_cands_y: "q_1 \<in> set (filter ?P_y [0..<y])"
         using y_gt_q1 q1_cand by simp
       have cands_y_ne: "filter ?P_y [0..<y] \<noteq> []"
-        using q1_in_cands_y by auto
+        using length_pos_if_in_set[OF q1_in_cands_y] by simp
       obtain r where mp_y: "m_parent A (Suc k) y = Some r"
                  and r_eq: "r = last (filter ?P_y [0..<y])"
         using cands_y_ne by (auto simp add: Let_def)
@@ -3466,12 +3479,27 @@ proof (intro allI)
       have r_ge_q1: "q_1 \<le> r"
       proof -
         have sorted_cands: "sorted (filter ?P_y [0..<y])"
-          by (simp add: sorted_filter)
+          by (rule sorted_wrt_filter[OF sorted_upt])
         have "\<forall>z \<in> set (filter ?P_y [0..<y]). z \<le> last (filter ?P_y [0..<y])"
-          using sorted_cands cands_y_ne
-          by (metis last_in_set sorted_iff_nth_mono_less
-                    in_set_conv_nth length_pos_if_in_set le_refl
-                    less_imp_le_nat nat_le_linear)
+        proof
+          fix z assume z_in: "z \<in> set (filter ?P_y [0..<y])"
+          have ex_k: "\<exists>k<length (filter ?P_y [0..<y]). (filter ?P_y [0..<y]) ! k = z"
+            using z_in unfolding in_set_conv_nth by blast
+          obtain k where k_lt: "k < length (filter ?P_y [0..<y])"
+                     and zk_eq: "(filter ?P_y [0..<y]) ! k = z"
+            using ex_k by blast
+          have len_pos: "0 < length (filter ?P_y [0..<y])" using cands_y_ne by simp
+          have k_le: "k \<le> length (filter ?P_y [0..<y]) - 1" using k_lt by linarith
+          have last_lt: "length (filter ?P_y [0..<y]) - 1
+                       < length (filter ?P_y [0..<y])" using len_pos by simp
+          have "(filter ?P_y [0..<y]) ! k
+              \<le> (filter ?P_y [0..<y]) ! (length (filter ?P_y [0..<y]) - 1)"
+            using sorted_cands k_le last_lt by (simp add: sorted_iff_nth_mono)
+          moreover have "last (filter ?P_y [0..<y])
+                       = (filter ?P_y [0..<y]) ! (length (filter ?P_y [0..<y]) - 1)"
+            using cands_y_ne by (simp add: last_conv_nth)
+          ultimately show "z \<le> last (filter ?P_y [0..<y])" using zk_eq by simp
+        qed
         thus ?thesis using q1_in_cands_y r_eq by blast
       qed
       show "m_ancestor A (Suc k) y s"
@@ -3485,7 +3513,12 @@ proof (intro allI)
         \<comment> \<open>Apply IH at \<open>r < y\<close>.\<close>
         have r_lt_sj: "r < s + j" using r_lt_y y_lt_sj by simp
         have chain_y_r: "m_ancestor A k y r"
-          using mp_y by simp
+        proof -
+          have r_in: "r \<in> set (filter ?P_y [0..<y])"
+            using r_eq last_in_set[OF cands_y_ne] by simp
+          hence "?P_y r" by simp
+          thus ?thesis by simp
+        qed
         have chain_jr: "m_ancestor A k (s + j) r"
           using m_ancestor_trans[OF chain_jy chain_y_r] .
         have IH_r: "m_ancestor A (Suc k) r s"
@@ -3544,9 +3577,9 @@ proof (induct j arbitrary: x rule: less_induct)
         using sx_lt_q1 m_ancestor_target_lt by simp
       have q1_gt_s: "q_1 > s" using sx_lt_q1_pos x_pos' by linarith
       have q1_ge_s: "s \<le> q_1" using q1_gt_s by simp
-      obtain j' where j'_def: "q_1 = s + j'" and j'_pos: "0 < j'"
-        using q1_gt_s
-        by (metis less_imp_Suc_add Suc_le_eq)
+      define j' where "j' = q_1 - s"
+      have j'_def: "q_1 = s + j'" using q1_gt_s j'_def by simp
+      have j'_pos: "0 < j'" using q1_gt_s j'_def by simp
       have j'_lt_j: "j' < j"
         using j'_def q1_lt_sj by linarith
       have x_lt_j': "x < j'"

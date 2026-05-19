@@ -1,5 +1,10 @@
-Delete broken bms_not_ascend_propagates_to_chain_ancestor; localize gap
+Fix bms_max_elem_above_q1 / bms_chain_level_lift_A_above_q1 build failures
 
-- Delete bms_not_ascend_propagates_to_chain_ancestor — empirically refuted lemma whose sorry was misleading (claimed to "prove" a false statement); see verify/verify_bms_not_ascend.py
-- Inline the not_asc_chain derivation in lemma_2_5_ii_clause_step_v2 case-B branch as a sorry with documented refutation context, surfacing the gap at the actual proof site
-- task.md: update Stage 1 entry to reflect the relocated gap (Hunter case B not_asc_chain) and clarify why the proven Suc-k variant cannot substitute (chain level mismatch: helper wants k', _suc_k version supplies Suc k')
+- Replace `by (metis less_imp_Suc_add Suc_le_eq)` (70+ sec elaboration) with `define j' where ...` + simp; same lemma, explicit derivation
+- Replace `text @{thm bms_chain_level_lift_A}` forward reference with plain name (lemma defined later)
+- Replace `by (simp add: sorted_filter)` (wrong signature — only handles `sorted (map f xs)`) with `by (rule sorted_wrt_filter[OF sorted_upt])`
+- Replace `by auto` on `cands ≠ []` (failed when m_ancestor.simps unfolded the filter predicate to case statements) with `using length_pos_if_in_set[OF p_in_cands] by simp`
+- Replace `by (metis last_in_set sorted_iff_nth_mono_less in_set_conv_nth length_pos_if_in_set le_refl less_imp_le_nat nat_le_linear)` (40+ sec elaboration) on `all_le_last` with explicit nth-mono argument via `in_set_conv_nth` + `sorted_iff_nth_mono` + `last_conv_nth`
+- Replace `by (auto simp: in_set_conv_nth)` on obtain (failed under unfolded m_ancestor) with two-step `unfolding in_set_conv_nth by blast` then explicit obtain
+- Replace `using mp_y by simp` on `chain_y_r` (failed) with direct derivation: `r ∈ set filter` → `?P_y r` → m_ancestor as second conjunct
+- Build verified: BMS_Ancestry 40s (was hanging >30 min), total 17s elapsed
