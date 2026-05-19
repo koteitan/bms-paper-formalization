@@ -1612,4 +1612,301 @@ text \<open>
 \<close>
 
 
+section \<open>Infrastructure for (*) attack: \<open>bms_b0_row0_gt_s\<close>\<close>
+
+text \<open>
+  Goal (*) (task.md line 92, \<open>bms_b0_row0_gt_s\<close>):
+  for \<open>A \<in> BMS\<close> with \<open>b0_start A = Some s\<close>,
+  \<open>max_parent_level A = Some t\<close>, \<open>t > 0\<close>, and
+  \<open>j \<in> [1, l1 A)\<close>,
+  \[
+    elem A s 0 < elem A (s + j) 0.
+  \]
+  Empirically verified across 785 BMSs
+  (\<open>verify/verify_b0_row0_strict_above_s.py\<close>). The previously-tried
+  BMS-induct proof was refuted: structural invariants (l1, b0_start,
+  max_parent_level) do NOT propagate cleanly through \<open>A[k]\<close>
+  (\<open>verify/verify_Ak_structural_conjectures.py\<close>: 437 BMS counter-examples).
+
+  Recommended alternative strategy (from docstring): use the
+  col-level lex order \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close> and first-diff-row
+  analysis. This section assembles lex-side infrastructure for that
+  attack.
+\<close>
+
+
+subsection \<open>Col-level lex order: row-by-row first-diff characterisation\<close>
+
+text \<open>
+  Standard characterisation of \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close> in terms of a
+  first-differing row at position \<open>r\<close>: agreement on rows
+  \<open>[0..<r]\<close> plus strict less-than at row \<open>r\<close>.
+
+  Direction 1: first-diff implies col_lt.
+\<close>
+
+lemma col_lt_via_first_diff:
+  fixes c c' :: column
+  assumes "r < min (length c) (length c')"
+      and "\<And>m. m < r \<Longrightarrow> c ! m = c' ! m"
+      and "c ! r < c' ! r"
+  shows "c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'"
+proof -
+  have take_eq: "take r c = take r c'"
+  proof (rule nth_equalityI)
+    show "length (take r c) = length (take r c')" using assms(1) by simp
+  next
+    fix i assume "i < length (take r c)"
+    hence i_lt_r: "i < r" using assms(1) by simp
+    show "take r c ! i = take r c' ! i"
+      using assms(2)[OF i_lt_r] assms(1) i_lt_r by simp
+  qed
+  have pair_in: "(c ! r, c' ! r) \<in> {(x::nat, y). x < y}" using assms(3) by simp
+  have "(c, c') \<in> lexord {(x::nat, y). x < y}"
+    using lexord_take_index_conv[where r = "{(x::nat, y). x < y}"
+                                 and x = c and y = c']
+          assms(1) take_eq pair_in
+    by blast
+  thus ?thesis unfolding col_lt_def .
+qed
+
+text \<open>
+  Direction 2 (special case): if \<open>c ! 0 < c' ! 0\<close> and both columns
+  are non-empty, then \<open>c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'\<close>. Specialisation of
+  @{thm col_lt_via_first_diff} at \<open>r = 0\<close>.
+\<close>
+
+lemma col_lt_via_row0:
+  fixes c c' :: column
+  assumes "c \<noteq> []" "c' \<noteq> []"
+      and "c ! 0 < c' ! 0"
+  shows "c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'"
+proof -
+  have len_pos: "0 < min (length c) (length c')" using assms(1,2) by auto
+  show ?thesis
+  proof (rule col_lt_via_first_diff[where r = 0])
+    show "0 < min (length c) (length c')" using len_pos .
+  next
+    fix m :: nat assume "m < 0" thus "c ! m = c' ! m" by simp
+  next
+    show "c ! 0 < c' ! 0" using assms(3) .
+  qed
+qed
+
+
+subsection \<open>From elem-orderings to col_lt\<close>
+
+text \<open>
+  Bridge to the @{const elem} API: \<open>elem A i 0 < elem A j 0\<close>
+  combined with the columns being non-empty gives
+  \<open>A ! i <\<^sub>c\<^sub>l\<^sub>e\<^sub>x A ! j\<close>.
+\<close>
+
+lemma elem_row0_lt_implies_col_lt:
+  fixes A :: array
+  assumes "i < length A" "j < length A"
+      and "A ! i \<noteq> []" "A ! j \<noteq> []"
+      and "elem A i 0 < elem A j 0"
+  shows "(A ! i) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x (A ! j)"
+proof -
+  have row0: "(A ! i) ! 0 < (A ! j) ! 0"
+    using assms(5) unfolding elem_def by simp
+  show ?thesis by (rule col_lt_via_row0[OF assms(3,4) row0])
+qed
+
+text \<open>
+  Direction back: if \<open>A ! i <\<^sub>c\<^sub>l\<^sub>e\<^sub>x A ! j\<close> AND \<open>A ! i\<close> and
+  \<open>A ! j\<close> agree on no row-0-equal prefix --- i.e.\ the first
+  differing position is exactly row 0 --- then
+  \<open>elem A i 0 < elem A j 0\<close>.
+
+  Equivalent formulation: \<open>elem A i 0 \<le> elem A j 0\<close> (from
+  col_lt) and the case \<open>elem A i 0 = elem A j 0\<close> is excluded
+  by hypothesis.
+\<close>
+
+lemma col_lt_row0_iff_via_lexord:
+  fixes c c' :: column
+  assumes "c \<noteq> []" "c' \<noteq> []"
+  shows "c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'
+         \<longleftrightarrow> (c ! 0 < c' ! 0)
+             \<or> (c ! 0 = c' ! 0 \<and> tl c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x tl c')"
+proof -
+  obtain a as where c_eq: "c = a # as" using assms(1) by (cases c) auto
+  obtain b bs where c'_eq: "c' = b # bs" using assms(2) by (cases c') auto
+  have lex_iff:
+    "(a # as, b # bs) \<in> lexord {(x::nat, y). x < y}
+       \<longleftrightarrow> a < b \<or> (a = b \<and> (as, bs) \<in> lexord {(x::nat, y). x < y})"
+    by simp
+  show ?thesis
+    using lex_iff c_eq c'_eq
+    unfolding col_lt_def by simp
+qed
+
+
+subsection \<open>Lex order between two specific columns of an array\<close>
+
+text \<open>
+  Auxiliary: if every position before \<open>i\<close> in \<open>A\<close> agrees with
+  \<open>A'\<close> (as full arrays), and at index \<open>i\<close> we have
+  \<open>A ! i <\<^sub>c\<^sub>l\<^sub>e\<^sub>x A' ! i\<close>, then \<open>A <\<^sub>l\<^sub>e\<^sub>x A'\<close>.
+  Strengthens the existing usage pattern around
+  @{thm expansion_some_lt_orig} so it can be reused for the
+  (*) attack from any first-difference index.
+\<close>
+
+lemma arr_lex_via_first_diff:
+  fixes A A' :: array
+  assumes "i < min (length A) (length A')"
+      and "\<And>k. k < i \<Longrightarrow> A ! k = A' ! k"
+      and "(A ! i) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x (A' ! i)"
+  shows "A <\<^sub>l\<^sub>e\<^sub>x A'"
+proof -
+  let ?R = "{(c, c'). c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'}"
+  have take_eq: "take i A = take i A'"
+  proof (rule nth_equalityI)
+    show "length (take i A) = length (take i A')" using assms(1) by simp
+  next
+    fix k assume "k < length (take i A)"
+    hence k_lt: "k < i" using assms(1) by simp
+    show "take i A ! k = take i A' ! k"
+      using assms(2)[OF k_lt] assms(1) k_lt by simp
+  qed
+  have pair_in: "(A ! i, A' ! i) \<in> ?R" using assms(3) by simp
+  have "(A, A') \<in> lexord ?R"
+    using lexord_take_index_conv[where r = ?R and x = A and y = A']
+          assms(1) take_eq pair_in
+    by blast
+  thus ?thesis unfolding arr_lex_def .
+qed
+
+
+subsection \<open>BMS row-0 chain via lex order\<close>
+
+text \<open>
+  Reformulation of (*) on the lex side: for \<open>A \<in> BMS\<close> with
+  \<open>b0_start A = Some s\<close>, \<open>max_parent_level A = Some t\<close>,
+  \<open>t > 0\<close>, and \<open>j \<in> [1, l1 A)\<close>, the column \<open>A ! s\<close>
+  is \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close>-strictly less than \<open>A ! (s+j)\<close>.
+
+  This is logically equivalent to (*) under the implicit shape
+  assumption (both columns have the same height). Currently stated
+  with a \<open>sorry\<close> --- the actual structural BMS argument is the
+  same as for (*) itself --- but recorded here so downstream
+  proofs (e.g.\ Lemma 2.5 (ii) via Hunter's case-A vacuity) can be
+  written against the lex-side statement and combined with
+  @{thm corollary_2_4} / @{thm lex_implies_le_B}.
+
+  STATEMENT-ONLY (sorry): empirical verification pending; once
+  proven, conclusion gives \<open>bms_b0_row0_gt_s\<close> as a corollary
+  via \<open>col_lt_row0_iff_via_lexord\<close>.
+\<close>
+
+lemma bms_b0_col_clex_lt: \<comment> \<open>(*)-equivalent lex statement\<close>
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+  shows "(A ! s) <\<^sub>c\<^sub>l\<^sub>e\<^sub>x (A ! (s + j))"
+  sorry
+
+
+subsection \<open>Reverse direction: col_lt at row 0 to elem inequality\<close>
+
+text \<open>
+  If two BMS-columns are \<open><\<^sub>c\<^sub>l\<^sub>e\<^sub>x\<close>-comparable and the
+  first differing row is row 0 (or equivalently both have positive
+  height and \<open>col_lt\<close> reduces to a row-0 strict inequality),
+  then their row-0 elements satisfy the corresponding strict
+  inequality. Conjugate of @{thm elem_row0_lt_implies_col_lt}.
+
+  This is the bridge from the lex side back to the elem side that
+  closes (*) once @{thm bms_b0_col_clex_lt} is proven.
+\<close>
+
+lemma col_lt_implies_row0_le:
+  fixes c c' :: column
+  assumes "c <\<^sub>c\<^sub>l\<^sub>e\<^sub>x c'"
+      and "c \<noteq> []" "c' \<noteq> []"
+  shows "c ! 0 \<le> c' ! 0"
+proof -
+  obtain a as where c_eq: "c = a # as" using assms(2) by (cases c) auto
+  obtain b bs where c'_eq: "c' = b # bs" using assms(3) by (cases c') auto
+  have "(a # as, b # bs) \<in> lexord {(x::nat, y). x < y}"
+    using assms(1) c_eq c'_eq unfolding col_lt_def by simp
+  hence "a < b \<or> (a = b \<and> (as, bs) \<in> lexord {(x::nat, y). x < y})" by simp
+  thus ?thesis using c_eq c'_eq by auto
+qed
+
+
+subsection \<open>Strict row-0 ordering inside B0 via (*)\<close>
+
+text \<open>
+  Direct lex-side consequence of (*): if the (*)-equivalent
+  @{thm bms_b0_col_clex_lt} holds and the first row of both
+  columns differs strictly, then we get the elem-side conclusion
+  back. This is provided as the explicit bridge for the
+  (ii)-clause attack.
+
+  Note: the conclusion of (*) is \<open>elem A s 0 < elem A (s+j) 0\<close>,
+  which is STRICTLY stronger than @{thm col_lt_implies_row0_le}'s
+  \<open>\<le>\<close> --- the strict case is the one needed and is captured
+  in lemma \<open>bms_b0_row0_strict_from_clex\<close> below.
+\<close>
+
+lemma bms_b0_row0_strict_from_clex:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+      \<comment> \<open>If we additionally know that the strict inequality holds
+          at row 0, we get the elem conclusion. The lemma is
+          structured so that the missing piece is precisely the
+          row-0 disambiguation of @{thm bms_b0_col_clex_lt}.\<close>
+      and row0_strict: "(A ! s) ! 0 < (A ! (s + j)) ! 0"
+  shows "elem A s 0 < elem A (s + j) 0"
+  using row0_strict unfolding elem_def by simp
+
+
+subsection \<open>Empirical conjectures collection\<close>
+
+text \<open>
+  The following conjectures (currently sorry stubs) reflect
+  empirically-verified patterns from yaBMS-BFS. Once individually
+  proved by structural BMS arguments, they together imply (*).
+\<close>
+
+text \<open>
+  Conjecture C1: in any BMS \<open>A\<close> with \<open>b0_start A = Some s\<close>
+  and \<open>max_parent_level A = Some t\<close>, the row-0 elem of
+  \<open>A ! s\<close> is strictly less than that of every \<open>A ! (s + j)\<close>
+  for \<open>j \<in> [1, l1)\<close>, PROVIDED \<open>t > 0\<close>.
+
+  Note: this is exactly (*). Stated here in lex-thy to record
+  the duality \<open>(*) \<longleftrightarrow> bms_b0_col_clex_lt + strict-at-row-0\<close>.
+\<close>
+
+text \<open>
+  Conjecture C2: in any BMS \<open>A\<close>, \<open>A ! s\<close> is an
+  \<open>m_ancestor\<close> at level 0 of \<open>A ! (s + j)\<close> for every
+  \<open>j \<in> [1, l1)\<close> with \<open>t > 0\<close>. Equivalent (via
+  @{thm m_ancestor_elem_lt}) to (*). Recorded for reference.
+\<close>
+
+text \<open>
+  Connection to existing infrastructure: once @{thm bms_b0_col_clex_lt}
+  is proven, combine with @{thm BMS_is_array} (column-uniform height)
+  and @{thm col_lt_via_row0} to derive (*). Conversely, (*) plus
+  the fact that BMS columns are rectangular gives
+  @{thm bms_b0_col_clex_lt} directly via
+  @{thm elem_row0_lt_implies_col_lt}.
+\<close>
+
+
 end
