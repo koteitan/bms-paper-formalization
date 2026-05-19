@@ -5685,6 +5685,57 @@ text \<open>
   \<open>k'\<close> on the witness to derive contradiction.
 \<close>
 
+text \<open>
+  Arithmetic injectivity helper: within the index range \<open>t < n\<close>,
+  \<open>j < l1\<close>, the block-\<open>t\<close> column \<open>idx_B(t, j)\<close> never coincides
+  with a block-\<open>n\<close> column \<open>idx_B(n, j')\<close>. Indeed
+  \<open>l0 + t*l1 + j < l0 + (t+1)*l1 \<le> l0 + n*l1 \<le> idx_B(n, j')\<close>.
+  This discharges the within-block sub-case of the (iv) intermediate
+  case at \<open>k = 0\<close>.
+\<close>
+
+lemma idx_B_earlier_block_lt_block_n:
+  assumes t_lt_n: "t < n" and j_lt: "j < l1 A"
+  shows "idx_B_in_expansion A t j < idx_B_in_expansion A n j'"
+proof -
+  have suc_le: "Suc t \<le> n" using t_lt_n by simp
+  have mle: "Suc t * l1 A \<le> n * l1 A" using mult_le_mono1[OF suc_le] .
+  have "l0 A + t * l1 A + j < l0 A + t * l1 A + l1 A"
+    using j_lt by simp
+  also have "\<dots> = l0 A + Suc t * l1 A" by simp
+  also have "\<dots> \<le> l0 A + n * l1 A" using mle by simp
+  also have "\<dots> \<le> l0 A + n * l1 A + j'" by simp
+  finally show ?thesis unfolding idx_B_in_expansion_def by simp
+qed
+
+text \<open>
+  Auxiliary for the (iv) intermediate case at \<open>k = 0\<close>, outside-block
+  sub-case: when the block-0 candidate set \<open>S\<close> for column \<open>i\<close> is empty,
+  the level-0 m-parent of \<open>idx_B(n, i)\<close> lands strictly before
+  \<open>idx_B(n, 0)\<close>. Refining @{thm m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc}
+  and @{thm m_parent_AEn_zero_idx_B_outside_block_when_t_zero}: the residual
+  obligation is that this landing position \<open>p\<close> is in fact in \<open>G\<close>
+  (\<open>p < l0\<close>), never in an intermediate block \<open>B_t\<close> with \<open>t < n\<close>.
+
+  Empirically confirmed (1279 yaBMSs, 0 violations;
+  \<open>verify/verify_iv_at_zero_no_Bt_parent.py\<close>). The within-block landing
+  (\<open>S\<close> non-empty) is discharged fully below by
+  @{thm idx_B_earlier_block_lt_block_n}; only this outside-block-to-\<open>G\<close>
+  refinement remains as a single isolated \<open>sorry\<close>.
+\<close>
+
+lemma clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and i_pos: "0 < i" and i_lt: "i < l1 A"
+      and mp_eq: "m_parent (A[n]) 0 (idx_B_in_expansion A n i) = Some p"
+      and S_empty: "[j' \<leftarrow> [0..<i]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                            < elem (A[n]) (idx_B_in_expansion A 0 i) 0] = []"
+  shows "p < l0 A"
+  sorry
+
 lemma clause_iv_intermediate_B_t_impossible_at_zero:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -5696,7 +5747,53 @@ lemma clause_iv_intermediate_B_t_impossible_at_zero:
       and j_lt: "j < l1 A"
       and p_eq: "p = idx_B_in_expansion A t j"
   shows "False"
-  sorry
+proof -
+  \<comment> \<open>\<open>b0_start = Some s\<close> forces \<open>max_parent_level A = Some t\<^sub>0\<close>.\<close>
+  obtain t\<^sub>0 where mp0: "max_parent_level A = Some t\<^sub>0"
+    using b0 unfolding b0_start_def by (auto split: option.splits)
+  have n_pos: "0 < n" using t_lt_n by simp
+  let ?S = "[j' \<leftarrow> [0..<i]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                        < elem (A[n]) (idx_B_in_expansion A 0 i) 0]"
+  show False
+  proof (cases "?S = []")
+    case False
+    \<comment> \<open>Within-block: the m-parent lands at \<open>idx_B(n, last S)\<close>, a block-\<open>n\<close>
+        column. But \<open>p = idx_B(t, j)\<close> is in an earlier block, contradiction.\<close>
+    note S_ne = False
+    have mp_within: "m_parent (A[n]) 0 (idx_B_in_expansion A n i)
+                   = Some (idx_B_in_expansion A n (last ?S))"
+    proof (cases t\<^sub>0)
+      case 0
+      show ?thesis
+        using m_parent_AEn_zero_idx_B_within_block_when_t_zero
+                [OF A_BMS A_ne b0 mp0[unfolded 0] order.refl i_lt S_ne] .
+    next
+      case (Suc t')
+      have t0_pos: "0 < t\<^sub>0" using Suc by simp
+      have all_asc: "\<forall>x < l1 A. ascends A x 0"
+        using bms_all_b0_ascend_row0_when_t_pos[OF A_BMS A_ne b0 mp0 t0_pos] .
+      show ?thesis
+        using m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc
+                [OF A_BMS A_ne b0 mp0 t0_pos n_pos all_asc order.refl i_lt S_ne] .
+    qed
+    have p_block_n: "p = idx_B_in_expansion A n (last ?S)"
+      using mp_eq mp_within by simp
+    have lt: "idx_B_in_expansion A t j < idx_B_in_expansion A n (last ?S)"
+      using idx_B_earlier_block_lt_block_n[OF t_lt_n j_lt] .
+    show False using p_eq p_block_n lt by simp
+  next
+    case True
+    \<comment> \<open>Outside-block: the m-parent lands strictly before \<open>idx_B(n, 0)\<close>.
+        By the refinement helper it lands in \<open>G\<close> (\<open>p < l0\<close>), but
+        \<open>p = idx_B(t, j)\<close> with \<open>t < n\<close> has \<open>p \<ge> l0\<close>. Contradiction.\<close>
+    have p_lt_l0: "p < l0 A"
+      using clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G
+              [OF A_BMS A_ne b0 l1_pos i_pos i_lt mp_eq True] .
+    have p_ge_l0: "l0 A \<le> p"
+      using p_eq unfolding idx_B_in_expansion_def by simp
+    show False using p_lt_l0 p_ge_l0 by simp
+  qed
+qed
 
 lemma clause_iv_intermediate_B_t_impossible_when_G_parent_exists:
   fixes A :: array and n :: nat
