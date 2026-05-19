@@ -44,6 +44,9 @@ graph LR
     - 🚨 g 構成: G_block には f、 B_i (i≥1) には Lemma 2.6 の Y' 反射値 [ID 12]
     - 🚨 g が stable_rep を満たす証明 (Lemma 2.5 本質的使用) [ID 13]
     - 🚨 β 構成 (Hunter handwave、 f の最大値を β に取る具体 indexing が論文未明示) [ID 14]
+      - ✅ `stable_rep_max_strict_below_last` — stable_rep の strict-mono で f(arr_len A - 1) が strict upper bound (Ord_t 線形性不要)
+      - ✅ `o_of_beta_witness_from_stable_rep` — β = f(arr_len A - 1) witness、 β <_o o_of A + ∀i<arr_len A - 1. f i <_o β
+      - ✅ Suc n' Some s ブランチで β-witness を obtain、 残 sorry は `g_exists` のみ (Lemma 2.5 + 2.6 経由の g 構成本体、 IDs [12][13][43] と一致)
     - 🚨 反射構築本体: Lemma 2.6 適用 X/Y 具体化、 sigma_bound 検証、 g_{Suc n'} 定義、 stable_rep 検証、 β 選定 [ID 43]
     - ✅ `stable_rep_extend_strict_zero`: n=0 base [ID 31]
     - ✅ induct n refactor [ID 41]
@@ -89,7 +92,7 @@ graph LR
       - ✅ `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0、 経験的に真 (verify/verify_clause_ii_at_zero_when_t_pos.py: 8 seed + 328 BFS BMS、 違反 0)、 (H) と case A helper の 2 sub-helper で wrap
         - ✅ `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0; (*) + less_induct + m_parent_row0_b0_when_row0_lt helper で証明完了
         - ✅ `m_parent_row0_b0_when_row0_lt` — BMS-free helper: elem A s 0 < elem A (s+j) 0 + j>0 から m_parent A 0 (s+j) ∈ Some p with p ∈ [s, s+j-1] を導出
-        - 🚨 `bms_b0_row0_gt_s` — (*): t>0 ⟹ elem A s 0 < elem A (s+j) 0 for j∈[1,l1-1]、 (H) の sufficient condition、 785 BMS で経験真; BMS.induct で sketch (`proof (induct A rule: BMS.induct)`)、 seed_in_BMS case 完全証明 (n=0: mp=None; n=1: t=0 vs t_pos; n≥2: l1=1 vs j_pos でいずれも vacuous)、 expand_in_BMS case が残 sorry; A[k] の b0_start/max_parent_level/l1/row-0 elem を A から導く構造補題群 (b0_start_expansion 等) が未整備のため次セッションで先に補題整備が要
+        - 🚨 `bms_b0_row0_gt_s` — (*): t>0 ⟹ elem A s 0 < elem A (s+j) 0 for j∈[1,l1-1]、 (H) の sufficient condition、 785 BMS で経験真; BMS.induct で sketch (`proof (induct A rule: BMS.induct)`)、 seed_in_BMS case 完全証明 (n=0: mp=None; n=1: t=0 vs t_pos; n≥2: l1=1 vs j_pos でいずれも vacuous)、 expand_in_BMS case が残 sorry; **負の発見 2026-05-19**: 「max_parent_level/b0_start/l_1 が A[k] と A で一致」 という素朴な構造保存予想は経験的に refuted (verify/verify_Ak_structural_conjectures.py で 437 BMS 中 C1=60/C2=204/C3=498 violations、 last_col_idx の C4 のみ HOLDS)、 BMS.induct 戦略は本質的に無効; 別アプローチ (lex order + first-diff-row analysis 等) が必要
         - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc` — case (A) 本体 helper: 全 col ascend at row 0 仮定で row-0 chain block 不変、 less_induct on j + within/outside m_parent helpers で証明 (~300 line)
         - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc` — within-block m_parent at row 0 under all_asc、 elem_AEn_lt_block_invariant_when_both_ascend で filter_cong
         - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc` — outside-block m_parent at row 0 under all_asc、 contradiction via candidate-in-block ⇒ in S contradiction
@@ -99,7 +102,7 @@ graph LR
       - ✅ `bms_chain_level_lift_A_above_q1` — case 2 (s+x>q1) 専用 sub-lemma、 y に関する強い帰納 + maximality
       - ✅ `bms_max_elem_above_q1` — maximality 補題: m_parent A (Suc k) (s+j) = Some q_1 のとき q_1<p<s+j かつ p が s+j の k-祖先なら elem A p (Suc k) ≥ elem A (s+j) (Suc k)
       - ✅ case B inline (lemma_2_5_ii_clause_step_v2 内) — Round 2 "S-empty" path で proof-free 化: `bms_S_empty_case_B_at_block_0` (?S empty 構造補題、 経験的に真) + `elem_AEn_lt_block_implies_block_zero_when_j_not_asc` (片方向 elem 不等式) + `m_parent_AEn_idx_B_outside_block_at_Suc_k_via_S_empty` (not_asc_chain 不要版) の組合せで両側 False を導出; 経験的に refuted な `not_asc_chain` を全面回避
-      - 🚨 `bms_S_empty_case_B_at_block_0` — case-B 構造補題 (¬ ascends A j (Suc k') + j>0 ⟹ ?S at block 0 = []); 437 BMS で経験真 (verify/verify_S_empty_case_B.py + verify_case_B_both_false.py + verify_m_parent_in_B0_case_B.py); 構造証明 PENDING
+      - 🚨 `bms_S_empty_case_B_at_block_0` — case-B 構造補題 (¬ ascends A j (Suc k') + j>0 ⟹ ?S at block 0 = []); 437 BMS で経験真 (verify/verify_S_empty_case_B.py + verify_case_B_both_false.py + verify_m_parent_in_B0_case_B.py); 同じく BMS.induct 構造保存戦略は無効 (上記負の発見と同根)、 別アプローチが必要
       - ✅ `elem_AEn_lt_block_implies_block_zero_when_j_not_asc` — Round 2 片方向不等式 lemma: ¬ ascends A j ⟹ block-c の elem 不等式が block-0 の elem 不等式を imply (delta ≥ 0 を活用)
       - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_via_S_empty` — Round 2 m_parent outside lemma: not_asc_chain なし版、 S_empty + 片方向不等式で B_c 内 candidate を弾く
       - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)
@@ -112,11 +115,11 @@ graph LR
       - 🚨 `clause_iv_intermediate_B_t_impossible_chain_breaks` — Suc k_0、 chain break case
     - 🚨 **Stage 3: ∀k. (iii)@k** `lemma_2_5_iii_main` (induction 不要、 直接 corollary)
       - ✅ step `lemma_2_5_iii_clause_step` (入力: (ii)@k via Stage 1; **IH 不要**) — body sorry-free、 STEP 1 + n=1 + n≥2 全て dispatch
-      - 🚨 `iii_block_shift_bridge_n_ge_2` — n≥2 「(n-1)-block bridge」 構造補題
+      - 🚨 `iii_block_shift_bridge_n_ge_2` — n≥2 「(n-1)-block bridge」 構造補題 (empirical ✅ 441 BMSs/0 violations via `verify/verify_iii_block_shift_bridge_n_ge_2.py`; proof strategy: (n-1) single-block transfers via (ii)@k + Lemma A')
     - 🚨 **Stage 4: ∀k. (i)@k** `lemma_2_5_i_main` (k-induction wrapper、 provides **IH(i)**)
       - ✅ step `lemma_2_5_i_clause_step` (入力: **IH(i)** + (ii)(iii)(iv)@k via Stages 1-3) — body sorry-free、 trivial + iff 構造で 2 named lemmas に dispatch
-      - 🚨 `lemma_2_5_i_clause_step_forward` — forward direction (Hunter p.7 ascending case-split)
-      - 🚨 `lemma_2_5_i_clause_step_backward` — backward direction (dual to forward)
+      - 🚨 `lemma_2_5_i_clause_step_forward` — forward direction (Hunter p.7 ascending case-split via `ascends A j k`: case A 全 col ascend は (iv)+(ii)+IH(i) で uniform translation; case B not_asc は elem 不変 + (ii)+IH(i) で transfer)
+      - 🚨 `lemma_2_5_i_clause_step_backward` — backward direction (dual to forward、 同 dichotomy)
     - 🚨 **Stage 5: ∀k. (v)@k** `lemma_2_5_v_main` (induction 不要、 直接 corollary)
       - ✅ step `lemma_2_5_v_clause_step` (入力: (ii)(iii)(iv)@k via Stages 1-3; **IH 不要**) — body sorry-free、 trivial + substantive dispatch
       - 🚨 `lemma_2_5_v_clause_step_substantive` — Hunter p.7 「last k-ancestor in B_{n_2}」 layered corollary

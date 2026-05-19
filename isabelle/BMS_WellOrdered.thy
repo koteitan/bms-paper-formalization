@@ -302,6 +302,67 @@ proof -
 qed
 
 text \<open>
+  \<open>\<beta>\<close>-construction infrastructure (Hunter handwave, Theorem 2.7
+  [ID 14]).  Hunter argues informally that \<open>\<beta>\<close> can be taken as
+  ``the maximum of the \<open>f\<close>-values''.  In our formalisation
+  \<open>Ord_t\<close> is not assumed linear (only well-founded), so we cannot
+  literally take a \<open>Max\<close> over a finite set of ordinals.  Instead
+  we exploit the strict-monotonicity clause of @{const stable_rep}:
+  on a non-empty array \<open>A\<close>, the value \<open>f (arr_len A - 1)\<close>
+  strictly dominates every \<open>f i\<close> with \<open>i < arr_len A - 1\<close>,
+  and equals itself at the last index.  This furnishes a concrete
+  \<open>\<beta>\<close> that bounds the entire range of \<open>f\<close> from above (in
+  the \<open>\<le>\<^sub>o\<close> sense: equality at the last index, strict below).
+\<close>
+
+lemma stable_rep_max_strict_below_last:
+  assumes f_rep: "stable_rep A f"
+      and i_lt: "i < arr_len A - 1"
+      and A_ne: "A \<noteq> []"
+  shows "f i <\<^sub>o f (arr_len A - 1)"
+proof -
+  have len_pos: "0 < arr_len A" using A_ne by simp
+  have last_lt: "arr_len A - 1 < arr_len A" using len_pos by linarith
+  have iA: "i < arr_len A" using i_lt last_lt by linarith
+  have i_lt_last: "i < arr_len A - 1" by (rule i_lt)
+  show ?thesis
+    using stable_rep_imp_strict_mono[OF f_rep iA last_lt i_lt_last] .
+qed
+
+text \<open>
+  Existence of a \<open>\<beta>\<close>-witness derived from a stable representation
+  of \<open>A\<close>.  Given any stable representation \<open>f\<close> of a non-empty
+  \<open>A \<in> BMS\<close>, the value \<open>\<beta> = f (arr_len A - 1)\<close> lies strictly
+  below \<open>o_of A\<close>, and every \<open>f i\<close> with \<open>i < arr_len A - 1\<close>
+  lies strictly below \<open>\<beta>\<close>.  This is the abstract \<open>\<beta>\<close>-shape
+  consumed by the Suc-case of \<open>stable_rep_extend_strict\<close>; the
+  \<open>n = 0\<close> branch matches this shape verbatim.
+\<close>
+
+lemma o_of_beta_witness_from_stable_rep:
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+  shows "\<exists>f \<beta>. stable_rep A f
+              \<and> \<beta> = f (arr_len A - 1)
+              \<and> \<beta> <\<^sub>o o_of A
+              \<and> (\<forall>i. i < arr_len A - 1 \<longrightarrow> f i <\<^sub>o \<beta>)"
+proof -
+  obtain f where f_rep: "stable_rep A f"
+            and f_lt:  "\<forall>i < arr_len A. f i <\<^sub>o o_of A"
+    using o_of_def[OF A_BMS] by blast
+  define \<beta> where "\<beta> = f (arr_len A - 1)"
+  have len_pos: "0 < arr_len A" using A_ne by simp
+  have last_lt: "arr_len A - 1 < arr_len A" using len_pos by linarith
+  have \<beta>_lt: "\<beta> <\<^sub>o o_of A" using f_lt last_lt \<beta>_def by blast
+  have strict: "\<forall>i. i < arr_len A - 1 \<longrightarrow> f i <\<^sub>o \<beta>"
+  proof (intro allI impI)
+    fix i assume "i < arr_len A - 1"
+    thus "f i <\<^sub>o \<beta>"
+      using stable_rep_max_strict_below_last[OF f_rep _ A_ne] \<beta>_def by simp
+  qed
+  show ?thesis using f_rep \<beta>_def \<beta>_lt strict by blast
+qed
+
+text \<open>
   Base case of Hunter's 2.7.c--d recursion (\<open>n = 0\<close>). The
   restriction of \<open>f\<close> to indices below \<open>arr_len (A[0])\<close> is
   a stable representation of \<open>A[0]\<close>, bounded below
@@ -406,8 +467,33 @@ next
       using \<beta>_n_lt g_n_rep g_n_lt eq by metis
   next
     case (Some s)
-    \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6 + Lemma 2.5.\<close>
-    show ?thesis sorry
+    \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6 + Lemma 2.5.  We use the
+        \<open>\<beta>\<close>-witness from @{thm o_of_beta_witness_from_stable_rep}:
+        \<open>\<beta> = f (arr_len A - 1)\<close>, the \<open>f\<close>-value at the last
+        column of \<open>A\<close>.  The actual construction of \<open>g\<close> via
+        Lemma 2.6 (\<open>X = f-values on G-block\<close>, \<open>Y = f-values
+        on B-block\<close>, \<open>\<alpha> = \<beta>\<close>) and the discharge of the
+        stable-rep clauses for \<open>g\<close> via Lemma 2.5 is the residual
+        sorry below.\<close>
+    obtain f_w \<beta> where f_w_rep: "stable_rep A f_w"
+                       and \<beta>_def_w: "\<beta> = f_w (arr_len A - 1)"
+                       and \<beta>_lt: "\<beta> <\<^sub>o o_of A"
+                       and f_w_lt: "\<forall>i. i < arr_len A - 1 \<longrightarrow> f_w i <\<^sub>o \<beta>"
+      using o_of_beta_witness_from_stable_rep[OF A_BMS A_ne] by blast
+    \<comment> \<open>Residual obligation: construct \<open>g\<close> realising the
+        \<open>\<beta>\<close>-bounded stable representation of \<open>A[Suc n']\<close>.
+        Inputs available: \<open>f_w\<close>, \<open>g_n\<close>, \<open>\<beta>_n <\<^sub>o o_of A\<close>,
+        \<open>Some s\<close> witnessing a non-empty \<open>B_0\<close> block, plus
+        Lemma 2.5 (ancestry preservation) and Lemma 2.6 (stability
+        reflection).  The \<open>\<beta>\<close>-bound above is the abstract shape
+        Hunter's argument targets; the concrete \<open>g\<close> still requires
+        the IDs [12], [13], [43] work-streams.\<close>
+    \<comment> \<open>Trivial reduction: the witness pack we need is
+        \<open>(g, \<beta>)\<close> with the three clauses below; only the
+        \<open>g\<close>-existence remains unresolved.\<close>
+    have g_exists: "\<exists>g. stable_rep (A[Suc n']) g
+                       \<and> (\<forall>i < arr_len (A[Suc n']). g i <\<^sub>o \<beta>)" sorry
+    show ?thesis using g_exists \<beta>_lt by blast
   qed
 qed
 

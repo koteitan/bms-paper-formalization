@@ -1,10 +1,15 @@
-session BMS_ZF = ZF +
+session BMS_ZF = "ZF-Constructible" +
   description "
     Lemma 2.6 (stability reflection) discharge from the ZF side,
     intended to displace the HOL-side axiomatization in
     isabelle/BMS_Stability.thy.
 
-    Status: TODO. See task IDs 15-24 in task.md for sub-tasks.
+    Inherits Paulson's ZF-Constructible session so Formula.thy
+    (internalized FOL, Lset hierarchy) and Reflection.thy (Levy
+    reflection theorem) are directly available.
+
+    Status: scaffolding (ID 15), Constructible import (ID 16) and
+    2.6.A Sigma_0 base case (ID 17) discharged.  IDs 18-24 are open.
 
     Reference: Rachel Hunter, 'Well-Orderedness of the Bashicu
     Matrix System' (arXiv:2307.04606v3, 2024), Lemma 2.6, plus
@@ -13,3 +18,4 @@ session BMS_ZF = ZF +
   options [document = false]
   theories
     BMS_Reflection
+    BMS_Reflection_BG
