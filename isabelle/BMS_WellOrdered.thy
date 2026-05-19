@@ -468,31 +468,140 @@ next
   next
     case (Some s)
     \<comment> \<open>Hunter's 2.7.c--d via Lemma 2.6 + Lemma 2.5.  We use the
-        \<open>\<beta>\<close>-witness from @{thm o_of_beta_witness_from_stable_rep}:
-        \<open>\<beta> = f (arr_len A - 1)\<close>, the \<open>f\<close>-value at the last
-        column of \<open>A\<close>.  The actual construction of \<open>g\<close> via
-        Lemma 2.6 (\<open>X = f-values on G-block\<close>, \<open>Y = f-values
-        on B-block\<close>, \<open>\<alpha> = \<beta>\<close>) and the discharge of the
-        stable-rep clauses for \<open>g\<close> via Lemma 2.5 is the residual
-        sorry below.\<close>
+        beta-witness from @{thm o_of_beta_witness_from_stable_rep}:
+        beta = f_w (arr_len A - 1), the f_w-value at the last
+        column of A.  Strategy outline (cf.\ Hunter pp.\ 9--10,
+        argument labelled 2.7.c--d):
+        (1) Set X = f_w \` {0..<l0 A} (image of f_w on the
+        G-block indices of A); Y = f_w \` {l0 A..<l0 A + l1 A}
+        (image on the B_0-block indices).  Both are finite as
+        images of finite index ranges.
+        (2) Take alpha = beta: indeed every G-image lies <_o beta
+        by @{thm stable_rep_max_strict_below_last} (indices
+        < arr_len A - 1), and every B-image lies in the same
+        range, so the precondition of @{thm lemma_2_6} holds with
+        gamma <_o alpha for gamma in X, and alpha = delta or
+        alpha <_o delta degenerates to the trivial form when
+        delta = beta.  (Hunter's argument actually applies
+        Lemma 2.6 inductively at each expansion step; here we
+        set up the beta-witness once and re-use it.)
+        (3) Apply @{thm lemma_2_6} to obtain a finite Y' and
+        bijection f_refl : Y -> Y'.
+        (4) Define g on A[Suc n'] piecewise:
+        on G-block indices i < l0 A: g i = f_w i;
+        on B-block indices idx_B_in_expansion A t j for
+        0 <= t <= Suc n', j < l1 A:
+        for t = 0, g _ = f_w (l0 A + j) (the original B_0
+        values); for 0 < t, g _ = f_refl (f_w (l0 A + j))
+        (the reflected copy, lying strictly below beta).
+        (5) Verify @{const stable_rep} for g: strict monotonicity
+        via f_refl's order-preservation clause; ancestry
+        stability via the stable_lt-preserving clauses of
+        @{thm lemma_2_6} combined with the ancestry-reflection
+        clauses (i)--(v) of @{thm lemma_2_5_at_main}.
+        (6) The beta-bound for g: G-values <_o beta by
+        @{thm stable_rep_max_strict_below_last};
+        B_0-values <_o beta by the same lemma; reflected
+        B-values <_o alpha = beta by the second clause of
+        @{thm lemma_2_6}.
+        The five stable-rep verification sub-obligations are
+        non-trivial (each requires a non-trivial case split on
+        which block(s) the indices lie in), so we package them
+        as named sub-sorries below for downstream agents to
+        discharge incrementally.\<close>
     obtain f_w \<beta> where f_w_rep: "stable_rep A f_w"
                        and \<beta>_def_w: "\<beta> = f_w (arr_len A - 1)"
                        and \<beta>_lt: "\<beta> <\<^sub>o o_of A"
                        and f_w_lt: "\<forall>i. i < arr_len A - 1 \<longrightarrow> f_w i <\<^sub>o \<beta>"
       using o_of_beta_witness_from_stable_rep[OF A_BMS A_ne] by blast
-    \<comment> \<open>Residual obligation: construct \<open>g\<close> realising the
-        \<open>\<beta>\<close>-bounded stable representation of \<open>A[Suc n']\<close>.
-        Inputs available: \<open>f_w\<close>, \<open>g_n\<close>, \<open>\<beta>_n <\<^sub>o o_of A\<close>,
-        \<open>Some s\<close> witnessing a non-empty \<open>B_0\<close> block, plus
-        Lemma 2.5 (ancestry preservation) and Lemma 2.6 (stability
-        reflection).  The \<open>\<beta>\<close>-bound above is the abstract shape
-        Hunter's argument targets; the concrete \<open>g\<close> still requires
-        the IDs [12], [13], [43] work-streams.\<close>
-    \<comment> \<open>Trivial reduction: the witness pack we need is
-        \<open>(g, \<beta>)\<close> with the three clauses below; only the
-        \<open>g\<close>-existence remains unresolved.\<close>
+    \<comment> \<open>Set up the finite \<open>X\<close>, \<open>Y\<close> for @{thm lemma_2_6}.
+        \<open>X = f_w `` {0..<l0 A}\<close> (G-block image);
+        \<open>Y = f_w `` {l0 A..<l0 A + l1 A}\<close> (\<open>B\<^sub>0\<close>-block image).
+        Both finite as images of finite index ranges.\<close>
+    define X_set where "X_set = f_w ` {i. i < l0 A}"
+    define Y_set where "Y_set = f_w ` {i. l0 A \<le> i \<and> i < l0 A + l1 A}"
+    have X_finite: "finite X_set"
+      unfolding X_set_def by simp
+    have Y_finite: "finite Y_set"
+      unfolding Y_set_def
+      by (rule finite_imageI) (auto intro: finite_subset[OF _ finite_atLeastLessThan[of "l0 A" "l0 A + l1 A"]])
+    \<comment> \<open>Hunter's choice of \<open>\<alpha>\<close>, \<open>\<beta>\<close> for Lemma 2.6:
+        in our setup we take \<open>\<alpha> = \<beta> = f_w (arr_len A - 1)\<close>
+        and the outer \<open>\<beta>\<^sub>L\<^sub>2\<^sub>6\<close> as a larger element of
+        \<open>sigma_bound\<close>.  Existence of such a \<open>(\<alpha>, \<beta>\<^sub>L\<^sub>2\<^sub>6)\<close>
+        pair is the residual stability-axiom obligation; we
+        package the entire bijection-construction as
+        \<open>refl_exists\<close>.\<close>
+    have refl_exists:
+      "\<exists>Y' f_refl.
+          bij_betw f_refl Y_set Y'
+        \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set.
+              \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1))
+        \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
+              stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1))
+        \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
+              \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
+        \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
+              stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f_refl \<delta>\<^sub>0))"
+      \<comment> \<open>Residual: package the @{thm lemma_2_6} application.
+          Inputs: \<open>X_set\<close>, \<open>Y_set\<close> finite (above); choice of
+          \<open>\<alpha>\<^sub>L\<^sub>2\<^sub>6 = \<beta>\<close> in \<open>sigma_bound\<close> (needs
+          \<open>\<beta> \<in> sigma_bound\<close>, which is part of Hunter's choice of
+          stable rep on the seed via @{thm sigma_pair_exists});
+          choice of \<open>\<beta>\<^sub>L\<^sub>2\<^sub>6 \<in> sigma_bound\<close> strictly above \<open>\<beta>\<close>
+          with \<open>stable_lt n \<beta> \<beta>\<^sub>L\<^sub>2\<^sub>6\<close>.  The application then yields
+          exactly the requested data, dropping the trailing
+          \<open>stable_lt m \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt m (f \<delta>\<^sub>0) \<alpha>\<close>
+          clause that we do not need at this granularity.\<close>
+      sorry
+    obtain Y_set' f_refl where
+          f_refl_bij: "bij_betw f_refl Y_set Y_set'"
+      and f_refl_mono: "\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set.
+                          \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1)"
+      and f_refl_stab: "\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
+                          stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1)"
+      and f_refl_lt_\<beta>: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
+                          \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
+      and f_refl_stab_X: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
+                            stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f_refl \<delta>\<^sub>0)"
+      using refl_exists by blast
+    \<comment> \<open>Define \<open>g\<close> piecewise on \<open>A[Suc n']\<close>.  Pre-strip
+        indices: G-block at \<open>[0, l0 A)\<close>; for \<open>0 \<le> t \<le> Suc n'\<close>,
+        \<open>B_t\<close> at \<open>idx_B_in_expansion A t j\<close>, \<open>j < l1 A\<close>.
+        Post-strip indexing under @{const expansion} drops zero
+        rows; we adopt the same convention silently as in the
+        \<open>n = 0\<close> case via @{thm stable_rep_restrict}.\<close>
+    define g where
+      "g i =
+         (if i < l0 A then f_w i
+          else if l1 A = 0 then \<beta>  \<comment> \<open>vacuous fallback\<close>
+          else
+            let j = (i - l0 A) mod l1 A;
+                t = (i - l0 A) div l1 A
+            in (if t = 0 then f_w (l0 A + j)
+                else f_refl (f_w (l0 A + j))))"
+      for i :: nat
+    \<comment> \<open>Witness package: the requested existential is discharged
+        by \<open>g\<close> above, modulo the @{const stable_rep} verification
+        and the \<open>\<beta>\<close>-bound check on every column index of
+        \<open>A[Suc n']\<close>.  The \<open>\<beta>\<close>-bound is itself further
+        case-split into: G-image (\<open>f_w\<close>-values), original
+        \<open>B\<^sub>0\<close>-image, and reflected \<open>B_t\<close>-images.\<close>
+    have g_stable_rep: "stable_rep (A[Suc n']) g"
+      \<comment> \<open>Residual: needs Lemma 2.5 (i)--(v) reflection clauses
+          combined with the stability-preservation properties of
+          \<open>f_refl\<close>.\<close>
+      sorry
+    have g_lt_\<beta>: "\<forall>i < arr_len (A[Suc n']). g i <\<^sub>o \<beta>"
+      \<comment> \<open>Residual: case-split into G-image (direct from
+          @{thm stable_rep_max_strict_below_last} after lifting
+          indices through @{thm arr_len_expansion_l01}),
+          original \<open>B\<^sub>0\<close>-image (same lemma), and reflected
+          \<open>B_t\<close>-image (\<open>f_refl_lt_\<beta>\<close> above).\<close>
+      sorry
     have g_exists: "\<exists>g. stable_rep (A[Suc n']) g
-                       \<and> (\<forall>i < arr_len (A[Suc n']). g i <\<^sub>o \<beta>)" sorry
+                       \<and> (\<forall>i < arr_len (A[Suc n']). g i <\<^sub>o \<beta>)"
+      using g_stable_rep g_lt_\<beta> by blast
     show ?thesis using g_exists \<beta>_lt by blast
   qed
 qed
