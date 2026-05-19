@@ -2982,33 +2982,13 @@ qed
 text \<open>
   Case-B (Round 2): when \<open>j\<close> does NOT ascend at \<open>Suc k'\<close>, the
   candidate set \<open>?S\<close> at block 0 (used by the within/outside helpers)
-  is empty.
-
-  Statement: \<open>[x \<in> [0, j). elem (A[n]) (idx_B(0,x)) (Suc k') < elem (A[n])
-             (idx_B(0,j)) (Suc k') \<and> m_anc (A[n]) k' (idx_B(0,j)) (idx_B(0,x))]
-           = []\<close>.
-
-  Empirical verification: \<open>verify/verify_S_empty_case_B.py\<close>
-  — 437 BMSs, 0 violations (BFS from Hunter seeds {seed 2..5}).
-  Structural proof PENDING (likely via BMS expansion structure).
+  is empty. The lemma \<open>bms_S_empty_case_B_at_block_0\<close> is now DEFINED
+  LATER (after Lemma A \<open>m_anc_orig_eq_AEn_shared_B0\<close> and the elem
+  invariant \<open>elem_orig_eq_AEn_shared_below_l1\<close>), because its proof
+  reduces the \<open>A[n]\<close> statement to the pure-\<open>A\<close> structural fact
+  \<open>m_parent A (Suc k') (s+j) = None \<or> < s\<close> via those two lemmas
+  (forward references not permitted earlier in the file).
 \<close>
-
-lemma bms_S_empty_case_B_at_block_0:
-  fixes A :: array and n :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-      and Sk_lt_t: "Suc k' < t"
-      and not_asc_j: "\<not> ascends A j (Suc k')"
-      and j_lt: "j < l1 A"
-      and j_pos: "0 < j"
-      and n_pos: "0 < n"
-  shows "[x \<leftarrow> [0..<j].
-            elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
-              < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
-          \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
-                                  (idx_B_in_expansion A 0 x)] = []"
-  sorry
 
 text \<open>
   Case-B (Round 2): outside-block m_parent claim using S_empty alone
@@ -3545,6 +3525,134 @@ proof (induct k arbitrary: p q rule: less_induct)
     qed
   qed
 qed
+
+text \<open>
+  Pure-\<open>A\<close> structural core of the case-B \<open>S = []\<close> claim.
+
+  When the \<open>j\<close>-th \<open>B\<^sub>0\<close> column does NOT ascend at \<open>Suc k'\<close>
+  (\<open>\<not> ascends A j (Suc k')\<close>, i.e. no \<open>(Suc k')\<close>-chain from \<open>s+j\<close> to
+  \<open>s\<close>), then the \<open>(Suc k')\<close>-parent of column \<open>s+j\<close> in \<open>A\<close> either does
+  not exist or lies strictly below the block-\<open>B\<^sub>0\<close> start \<open>s\<close>.
+
+  Equivalently (since the \<open>m_parent\<close> candidate list is sorted and
+  \<open>last\<close>-selected): NO candidate \<open>p\<close> of \<open>m_parent A (Suc k') (s+j)\<close>
+  lies in \<open>[s, s+j)\<close>. This is precisely \<open>S = []\<close> reflected back into
+  \<open>A\<close>.
+
+  This is a genuine Bashicu-standard-form fact (stronger than the
+  literal \<open>\<not> ascends\<close> hypothesis, which only rules out the chain
+  reaching exactly \<open>s\<close>): empirically verified across 437 BMSs in
+  \<open>verify/verify_m_parent_in_B0_case_B.py\<close> (0 violations). A full
+  BMS structural proof is PENDING; \<open>BMS.induct\<close> structure-preservation
+  was refuted (see \<open>verify/verify_Ak_structural_conjectures.py\<close>), so
+  the proof must proceed by a direct \<open>m_parent\<close>-chain / lex analysis.
+\<close>
+
+lemma bms_m_parent_outside_B0_case_B_pureA:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and Sk_lt_t: "Suc k' < t"
+      and not_asc_j: "\<not> ascends A j (Suc k')"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+  shows "[x \<leftarrow> [0..<j].
+            elem A (s + x) (Suc k') < elem A (s + j) (Suc k')
+          \<and> m_ancestor A k' (s + j) (s + x)] = []"
+  sorry
+
+text \<open>
+  Case-B (Round 2): when \<open>j\<close> does NOT ascend at \<open>Suc k'\<close>, the
+  candidate set \<open>?S\<close> at block 0 is empty. (Relocated here so that the
+  proof can reduce the \<open>A[n]\<close> statement to its pure-\<open>A\<close> form via
+  Lemma A \<open>m_anc_orig_eq_AEn_shared_B0\<close> and the elem invariant
+  \<open>elem_orig_eq_AEn_shared_below_l1\<close>, both proved just above.)
+
+  Empirical verification: \<open>verify/verify_S_empty_case_B.py\<close>
+  — 437 BMSs, 0 violations (BFS from Hunter seeds {seed 2..5}).
+\<close>
+
+lemma bms_S_empty_case_B_at_block_0:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and Sk_lt_t: "Suc k' < t"
+      and not_asc_j: "\<not> ascends A j (Suc k')"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+      and n_pos: "0 < n"
+  shows "[x \<leftarrow> [0..<j].
+            elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+              < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+          \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                  (idx_B_in_expansion A 0 x)] = []"
+proof -
+  \<comment> \<open>Step 0: block-0 indices coincide with \<open>s + \<dots>\<close> (since \<open>l0 A = s\<close>).\<close>
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s"
+    using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have idx0: "\<And>x. idx_B_in_expansion A 0 x = s + x"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  have k'_lt_m0: "k' < t" using Sk_lt_t by simp
+  have sj_lt_idx: "s + j < idx_B_in_expansion A 0 (l1 A)"
+    using j_lt l0_eq unfolding idx_B_in_expansion_def by simp
+  \<comment> \<open>Step 1: each filter atom matches its pure-\<open>A\<close> counterpart on \<open>[0..<j]\<close>.\<close>
+  have atom_eq:
+    "\<And>x. x \<in> set [0..<j] \<Longrightarrow>
+       (elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+          < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+        \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                (idx_B_in_expansion A 0 x))
+     \<longleftrightarrow> (elem A (s + x) (Suc k') < elem A (s + j) (Suc k')
+          \<and> m_ancestor A k' (s + j) (s + x))"
+  proof -
+    fix x assume "x \<in> set [0..<j]"
+    hence x_lt_j: "x < j" by simp
+    have x_lt_l1: "x < l1 A" using x_lt_j j_lt by linarith
+    have sx_lt_idx: "s + x < idx_B_in_expansion A 0 (l1 A)"
+      using x_lt_l1 l0_eq unfolding idx_B_in_expansion_def by simp
+    \<comment> \<open>elem invariants at row \<open>Suc k' < t\<close> via the shared-range lemma.\<close>
+    have ex: "elem (A[n]) (s + x) (Suc k') = elem A (s + x) (Suc k')"
+      using elem_orig_eq_AEn_shared_below_l1
+              [OF A_BMS A_ne b0 mp n_pos sx_lt_idx Sk_lt_t] by simp
+    have ej: "elem (A[n]) (s + j) (Suc k') = elem A (s + j) (Suc k')"
+      using elem_orig_eq_AEn_shared_below_l1
+              [OF A_BMS A_ne b0 mp n_pos sj_lt_idx Sk_lt_t] by simp
+    \<comment> \<open>m_anc invariant at level \<open>k' < t\<close> via Lemma A.\<close>
+    have manc: "m_ancestor (A[n]) k' (s + j) (s + x)
+              \<longleftrightarrow> m_ancestor A k' (s + j) (s + x)"
+      using m_anc_orig_eq_AEn_shared_B0
+              [OF A_BMS A_ne b0 mp k'_lt_m0 n_pos sj_lt_idx] by simp
+    show "(elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+             < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+           \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                   (idx_B_in_expansion A 0 x))
+        \<longleftrightarrow> (elem A (s + x) (Suc k') < elem A (s + j) (Suc k')
+             \<and> m_ancestor A k' (s + j) (s + x))"
+      using ex ej manc idx0 by simp
+  qed
+  \<comment> \<open>Step 2: filter congruence lifts \<open>S = []\<close> to the pure-\<open>A\<close> form.\<close>
+  have filt_eq:
+    "[x \<leftarrow> [0..<j].
+        elem (A[n]) (idx_B_in_expansion A 0 x) (Suc k')
+          < elem (A[n]) (idx_B_in_expansion A 0 j) (Suc k')
+      \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                              (idx_B_in_expansion A 0 x)]
+   = [x \<leftarrow> [0..<j].
+        elem A (s + x) (Suc k') < elem A (s + j) (Suc k')
+      \<and> m_ancestor A k' (s + j) (s + x)]"
+    by (rule filter_cong[OF refl], rule atom_eq)
+  show ?thesis
+    using filt_eq
+          bms_m_parent_outside_B0_case_B_pureA
+            [OF A_BMS A_ne b0 mp Sk_lt_t not_asc_j j_lt j_pos]
+    by simp
+qed
+
 text \<open>
   Sound (ii) step lemma following Hunter's paper (arXiv:2307.04606v3)
   page 5 case-split approach.
