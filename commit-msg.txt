@@ -1,6 +1,1 @@
-Sketch (*) bms_b0_row0_gt_s via BMS induction; prove seed base case
-
-- Rewrite bms_b0_row0_gt_s as `proof (induct A rule: BMS.induct)` over a generalized form (∀s' t' j'. b0_start A = Some s' ⟶ ...) so that the BMS structural induction can be carried out
-- Prove seed_in_BMS case fully: derive n ≥ 2 from t_pos (n=0 ⟹ mp=None contradiction; n=1 ⟹ t=0 vs t_pos), compute l1 (seed n) = 1 from B0_block_def + length_seed, then j_lt + j_pos give vacuous contradiction
-- expand_in_BMS case left as inline `show ?case sorry` with comment noting required structural lemmas (b0_start, max_parent_level, l1, row-0 elem propagation through A[k])
-- Build verified: 18s elapsed, BMS_Ancestry 44s
+task.md: clarify (*) inductive case status with required helpers list
