@@ -3819,7 +3819,72 @@ lemma bms_b0_row0_gt_s:
       and j_lt: "j < l1 A"
       and j_pos: "0 < j"
   shows "elem A s 0 < elem A (s + j) 0"
-  sorry
+proof -
+  \<comment> \<open>Prove the generalized form (quantifying s, t, j) by BMS induction
+      on the construction of A. Base case (seed n) is vacuous in three
+      subcases (n=0: mp=None; n=1: t=0 vs t_pos; n\<ge>2: l1=1 vs j_pos).
+      Inductive case (A[k]) requires understanding how b0_start,
+      max_parent_level, l1, and row-0 elem propagate through expansion
+      \<longrightarrow> currently a sorry, pending future structural analysis.\<close>
+  have main: "\<forall>s' t' j'. b0_start A = Some s' \<longrightarrow> max_parent_level A = Some t'
+                       \<longrightarrow> 0 < t' \<longrightarrow> j' < l1 A \<longrightarrow> 0 < j' \<longrightarrow> A \<noteq> []
+                       \<longrightarrow> elem A s' 0 < elem A (s' + j') 0"
+    using A_BMS
+  proof (induct A rule: BMS.induct)
+    case (seed_in_BMS n)
+    show ?case
+    proof (intro allI impI)
+      fix s' t' j'
+      assume b0': "b0_start (seed n) = Some s'"
+         and mp': "max_parent_level (seed n) = Some t'"
+         and t_pos': "0 < t'"
+         and j_lt': "j' < l1 (seed n)"
+         and j_pos': "0 < j'"
+         and ne': "seed n \<noteq> []"
+      \<comment> \<open>Derive \<open>n \<ge> 2\<close> from \<open>mp'\<close> and \<open>t_pos'\<close>.\<close>
+      have n_pos: "0 < n"
+      proof (rule ccontr)
+        assume "\<not> 0 < n"
+        hence "n = 0" by simp
+        hence "max_parent_level (seed n) = None"
+          by (simp add: max_parent_level_def seed_def)
+        thus False using mp' by simp
+      qed
+      have mp_eq: "max_parent_level (seed n) = Some (n - 1)"
+        using max_parent_level_seed[OF n_pos] .
+      hence t_eq: "t' = n - 1" using mp' by simp
+      have n_ge_2: "2 \<le> n" using t_pos' t_eq by linarith
+      have b0_eq: "b0_start (seed n) = Some 0"
+        using b0_start_seed[OF n_pos] .
+      hence s_eq: "s' = 0" using b0' by simp
+      \<comment> \<open>\<open>l1 (seed n) = 1\<close> for \<open>n \<ge> 1\<close>: \<open>B_0\<close>-block has 1 col.\<close>
+      have l1_seed: "l1 (seed n) = 1"
+      proof -
+        have last_idx: "last_col_idx (seed n) = 1"
+          by (simp add: length_seed)
+        have B0_eq: "B0_block (seed n) = take 1 (seed n)"
+          using b0_eq last_idx unfolding B0_block_def by simp
+        have "length (take 1 (seed n)) = 1"
+          using length_seed by simp
+        thus ?thesis
+          unfolding l1_def using B0_eq by simp
+      qed
+      have j_lt_1: "j' < 1" using j_lt' l1_seed by simp
+      hence "j' = 0" by simp
+      thus "elem (seed n) s' 0 < elem (seed n) (s' + j') 0"
+        using j_pos' by simp
+    qed
+  next
+    case (expand_in_BMS A k)
+    \<comment> \<open>Inductive case: A[k] from A \<in> BMS, IH (= main for A) given.
+        Requires expressing b0_start (A[k]), max_parent_level (A[k]),
+        l1 (A[k]), and elem (A[k]) (s' + j') 0 in terms of A's
+        structure, then deducing the row-0 inequality. Significant
+        BMS structural work pending.\<close>
+    show ?case sorry
+  qed
+  show ?thesis using main A_ne b0 mp t_pos j_lt j_pos by blast
+qed
 
 text \<open>
   Uniform-ascending lemma for B_0 at row 0 (case-B vacuity): when
