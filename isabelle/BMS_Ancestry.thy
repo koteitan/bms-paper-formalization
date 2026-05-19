@@ -5850,6 +5850,32 @@ proof -
   qed
 qed
 
+text \<open>
+  Sub-helper for the third linearity branch below. When the chain of
+  \<open>idx_B(n, i)\<close> runs through \<open>idx_B(n, 0)\<close>, and \<open>p = idx_B(t, j)\<close> with
+  \<open>t < n\<close> sits strictly below \<open>idx_B(n, 0)\<close>, the only remaining
+  configuration to rule out is that \<open>p\<close> is itself an \<open>m\<close>-ancestor of
+  \<open>idx_B(n, 0)\<close>, i.e. an intermediate-block column lying on the upward
+  chain from \<open>idx_B(n, 0)\<close>. Empirically this never happens (yaBMS BFS,
+  \<open>verify/verify_chain_through_Bn_first.py\<close>: 0 of 441 BMSs realize the
+  full premise combination), so the obligation is vacuously discharged;
+  it is isolated here as a single \<open>sorry\<close>.
+\<close>
+
+lemma idx_B_n_zero_no_intermediate_B_t_ancestor:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and t_lt_n: "t < n"
+      and j_lt: "j < l1 A"
+      and anc: "m_ancestor (A[n]) m (idx_B_in_expansion A n 0)
+                                     (idx_B_in_expansion A t j)"
+  shows "False"
+  sorry
+
 lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -5869,7 +5895,45 @@ lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
       and chain_through_Bn0: "\<forall>k' < k. m_ancestor (A[n]) k' (idx_B_in_expansion A n i)
                                                             (idx_B_in_expansion A n 0)"
   shows "False"
-  sorry
+proof -
+  let ?i = "idx_B_in_expansion A n i"
+  let ?b0 = "idx_B_in_expansion A n 0"
+  \<comment> \<open>Since \<open>0 < k\<close>, write \<open>k = Suc k\<^sub>0\<close>; the level-\<open>k\<close> parent \<open>p\<close> is then a
+      level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close> (definition of \<open>m_parent\<close>).\<close>
+  obtain k\<^sub>0 where k_eq: "k = Suc k\<^sub>0" using k_pos by (cases k) auto
+  have anc_p: "m_ancestor (A[n]) k\<^sub>0 ?i p"
+    using m_parent_Suc_implies_m_ancestor[OF mp_eq[unfolded k_eq]] .
+  \<comment> \<open>By the chain hypothesis at level \<open>k\<^sub>0 < k\<close>, \<open>?b0\<close> is also a level-\<open>k\<^sub>0\<close>
+      ancestor of \<open>?i\<close>.\<close>
+  have k0_lt: "k\<^sub>0 < k" using k_eq by simp
+  have anc_b0: "m_ancestor (A[n]) k\<^sub>0 ?i ?b0"
+    using chain_through_Bn0 k0_lt by blast
+  \<comment> \<open>\<open>p = idx_B(t, j)\<close> with \<open>t < n\<close> lies strictly below \<open>idx_B(n, 0) = ?b0\<close>.\<close>
+  have p_lt_b0: "p < ?b0"
+    using p_eq idx_B_earlier_block_lt_block_n[OF t_lt_n j_lt] by simp
+  \<comment> \<open>Both \<open>p\<close> and \<open>?b0\<close> are level-\<open>k\<^sub>0\<close> ancestors of \<open>?i\<close>, so by linearity
+      of the \<open>m\<close>-ancestor chain they are comparable.\<close>
+  have "p = ?b0 \<or> m_ancestor (A[n]) k\<^sub>0 p ?b0 \<or> m_ancestor (A[n]) k\<^sub>0 ?b0 p"
+    using m_ancestor_chain_linear anc_p anc_b0 by blast
+  thus False
+  proof (elim disjE)
+    \<comment> \<open>\<open>p = ?b0\<close> contradicts \<open>p < ?b0\<close>.\<close>
+    assume "p = ?b0" thus False using p_lt_b0 by simp
+  next
+    \<comment> \<open>If \<open>p\<close> is an ancestor of \<open>?b0\<close> then \<open>?b0 < p\<close>, contradicting \<open>p < ?b0\<close>.\<close>
+    assume "m_ancestor (A[n]) k\<^sub>0 p ?b0"
+    hence "?b0 < p" by (rule m_ancestor_target_lt)
+    thus False using p_lt_b0 by simp
+  next
+    \<comment> \<open>The remaining configuration: \<open>p = idx_B(t, j)\<close> is itself an ancestor
+        of \<open>?b0 = idx_B(n, 0)\<close>. Ruled out by the sub-helper.\<close>
+    assume "m_ancestor (A[n]) k\<^sub>0 ?b0 p"
+    thus False
+      using idx_B_n_zero_no_intermediate_B_t_ancestor
+              [OF A_BMS A_ne b0 l1_pos IH clause_iii_at_k t_lt_n j_lt]
+            p_eq by simp
+  qed
+qed
 
 lemma clause_iv_intermediate_B_t_impossible_chain_breaks:
   fixes A :: array and n :: nat
