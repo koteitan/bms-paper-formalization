@@ -5810,7 +5810,45 @@ lemma clause_iv_intermediate_B_t_impossible_when_G_parent_exists:
       and G_parent_exists: "\<exists>k' < k. \<exists>q. m_parent (A[n]) k' (idx_B_in_expansion A n i)
                                             = Some q \<and> (\<exists>g < l0 A. q = idx_G A g)"
   shows "False"
-  sorry
+proof -
+  let ?i = "idx_B_in_expansion A n i"
+  \<comment> \<open>The level-\<open>k\<close> parent \<open>p = idx_B(t,j)\<close> lives in some block, hence
+      \<open>l0 A \<le> p\<close>.\<close>
+  have p_ge_l0: "l0 A \<le> p"
+    using p_eq unfolding idx_B_in_expansion_def by simp
+  \<comment> \<open>Since \<open>0 < k\<close>, write \<open>k = Suc k\<^sub>0\<close>; the level-\<open>k\<close> parent is a
+      level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close> (definition of \<open>m_parent\<close>).\<close>
+  obtain k\<^sub>0 where k_eq: "k = Suc k\<^sub>0" using k_pos by (cases k) auto
+  have anc_k0: "m_ancestor (A[n]) k\<^sub>0 ?i p"
+    using m_parent_Suc_implies_m_ancestor[OF mp_eq[unfolded k_eq]] .
+  \<comment> \<open>Extract the G-parent witness at some level \<open>k' < k\<close>.\<close>
+  obtain k' q g where k'_lt: "k' < k"
+                  and mp_k': "m_parent (A[n]) k' ?i = Some q"
+                  and g_lt: "g < l0 A"
+                  and q_eq: "q = idx_G A g"
+    using G_parent_exists by blast
+  \<comment> \<open>The G-parent index is strictly below \<open>l0 A\<close>, hence strictly below \<open>p\<close>.\<close>
+  have q_lt_l0: "q < l0 A" using q_eq g_lt unfolding idx_G_def by simp
+  have q_lt_p: "q < p" using q_lt_l0 p_ge_l0 by simp
+  \<comment> \<open>From \<open>k' < Suc k\<^sub>0\<close> we get \<open>k' \<le> k\<^sub>0\<close>; ancestry is monotone in the
+      level, so \<open>p\<close> is also a level-\<open>k'\<close> ancestor of \<open>?i\<close>.\<close>
+  have k'_le_k0: "k' \<le> k\<^sub>0" using k'_lt k_eq by simp
+  have anc_k': "m_ancestor (A[n]) k' ?i p"
+    using m_ancestor_mono[OF k'_le_k0 anc_k0] .
+  \<comment> \<open>But the level-\<open>k'\<close> parent of \<open>?i\<close> is \<open>q\<close>, so any level-\<open>k'\<close> ancestor
+      \<open>p\<close> is either \<open>q\<close> itself or sits strictly to the left of \<open>q\<close>.
+      Either way \<open>p \<le> q\<close>, contradicting \<open>q < p\<close>.\<close>
+  have "q = p \<or> m_ancestor (A[n]) k' q p"
+    using m_anc_via_parent_some[OF mp_k'] anc_k' by blast
+  thus False
+  proof
+    assume "q = p" thus False using q_lt_p by simp
+  next
+    assume "m_ancestor (A[n]) k' q p"
+    hence "p < q" by (rule m_ancestor_target_lt)
+    thus False using q_lt_p by simp
+  qed
+qed
 
 lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
   fixes A :: array and n :: nat
