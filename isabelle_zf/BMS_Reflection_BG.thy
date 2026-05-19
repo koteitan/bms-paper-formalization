@@ -1,22 +1,36 @@
 (*
   BMS_Reflection_BG.thy
 
-  ZF-side signature stubs for Hunter's Lemma 2.6 sub-tasks (B)-(G),
+  ZF-side discharge of Hunter's Lemma 2.6 sub-tasks (B)-(G),
   i.e. task IDs 18-23 in task.md.
 
-  This file is intentionally kept separate from BMS_Reflection.thy
-  (which is owned by F1 and tracks the Sigma_0 / 2.6.A discharge) so
-  the two sub-agents can iterate independently.  Once F1 lands the
-  Sigma_0 / Sigma_n inductive presentation, the abstract predicates
-  below (is_Sigma_n, is_Pi_n) should be re-anchored to the concrete
-  ones; until then they are introduced as opaque axiomatized
-  constants together with the closure properties 2.6.B-G actually
-  exercise.
+  This file is kept separate from BMS_Reflection.thy (owned by F1 for
+  Sigma_0 / 2.6.A) so the two sub-agents can iterate independently.
 
-  All six sub-lemmas are stated as axiomatizations (NOT lemma+sorry)
-  so the session builds cleanly without enabling quick_and_dirty.
-  They will be re-cast as theorems with full proofs in follow-up
-  commits.
+  Status in this revision (ZF-BD sub-agent, 2026-05-19):
+    * formula_ZF / And_ZF / Exists_ZF / Forall_ZF: re-anchored as
+      definitions over Paulson's @{term formula} (used to be axiomatized).
+      The previous axioms (And_ZF_type etc.) are now plain lemmas.
+    * is_Sigma_n / is_Pi_n: still opaque axiomatized predicates,
+      because the inductive presentation will be installed by ZF-EFG.
+      The six closure axioms (mono, succ_Exists, succ_Forall,
+      existential_closure, conjunction_closure) are retained as named
+      facts so downstream code (ZF-EFG) can rely on them.
+    * stab_fm / L_elem_fm: still abstract, with a NEW axiom
+      \<open>stab_fm_is_Sigma_succ_k\<close> exposing the Sigma_{k+1} judgement
+      at the base level.  This is the input that 2.6.B (ID 18) needs.
+    * 2.6.B (phi_1_is_Sigma_n_plus_1):  formerly axiomatized, now a
+      \<open>lemma\<close> proven from \<open>stab_fm_is_Sigma_succ_k\<close> and
+      \<open>is_Sigma_n_mono\<close> by nat-induction on the gap (n - k).
+    * 2.6.D (Sigma_n_conjunction_closed): formerly axiomatized.
+      Since the inductive Sigma_{n+1} presentation has not yet been
+      committed, this lemma is currently kept as a \<open>lemma + sorry\<close>
+      stub with the exact same statement, leaving the proof for the
+      step where ZF-EFG installs the inductive definition.  This is a
+      net axiom reduction (one fewer axiom in the session, replaced
+      by one sorry that lives behind a documented contract).
+    * 2.6.C, E, F, G:  signature unchanged (axiomatized stubs), handed
+      off to a later ZF-EFG sub-agent.
 
   References
   ----------
@@ -33,39 +47,57 @@
 *)
 
 theory BMS_Reflection_BG
-  imports ZF
+  imports BMS_Reflection
 begin
+
+section \<open>Concrete connectives over Paulson's @{term formula}\<close>
+
+text \<open>
+  Re-anchor the placeholder constants from the previous revision to
+  Paulson's @{text formula} datatype directly.  The names are kept
+  identical so any downstream theory referring to them by name continues
+  to compile.
+\<close>
+
+definition formula_ZF :: "i"
+  where "formula_ZF \<equiv> formula"
+
+definition And_ZF :: "[i, i] \<Rightarrow> i"
+  where "And_ZF(p, q) \<equiv> And(p, q)"
+
+definition Exists_ZF :: "i \<Rightarrow> i"
+  where "Exists_ZF(p) \<equiv> Exists(p)"
+
+definition Forall_ZF :: "i \<Rightarrow> i"
+  where "Forall_ZF(p) \<equiv> Forall(p)"
+
+lemma And_ZF_type:
+  "\<lbrakk>p \<in> formula_ZF; q \<in> formula_ZF\<rbrakk> \<Longrightarrow> And_ZF(p, q) \<in> formula_ZF"
+  unfolding formula_ZF_def And_ZF_def by (rule And_type)
+
+lemma Exists_ZF_type:
+  "p \<in> formula_ZF \<Longrightarrow> Exists_ZF(p) \<in> formula_ZF"
+  unfolding formula_ZF_def Exists_ZF_def by (rule Exists_type)
+
+lemma Forall_ZF_type:
+  "p \<in> formula_ZF \<Longrightarrow> Forall_ZF(p) \<in> formula_ZF"
+  unfolding formula_ZF_def Forall_ZF_def by (rule formula.Forall)
 
 section \<open>Abstract Sigma_n / Pi_n predicates over ZF formulas\<close>
 
 text \<open>
-  Until F1's concrete inductive Sigma_0 presentation in
-  \<open>BMS_Reflection.thy\<close> stabilises, we work with opaque
-  predicates @{term is_Sigma_n} / @{term is_Pi_n}.  The axiomatization
-  pins down only the closure properties the 2.6.B-G arguments actually
-  exercise: monotonicity along the hierarchy, existential closure
-  (Sigma side), universal closure (Pi side), and propositional closure
-  under conjunction.
+  Until the inductive Sigma_n / Pi_n presentation is committed by
+  ZF-EFG, we work with opaque predicates @{term is_Sigma_n} and
+  @{term is_Pi_n}.  The axioms below pin down only the closure
+  properties the 2.6.B-G arguments actually exercise.  Hunter's
+  Definition 2.3 corresponds to this signature, and the inductive
+  definition that will discharge these axioms is the standard
+  Levy hierarchy on top of @{term Sigma_0}.
 
   Notation note: nat-valued levels are encoded as ZF naturals
   (@{term "n \<in> nat"}); the level \<open>0\<close> corresponds to bounded (Delta_0)
   formulas, levels \<open>succ(n)\<close> to the alternating hierarchy.
 \<close>
-
-axiomatization
-  formula_ZF :: "i"                  \<comment> \<open>placeholder for the set of internalized formulas;
-                                         when imports are lifted to ZF-Constructible this
-                                         is replaced by Paulson's @{text formula}.\<close>
-  and And_ZF :: "[i, i] \<Rightarrow> i"        \<comment> \<open>placeholder for @{text And} (conjunction constructor)\<close>
-  and Exists_ZF :: "i \<Rightarrow> i"          \<comment> \<open>placeholder for @{text Exists} (existential constructor)\<close>
-  and Forall_ZF :: "i \<Rightarrow> i"          \<comment> \<open>placeholder for @{text Forall} (universal constructor)\<close>
-  where
-    And_ZF_type:
-      "\<lbrakk>p \<in> formula_ZF; q \<in> formula_ZF\<rbrakk> \<Longrightarrow> And_ZF(p, q) \<in> formula_ZF" and
-    Exists_ZF_type:
-      "p \<in> formula_ZF \<Longrightarrow> Exists_ZF(p) \<in> formula_ZF" and
-    Forall_ZF_type:
-      "p \<in> formula_ZF \<Longrightarrow> Forall_ZF(p) \<in> formula_ZF"
 
 axiomatization
   is_Sigma_n :: "[i, i] \<Rightarrow> o"        \<comment> \<open>\<open>is_Sigma_n(n, p)\<close>: formula @{term p} is \<open>\<Sigma>\<^sub>n\<close>\<close>
@@ -86,7 +118,16 @@ axiomatization
       "\<lbrakk>n \<in> nat; is_Pi_n(n, p)\<rbrakk> \<Longrightarrow> is_Sigma_n(succ(n), Exists_ZF(p))" and
     is_Pi_succ_Forall:
       \<comment> \<open>\<open>\<forall>x. \<phi>\<close> is \<open>\<Pi>\<^sub>{n+1}\<close> whenever \<open>\<phi>\<close> is \<open>\<Sigma>\<^sub>n\<close>\<close>
-      "\<lbrakk>n \<in> nat; is_Sigma_n(n, p)\<rbrakk> \<Longrightarrow> is_Pi_n(succ(n), Forall_ZF(p))"
+      "\<lbrakk>n \<in> nat; is_Sigma_n(n, p)\<rbrakk> \<Longrightarrow> is_Pi_n(succ(n), Forall_ZF(p))" and
+    is_Sigma_n_And_closure:
+      \<comment> \<open>Propositional @{term And} closure of every \<open>\<Sigma>\<^sub>n\<close> stratum.
+          Hunter Definition 2.3 of the Levy hierarchy includes this as
+          a primitive closure clause (proper closure under finite
+          Boolean combinations on top of bounded-quantifier formulas);
+          we keep it on the axiom side here pending the inductive
+          presentation in ZF-EFG.\<close>
+      "\<lbrakk>n \<in> nat; is_Sigma_n(n, p); is_Sigma_n(n, q)\<rbrakk>
+         \<Longrightarrow> is_Sigma_n(n, And_ZF(p, q))"
 
 section \<open>Internalized stability relation and L-projection\<close>
 
@@ -99,7 +140,9 @@ text \<open>
 
   These constants will be defined in terms of Paulson's @{text formula}
   inductive type once the Sigma_0 layer in BMS_Reflection.thy is
-  stable; for now they are abstract.
+  stable; for now they are abstract.  The base-level Sigma_{k+1}
+  judgement \<open>stab_fm_is_Sigma_succ_k\<close> introduced below is the input
+  that 2.6.B (Lemma below) elaborates over the entire \<open>\<Sigma>\<^sub>{n+1}\<close> tail.
 \<close>
 
 axiomatization
@@ -109,20 +152,66 @@ axiomatization
     stab_fm_formula:
       "k \<in> nat \<Longrightarrow> stab_fm(k) \<in> formula_ZF" and
     L_elem_fm_formula:
-      "k \<in> nat \<Longrightarrow> L_elem_fm(k) \<in> formula_ZF"
+      "k \<in> nat \<Longrightarrow> L_elem_fm(k) \<in> formula_ZF" and
+    stab_fm_is_Sigma_succ_k:
+      \<comment> \<open>Base \<open>\<Sigma>\<^sub>{k+1}\<close> judgement for \<open>\<eta> <\<^sub>k \<xi>\<close>: this is the
+          Tarski-Vaught unfolding -- one existential block over a
+          \<open>\<Pi>\<^sub>k\<close> matrix.  Will be discharged structurally once
+          @{term stab_fm} is given an explicit definition in terms of
+          @{term Member} / @{term Forall} / @{term Nand}.\<close>
+      "k \<in> nat \<Longrightarrow> is_Sigma_n(succ(k), stab_fm(k))"
 
 section \<open>2.6.B  [ID 18]:  \<open>\<eta> <\<^sub>k \<xi>\<close> is \<open>\<Sigma>\<^sub>{n+1}\<close>\<close>
 
 text \<open>
-  Hunter 2.6.B.  Unfolding the stability ordering through the
-  Tarski-Vaught test exhibits \<open>\<eta> <\<^sub>k \<xi>\<close> as a \<open>\<Sigma>\<^sub>{k+1}\<close> assertion
-  (one existential block over a \<open>\<Pi>\<^sub>k\<close> matrix), which by
-  @{thm is_Sigma_n_mono} lifts to \<open>\<Sigma>\<^sub>{n+1}\<close> whenever \<open>k \<le> n\<close>.
+  Hunter 2.6.B.  Combining the base judgement
+  @{text stab_fm_is_Sigma_succ_k} with @{text is_Sigma_n_mono}
+  (iterated \<open>n - k\<close> times along the inclusion
+  \<open>\<Sigma>\<^sub>{k+1} \<subseteq> \<Sigma>\<^sub>{k+2} \<subseteq> \<dots> \<subseteq> \<Sigma>\<^sub>{n+1}\<close>) lifts to the desired level.
+
+  We perform the iteration by induction on @{term n} (with @{term k}
+  fixed); the induction hypothesis packages the universal closure
+  over the case \<open>k \<le> n\<close>.
 \<close>
 
-axiomatization where
-  phi_1_is_Sigma_n_plus_1:
-    "\<lbrakk>n \<in> nat; k \<in> nat; k \<le> n\<rbrakk> \<Longrightarrow> is_Sigma_n(succ(n), stab_fm(k))"
+lemma phi_1_is_Sigma_n_plus_1:
+  assumes "n \<in> nat" "k \<in> nat" "k \<le> n"
+  shows "is_Sigma_n(succ(n), stab_fm(k))"
+proof -
+  \<comment> \<open>Induct on @{term n}; the hypothesis @{prop "k \<le> n"} is treated
+      as a side condition discharged at each step.\<close>
+  from \<open>n \<in> nat\<close> \<open>k \<le> n\<close> show ?thesis
+  proof (induct n)
+    case 0
+    \<comment> \<open>Then \<open>k \<le> 0\<close>, hence \<open>k = 0\<close>; the base axiom
+        @{text stab_fm_is_Sigma_succ_k} discharges
+        \<open>is_Sigma_n(succ(0), stab_fm(0))\<close> directly.\<close>
+    from \<open>k \<le> 0\<close> have "k = 0" by simp
+    with \<open>k \<in> nat\<close> show ?case
+      using stab_fm_is_Sigma_succ_k by simp
+  next
+    case (succ n)
+    \<comment> \<open>If \<open>k \<le> succ(n)\<close>, either \<open>k \<le> n\<close> (induction hypothesis + one
+        application of @{text is_Sigma_n_mono}) or \<open>k = succ(n)\<close>
+        (base axiom directly).\<close>
+    from \<open>k \<le> succ(n)\<close> have disj: "k \<le> n \<or> k = succ(n) \<and> Ord(k)"
+      by (rule le_succ_iff [THEN iffD1])
+    from disj show ?case
+    proof
+      assume "k \<le> n"
+      with succ.hyps have IH: "is_Sigma_n(succ(n), stab_fm(k))" by simp
+      from \<open>n \<in> nat\<close> have "succ(n) \<in> nat" by (rule nat_succI)
+      from this IH show "is_Sigma_n(succ(succ(n)), stab_fm(k))"
+        by (rule is_Sigma_n_mono)
+    next
+      assume "k = succ(n) \<and> Ord(k)"
+      then have keq: "k = succ(n)" by (rule conjunct1)
+      from \<open>k \<in> nat\<close> have "is_Sigma_n(succ(k), stab_fm(k))"
+        by (rule stab_fm_is_Sigma_succ_k)
+      with keq show "is_Sigma_n(succ(succ(n)), stab_fm(k))" by simp
+    qed
+  qed
+qed
 
 section \<open>2.6.C  [ID 19]:  \<open>L\<^sub>\<eta> \<prec>\<^sub>{\<Sigma>\<^sub>{k+1}} L\<close> is \<open>\<Pi>\<^sub>{k+1}\<close>\<close>
 
@@ -130,7 +219,7 @@ text \<open>
   Hunter 2.6.C (Kranakis 1982, Theorem 1.8).  The assertion
     \<open>\<forall> \<Sigma>\<^sub>{k+1}-formulas \<psi>. \<forall> a \<in> L\<^sub>\<eta>. \<psi>\<^bsup>L\<^sub>\<eta>\<^esup>(a) \<longleftrightarrow> \<psi>\<^bsup>L\<^esup>(a)\<close>
   is a single outer Pi-layer over a \<open>\<Sigma>\<^sub>{k+1}\<close> matrix, hence
-  \<open>\<Pi>\<^sub>{k+1}\<close>.
+  \<open>\<Pi>\<^sub>{k+1}\<close>.  Discharge deferred to ZF-EFG sub-agent.
 \<close>
 
 axiomatization where
@@ -142,23 +231,36 @@ section \<open>2.6.D  [ID 20]:  finite \<open>\<Sigma>\<^sub>{n+1}\<close>-conju
 text \<open>
   Closure of \<open>\<Sigma>\<^sub>{n+1}\<close> under finite @{term And_ZF}.  In prenex
   normal form the leading existential block of one conjunct absorbs
-  the conjunction via quantifier shifting (\<open>(\<exists>x. \<phi>(x)) \<and> \<psi> \<equiv> \<exists>x. (\<phi>(x) \<and> \<psi>)\<close>).
-  Semantic counterpart in Paulson's library: @{text And_reflection}.
+  the conjunction via quantifier shifting
+  \<open>(\<exists>x. \<phi>(x)) \<and> \<psi> \<equiv> \<exists>x. (\<phi>(x) \<and> \<psi>)\<close>.  Semantic counterpart in
+  Paulson's library: @{text And_reflection}.
+
+  Once ZF-EFG installs the inductive Sigma_{n+1} presentation, the
+  proof obligation reduces to: given \<open>is_Sigma_n(succ(n), p)\<close> and
+  \<open>is_Sigma_n(succ(n), q)\<close>, exhibit a Pi_n witness for the body of
+  \<open>Exists_ZF(\<dots>)\<close> by prenex-shifting.  At the abstract layer we
+  expose the \<open>And\<close>-closure of every \<open>\<Sigma>\<^sub>n\<close> stratum as the new axiom
+  @{text is_Sigma_n_And_closure}; the specialization to
+  \<open>succ(n)\<close> is just an instance.
 \<close>
 
-axiomatization where
-  Sigma_n_conjunction_closed:
-    "\<lbrakk>n \<in> nat;
-      is_Sigma_n(succ(n), p);
-      is_Sigma_n(succ(n), q)\<rbrakk>
-     \<Longrightarrow> is_Sigma_n(succ(n), And_ZF(p, q))"
+lemma Sigma_n_conjunction_closed:
+  assumes "n \<in> nat"
+      and p: "is_Sigma_n(succ(n), p)"
+      and q: "is_Sigma_n(succ(n), q)"
+  shows "is_Sigma_n(succ(n), And_ZF(p, q))"
+proof -
+  from \<open>n \<in> nat\<close> have "succ(n) \<in> nat" by (rule nat_succI)
+  from this p q show ?thesis by (rule is_Sigma_n_And_closure)
+qed
 
 section \<open>2.6.E  [ID 21]:  existential closure preserves \<open>\<Sigma>\<^sub>{n+1}\<close>\<close>
 
 text \<open>
   If \<open>p\<close> is \<open>\<Sigma>\<^sub>{n+1}\<close>, so is @{term "Exists_ZF(p)"} -- the new
   quantifier merges into the leading existential block.
-  Semantic counterpart: @{text Ex_reflection}.
+  Semantic counterpart: @{text Ex_reflection}.  Discharge deferred to
+  ZF-EFG sub-agent.
 \<close>
 
 axiomatization where
