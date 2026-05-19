@@ -1,8 +1,1 @@
-Prove (H) bms_all_b0_ascend_row0_when_t_pos via (*) + less_induct
-
-- Add m_parent_row0_b0_when_row0_lt — BMS-free helper: when 0 < j and elem A s 0 < elem A (s+j) 0, m_parent A 0 (s+j) = Some p with p ∈ [s, s+j-1] (via explicit nth-mono on the sorted candidate filter)
-- Prove bms_all_b0_ascend_row0_when_t_pos (= (H)) by less_induct on j: base j=0 via non_strict_ancestor reflexivity; step j>0 uses (*) to get p = s+j' ∈ [s, s+j-1], then IH closes the chain through j'
-- Derive a one-time ascends_iff explicitly via 3-step unfolding (avoids simp loop on ascends_def / non_strict_ancestor_def combination)
-- task.md: mark (H) ✅, add m_parent helper entry, retain (*) as the sole remaining gap for at_zero_when_t_pos
-- Sorry count: 11 → 10 (Stage 1 sub-tree for at_zero_when_t_pos now: case-A body ✅, (H) ✅, (*) 🚨)
-- Build verified: 18s elapsed
+Add lessons-isabelle.md — Isabelle/HOL formal proof lessons from Lemma 2.5 attack
