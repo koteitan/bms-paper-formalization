@@ -87,7 +87,8 @@ graph LR
     - 🚨 **Stage 1: ∀k. (ii)@k** `lemma_2_5_ii_main_v2` (k-induction wrapper、 provides **IH(ii)**)
       - ✅ step `lemma_2_5_ii_clause_step_v2` (入力: **IH(ii)** = ∀k'<k. (ii)@k') — body sorry-free、 全て 3 named lemma 経由
       - ✅ `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0、 経験的に真 (verify/verify_clause_ii_at_zero_when_t_pos.py: 8 seed + 328 BFS BMS、 違反 0)、 (H) と case A helper の 2 sub-helper で wrap
-        - 🚨 `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0 (case B vacuity)、 経験的に真 (verify/verify_row0_always_ascends_when_t_pos.py: 1737 BMS / 8 seed、 違反 0); (H) は (*) + less_induct で証明できる (proof code 書いたが BMS_Ancestry 全体 elaboration が 30+ 分で timeout、 cleaner tactics でも slow elaboration 解消せず); 次セッションでは smaller helpers に分割するか直接 BMS induction の方が現実的
+        - ✅ `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0; (*) + less_induct + m_parent_row0_b0_when_row0_lt helper で証明完了
+        - ✅ `m_parent_row0_b0_when_row0_lt` — BMS-free helper: elem A s 0 < elem A (s+j) 0 + j>0 から m_parent A 0 (s+j) ∈ Some p with p ∈ [s, s+j-1] を導出
         - 🚨 `bms_b0_row0_gt_s` — (*): t>0 ⟹ elem A s 0 < elem A (s+j) 0 for j∈[1,l1-1]、 (H) の sufficient condition、 785 BMS で経験真; BMS lex order + first-diff-row 解析で証明予定
         - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc` — case (A) 本体 helper: 全 col ascend at row 0 仮定で row-0 chain block 不変、 less_induct on j + within/outside m_parent helpers で証明 (~300 line)
         - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc` — within-block m_parent at row 0 under all_asc、 elem_AEn_lt_block_invariant_when_both_ascend で filter_cong

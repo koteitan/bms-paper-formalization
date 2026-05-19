@@ -3835,6 +3835,56 @@ text \<open>
   IH at \<open>j'\<close> closes the chain.
 \<close>
 
+text \<open>
+  Pure m_parent helper (BMS-free): if \<open>elem A s 0 < elem A (s+j) 0\<close>
+  (so \<open>s\<close> is a candidate), then \<open>m_parent A 0 (s+j) = Some p\<close>
+  with \<open>p \<in> [s, s+j-1]\<close>.
+\<close>
+
+lemma m_parent_row0_b0_when_row0_lt:
+  fixes A :: array and s j :: nat
+  assumes j_pos: "0 < j"
+      and row0_lt: "elem A s 0 < elem A (s + j) 0"
+  shows "\<exists>p. m_parent A 0 (s + j) = Some p \<and> s \<le> p \<and> p < s + j"
+proof -
+  let ?F = "filter (\<lambda>q. elem A q 0 < elem A (s + j) 0) [0..<s + j]"
+  have s_lt_sj: "s < s + j" using j_pos by simp
+  have s_in_F: "s \<in> set ?F" using row0_lt s_lt_sj by simp
+  hence F_ne: "?F \<noteq> []" using length_pos_if_in_set by fastforce
+  let ?p = "last ?F"
+  have p_in_F: "?p \<in> set ?F" using last_in_set[OF F_ne] .
+  have p_lt: "?p < s + j" using p_in_F by auto
+  \<comment> \<open>\<open>?p \<ge> s\<close>: explicit nth-mono on the sorted filter.\<close>
+  have p_ge: "s \<le> ?p"
+  proof -
+    have F_sorted: "sorted ?F" by (rule sorted_wrt_filter[OF sorted_upt])
+    have ex_k: "\<exists>k<length ?F. ?F ! k = s"
+      using s_in_F unfolding in_set_conv_nth by blast
+    obtain k where k_lt: "k < length ?F" and Fk_eq: "?F ! k = s"
+      using ex_k by blast
+    have len_pos: "0 < length ?F" using F_ne by simp
+    have k_le: "k \<le> length ?F - 1" using k_lt by linarith
+    have last_lt: "length ?F - 1 < length ?F" using len_pos by simp
+    have "?F ! k \<le> ?F ! (length ?F - 1)"
+      using F_sorted k_le last_lt by (simp add: sorted_iff_nth_mono)
+    moreover have "?p = ?F ! (length ?F - 1)"
+      using F_ne by (simp add: last_conv_nth)
+    ultimately show "s \<le> ?p" using Fk_eq by simp
+  qed
+  have mp_eq: "m_parent A 0 (s + j) = Some ?p"
+    using F_ne by (simp add: Let_def)
+  show ?thesis using mp_eq p_ge p_lt by blast
+qed
+
+text \<open>
+  (H) Uniform-ascending lemma for B_0 at row 0 (case-B vacuity):
+  when \<open>max_parent_level A = Some t\<close> with \<open>t > 0\<close>, every column
+  of B_0 ascends at row 0. Proved by less_induct on \<open>j\<close>: base \<open>j=0\<close>
+  via reflexivity of non_strict_ancestor; step \<open>j>0\<close> uses (*)
+  (@{thm bms_b0_row0_gt_s}) to derive \<open>m_parent A 0 (s+j) = Some (s+j')\<close>
+  for some \<open>j' < j\<close>, then IH at \<open>j'\<close> closes the chain.
+\<close>
+
 lemma bms_all_b0_ascend_row0_when_t_pos:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -3842,7 +3892,63 @@ lemma bms_all_b0_ascend_row0_when_t_pos:
       and mp: "max_parent_level A = Some t"
       and t_pos: "0 < t"
   shows "\<forall>j < l1 A. ascends A j 0"
-  sorry
+proof -
+  have ascends_iff: "ascends A d 0 = (s + d = s \<or> m_ancestor A 0 (s + d) s)" for d
+  proof -
+    have step1: "ascends A d 0 = (0 < t \<and> non_strict_ancestor A 0 (s + d) s)"
+      unfolding ascends_def using b0 mp by simp
+    have step2: "(0 < t \<and> non_strict_ancestor A 0 (s + d) s)
+               = non_strict_ancestor A 0 (s + d) s"
+      using t_pos by simp
+    have step3: "non_strict_ancestor A 0 (s + d) s
+               = (s + d = s \<or> m_ancestor A 0 (s + d) s)"
+      unfolding non_strict_ancestor_def ..
+    show ?thesis using step1 step2 step3 by simp
+  qed
+  have aux: "ascends A j 0" if "j < l1 A" for j
+    using that
+  proof (induct j rule: less_induct)
+    case (less j)
+    note IH = less.hyps
+    note j_lt = less.prems
+    show ?case
+    proof (cases "j = 0")
+      case True
+      show ?thesis using ascends_iff[of j] True by simp
+    next
+      case False
+      hence j_pos: "0 < j" by simp
+      have row0_lt: "elem A s 0 < elem A (s + j) 0"
+        using bms_b0_row0_gt_s[OF A_BMS A_ne b0 mp t_pos j_lt j_pos] .
+      obtain p where mp_eq: "m_parent A 0 (s + j) = Some p"
+                 and p_ge: "s \<le> p" and p_lt: "p < s + j"
+        using m_parent_row0_b0_when_row0_lt[OF j_pos row0_lt] by blast
+      define j' where "j' = p - s"
+      have p_eq: "p = s + j'" using p_ge j'_def by simp
+      have j'_lt_j: "j' < j" using p_eq p_lt by linarith
+      have j'_lt_l1: "j' < l1 A" using j'_lt_j j_lt by linarith
+      have anc_via: "m_ancestor A 0 (s + j) s \<longleftrightarrow> p = s \<or> m_ancestor A 0 p s"
+        using m_anc_via_parent_some[OF mp_eq] .
+      have anc_sj: "m_ancestor A 0 (s + j) s"
+      proof (cases "j' = 0")
+        case True
+        have p_is_s: "p = s" using p_eq True by simp
+        show ?thesis using anc_via p_is_s by simp
+      next
+        case False
+        hence j'_pos: "0 < j'" by simp
+        have asc_j': "ascends A j' 0" using IH[OF j'_lt_j j'_lt_l1] .
+        have sj'_ne_s: "s + j' \<noteq> s" using j'_pos by simp
+        hence "m_ancestor A 0 (s + j') s"
+          using asc_j' ascends_iff[of j'] by simp
+        thus ?thesis using anc_via p_eq by simp
+      qed
+      have "s + j \<noteq> s" using j_pos by simp
+      thus ?thesis using ascends_iff[of j] anc_sj by simp
+    qed
+  qed
+  thus ?thesis by blast
+qed
 
 text \<open>
   Row-0 within-block m_parent characterization under \<open>all_asc\<close>:
