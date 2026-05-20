@@ -6084,7 +6084,7 @@ text \<open>
   so excluding it requires that \<open>elem (A[n]) (idx_B(0, i)) 0\<close> is a
   row-0 \<^emph>\<open>minimum over all offsets\<close>, not merely over \<open>j' < i\<close>. That
   global-minimum fact is genuine new BMS structure (it is the same core
-  shared with @{thm idx_B_n_zero_no_intermediate_B_t_ancestor} below) and
+  shared with \<open>idx_B_n_zero_no_intermediate_B_t_ancestor\<close> below) and
   is not derivable from the current library; hence the isolated \<open>sorry\<close>.
 \<close>
 
@@ -6326,7 +6326,7 @@ text \<open>
   1246 expansions found 0 direct \<open>G\<close>-parents of any \<open>idx_B(n, a)\<close> with
   \<open>a > 0\<close>). Isolated as a single \<open>sorry\<close>; the full gateway lemma is then
   proved from it by induction on the block-\<open>n\<close> offset (see
-  @{thm idx_B_n_zero_gateway_aux}, which is fully discharged modulo this
+  \<open>idx_B_n_zero_gateway_aux\<close>, which is fully discharged modulo this
   step).
 
   \<^bold>\<open>Math obstruction.\<close> At level \<open>m = 0\<close> the parent is the rightmost
