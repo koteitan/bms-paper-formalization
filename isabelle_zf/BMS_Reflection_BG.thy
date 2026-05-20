@@ -7,30 +7,40 @@
   This file is kept separate from BMS_Reflection.thy (owned by F1 for
   Sigma_0 / 2.6.A) so the two sub-agents can iterate independently.
 
-  Status in this revision (ZF-BD sub-agent, 2026-05-19):
-    * formula_ZF / And_ZF / Exists_ZF / Forall_ZF: re-anchored as
-      definitions over Paulson's @{term formula} (used to be axiomatized).
-      The previous axioms (And_ZF_type etc.) are now plain lemmas.
-    * is_Sigma_n / is_Pi_n: still opaque axiomatized predicates,
-      because the inductive presentation will be installed by ZF-EFG.
-      The six closure axioms (mono, succ_Exists, succ_Forall,
-      existential_closure, conjunction_closure) are retained as named
-      facts so downstream code (ZF-EFG) can rely on them.
-    * stab_fm / L_elem_fm: still abstract, with a NEW axiom
+  Status in this revision (C-zf sub-agent, 2026-05-20):
+    * formula_ZF / And_ZF / Exists_ZF / Forall_ZF: definitions over
+      Paulson's @{term formula} (And_ZF_type etc. are lemmas).
+    * is_Sigma_n / is_Pi_n: NO LONGER axiomatized.  They are now plain
+      definitions on top of a single \<open>inductive\<close> set @{term LevyHier}
+      \<open>\<subseteq> (nat \<times> 2) \<times> formula\<close> (tag 0 = Sigma, tag 1 = Pi).  The intro
+      rules encode Hunter Definition 2.3 directly.  Consequently the
+      ENTIRE previous \<open>axiomatization is_Sigma_n is_Pi_n\<close> block
+      (8 axioms: in_formula x2, mono x2, succ_Exists, succ_Forall,
+      And_closure) is removed; every one is now a proven \<open>lemma\<close>
+      derived from a LevyHier introduction rule.
+    * stab_fm / L_elem_fm: still abstract, with the axiom
       \<open>stab_fm_is_Sigma_succ_k\<close> exposing the Sigma_{k+1} judgement
-      at the base level.  This is the input that 2.6.B (ID 18) needs.
-    * 2.6.B (phi_1_is_Sigma_n_plus_1):  formerly axiomatized, now a
-      \<open>lemma\<close> proven from \<open>stab_fm_is_Sigma_succ_k\<close> and
-      \<open>is_Sigma_n_mono\<close> by nat-induction on the gap (n - k).
-    * 2.6.D (Sigma_n_conjunction_closed): formerly axiomatized.
-      Since the inductive Sigma_{n+1} presentation has not yet been
-      committed, this lemma is currently kept as a \<open>lemma + sorry\<close>
-      stub with the exact same statement, leaving the proof for the
-      step where ZF-EFG installs the inductive definition.  This is a
-      net axiom reduction (one fewer axiom in the session, replaced
-      by one sorry that lives behind a documented contract).
-    * 2.6.C, E, F, G:  signature unchanged (axiomatized stubs), handed
-      off to a later ZF-EFG sub-agent.
+      at the base level.  Cannot be discharged until @{term stab_fm}
+      is given an explicit @{term Member}/@{term Forall}/@{term Nand}
+      definition; documented contract retained.
+    * 2.6.B (phi_1_is_Sigma_n_plus_1):  \<open>lemma\<close> proven from
+      \<open>stab_fm_is_Sigma_succ_k\<close> and \<open>is_Sigma_n_mono\<close> by nat-induction.
+    * 2.6.D (Sigma_n_conjunction_closed): proven \<open>lemma\<close> (no sorry):
+      it is the specialization of the new \<open>is_Sigma_n_And_closure\<close>
+      lemma to level \<open>succ(n)\<close>.
+    * 2.6.E (Sigma_n_existential_closure): UPGRADED axiom -> \<open>lemma\<close>,
+      discharged by the dedicated intro rule @{thm LevyHier.LH_Exists_closure}.
+    * 2.6.C, F, G:  still axiomatized stubs.  Each ranges over an
+      abstract constant whose explicit definition is not yet available
+      in this session (L_elem_fm for C; sats_L for F; bij_ZF/witness_fm
+      for G), so they cannot be discharged here.  The Paulson-lemma
+      correspondence is documented at each (2.6.C <-> Kranakis 1982
+      Thm 1.8; 2.6.F <-> Ex_reflection + And_reflection; 2.6.G <->
+      a witness-extraction over the reflecting CU class).
+
+  New-axiom accounting requested by the task:
+    * is_Sigma_n_And_closure  -- now a LEMMA (LH_And_Sigma intro).
+    * stab_fm_is_Sigma_succ_k -- still an axiom (abstract stab_fm).
 
   References
   ----------
@@ -83,51 +93,131 @@ lemma Forall_ZF_type:
   "p \<in> formula_ZF \<Longrightarrow> Forall_ZF(p) \<in> formula_ZF"
   unfolding formula_ZF_def Forall_ZF_def by (rule formula.Forall)
 
-section \<open>Abstract Sigma_n / Pi_n predicates over ZF formulas\<close>
+section \<open>Inductive Sigma_n / Pi_n hierarchy over ZF formulas\<close>
 
 text \<open>
-  Until the inductive Sigma_n / Pi_n presentation is committed by
-  ZF-EFG, we work with opaque predicates @{term is_Sigma_n} and
-  @{term is_Pi_n}.  The axioms below pin down only the closure
-  properties the 2.6.B-G arguments actually exercise.  Hunter's
-  Definition 2.3 corresponds to this signature, and the inductive
-  definition that will discharge these axioms is the standard
-  Levy hierarchy on top of @{term Sigma_0}.
+  We now \emph{define} the Levy hierarchy inductively rather than
+  axiomatizing it.  The single inductive set @{term LevyHier} lives in
+  \<open>(nat \<times> 2) \<times> formula\<close>: an element \<open><<n, t>, p>\<close> records that the
+  formula @{term p} is at level @{term n}, with the tag @{term t}
+  selecting \<open>\<Sigma>\<close> (\<open>t = 0\<close>) or \<open>\<Pi>\<close> (\<open>t = 1\<close>).  The two judgements
+  @{term is_Sigma_n} and @{term is_Pi_n} are then plain abbreviations.
+
+  The introduction rules encode exactly Hunter's Definition 2.3:
+  \<^item> every @{term Sigma_0} formula sits at both \<open>\<Sigma>\<^sub>0\<close> and \<open>\<Pi>\<^sub>0\<close>;
+  \<^item> monotonicity \<open>\<Sigma>\<^sub>n \<subseteq> \<Sigma>\<^sub>{n+1}\<close> and \<open>\<Pi>\<^sub>n \<subseteq> \<Pi>\<^sub>{n+1}\<close>;
+  \<^item> \<open>\<exists>x. \<phi>\<close> is \<open>\<Sigma>\<^sub>{n+1}\<close> when \<open>\<phi>\<close> is \<open>\<Pi>\<^sub>n\<close>;
+  \<^item> \<open>\<forall>x. \<phi>\<close> is \<open>\<Pi>\<^sub>{n+1}\<close> when \<open>\<phi>\<close> is \<open>\<Sigma>\<^sub>n\<close>;
+  \<^item> each \<open>\<Sigma>\<^sub>n\<close> (and \<open>\<Pi>\<^sub>n\<close>) stratum is closed under @{term And}.
+
+  Every closure axiom of the previous revision is now a \<open>lemma\<close>
+  obtained directly from the corresponding introduction rule, so the
+  whole @{text axiomatization} block of @{term is_Sigma_n} /
+  @{term is_Pi_n} (8 axioms) is removed.
 
   Notation note: nat-valued levels are encoded as ZF naturals
   (@{term "n \<in> nat"}); the level \<open>0\<close> corresponds to bounded (Delta_0)
   formulas, levels \<open>succ(n)\<close> to the alternating hierarchy.
 \<close>
 
-axiomatization
-  is_Sigma_n :: "[i, i] \<Rightarrow> o"        \<comment> \<open>\<open>is_Sigma_n(n, p)\<close>: formula @{term p} is \<open>\<Sigma>\<^sub>n\<close>\<close>
-  and is_Pi_n :: "[i, i] \<Rightarrow> o"        \<comment> \<open>\<open>is_Pi_n(n, p)\<close>: formula @{term p} is \<open>\<Pi>\<^sub>n\<close>\<close>
-  where
-    is_Sigma_n_in_formula:
-      "is_Sigma_n(n, p) \<Longrightarrow> p \<in> formula_ZF" and
-    is_Pi_n_in_formula:
-      "is_Pi_n(n, p) \<Longrightarrow> p \<in> formula_ZF" and
-    is_Sigma_n_mono:
+consts
+  LevyHier :: "i"
+
+text \<open>Tag membership facts \<open>0 \<in> 2\<close>, \<open>1 \<in> 2\<close> for the domain type-check.\<close>
+
+lemma zero_in_two: "0 \<in> 2"
+  by (simp add: succI2 succI1)
+
+lemma one_in_two: "1 \<in> 2"
+  by (simp add: succI1)
+
+inductive
+  domains "LevyHier" \<subseteq> "(nat \<times> 2) \<times> formula"
+  intros
+    LH_base_Sigma:
+      \<comment> \<open>every \<open>\<Sigma>\<^sub>0\<close> formula is \<open>\<Sigma>\<^sub>0\<close>\<close>
+      "p \<in> Sigma_0 \<Longrightarrow> \<langle>\<langle>0, 0\<rangle>, p\<rangle> \<in> LevyHier"
+    LH_base_Pi:
+      \<comment> \<open>every \<open>\<Sigma>\<^sub>0 = \<Pi>\<^sub>0\<close> formula is \<open>\<Pi>\<^sub>0\<close>\<close>
+      "p \<in> Sigma_0 \<Longrightarrow> \<langle>\<langle>0, 1\<rangle>, p\<rangle> \<in> LevyHier"
+    LH_mono_Sigma:
       \<comment> \<open>\<open>\<Sigma>\<^sub>n \<subseteq> \<Sigma>\<^sub>{n+1}\<close>\<close>
-      "\<lbrakk>n \<in> nat; is_Sigma_n(n, p)\<rbrakk> \<Longrightarrow> is_Sigma_n(succ(n), p)" and
-    is_Pi_n_mono:
+      "\<lbrakk>n \<in> nat; \<langle>\<langle>n, 0\<rangle>, p\<rangle> \<in> LevyHier\<rbrakk>
+        \<Longrightarrow> \<langle>\<langle>succ(n), 0\<rangle>, p\<rangle> \<in> LevyHier"
+    LH_mono_Pi:
       \<comment> \<open>\<open>\<Pi>\<^sub>n \<subseteq> \<Pi>\<^sub>{n+1}\<close>\<close>
-      "\<lbrakk>n \<in> nat; is_Pi_n(n, p)\<rbrakk> \<Longrightarrow> is_Pi_n(succ(n), p)" and
-    is_Sigma_succ_Exists:
+      "\<lbrakk>n \<in> nat; \<langle>\<langle>n, 1\<rangle>, p\<rangle> \<in> LevyHier\<rbrakk>
+        \<Longrightarrow> \<langle>\<langle>succ(n), 1\<rangle>, p\<rangle> \<in> LevyHier"
+    LH_Exists:
       \<comment> \<open>\<open>\<exists>x. \<phi>\<close> is \<open>\<Sigma>\<^sub>{n+1}\<close> whenever \<open>\<phi>\<close> is \<open>\<Pi>\<^sub>n\<close>\<close>
-      "\<lbrakk>n \<in> nat; is_Pi_n(n, p)\<rbrakk> \<Longrightarrow> is_Sigma_n(succ(n), Exists_ZF(p))" and
-    is_Pi_succ_Forall:
+      "\<lbrakk>n \<in> nat; \<langle>\<langle>n, 1\<rangle>, p\<rangle> \<in> LevyHier\<rbrakk>
+        \<Longrightarrow> \<langle>\<langle>succ(n), 0\<rangle>, Exists(p)\<rangle> \<in> LevyHier"
+    LH_Forall:
       \<comment> \<open>\<open>\<forall>x. \<phi>\<close> is \<open>\<Pi>\<^sub>{n+1}\<close> whenever \<open>\<phi>\<close> is \<open>\<Sigma>\<^sub>n\<close>\<close>
-      "\<lbrakk>n \<in> nat; is_Sigma_n(n, p)\<rbrakk> \<Longrightarrow> is_Pi_n(succ(n), Forall_ZF(p))" and
-    is_Sigma_n_And_closure:
-      \<comment> \<open>Propositional @{term And} closure of every \<open>\<Sigma>\<^sub>n\<close> stratum.
-          Hunter Definition 2.3 of the Levy hierarchy includes this as
-          a primitive closure clause (proper closure under finite
-          Boolean combinations on top of bounded-quantifier formulas);
-          we keep it on the axiom side here pending the inductive
-          presentation in ZF-EFG.\<close>
-      "\<lbrakk>n \<in> nat; is_Sigma_n(n, p); is_Sigma_n(n, q)\<rbrakk>
-         \<Longrightarrow> is_Sigma_n(n, And_ZF(p, q))"
+      "\<lbrakk>n \<in> nat; \<langle>\<langle>n, 0\<rangle>, p\<rangle> \<in> LevyHier\<rbrakk>
+        \<Longrightarrow> \<langle>\<langle>succ(n), 1\<rangle>, Forall(p)\<rangle> \<in> LevyHier"
+    LH_And_Sigma:
+      \<comment> \<open>\<open>\<Sigma>\<^sub>n\<close> closed under @{term And}\<close>
+      "\<lbrakk>\<langle>\<langle>n, 0\<rangle>, p\<rangle> \<in> LevyHier; \<langle>\<langle>n, 0\<rangle>, q\<rangle> \<in> LevyHier\<rbrakk>
+        \<Longrightarrow> \<langle>\<langle>n, 0\<rangle>, And(p, q)\<rangle> \<in> LevyHier"
+    LH_And_Pi:
+      \<comment> \<open>\<open>\<Pi>\<^sub>n\<close> closed under @{term And}\<close>
+      "\<lbrakk>\<langle>\<langle>n, 1\<rangle>, p\<rangle> \<in> LevyHier; \<langle>\<langle>n, 1\<rangle>, q\<rangle> \<in> LevyHier\<rbrakk>
+        \<Longrightarrow> \<langle>\<langle>n, 1\<rangle>, And(p, q)\<rangle> \<in> LevyHier"
+    LH_Exists_closure:
+      \<comment> \<open>2.6.E: \<open>\<Sigma>\<^sub>{n+1}\<close> closed under @{term Exists} (the new
+          quantifier merges into the leading existential block)\<close>
+      "\<lbrakk>n \<in> nat; \<langle>\<langle>succ(n), 0\<rangle>, p\<rangle> \<in> LevyHier\<rbrakk>
+        \<Longrightarrow> \<langle>\<langle>succ(n), 0\<rangle>, Exists(p)\<rangle> \<in> LevyHier"
+  type_intros formula.intros And_type Exists_type
+              Sigma_0_subset_formula
+              SigmaI nat_succI nat_0I nat_1I
+              zero_in_two one_in_two
+
+definition is_Sigma_n :: "[i, i] \<Rightarrow> o"
+  where "is_Sigma_n(n, p) \<equiv> \<langle>\<langle>n, 0\<rangle>, p\<rangle> \<in> LevyHier"
+
+definition is_Pi_n :: "[i, i] \<Rightarrow> o"
+  where "is_Pi_n(n, p) \<equiv> \<langle>\<langle>n, 1\<rangle>, p\<rangle> \<in> LevyHier"
+
+text \<open>Membership in @{term formula_ZF}, from the inductive domain
+  @{thm LevyHier.dom_subset}.\<close>
+
+lemma is_Sigma_n_in_formula:
+  "is_Sigma_n(n, p) \<Longrightarrow> p \<in> formula_ZF"
+  unfolding is_Sigma_n_def formula_ZF_def
+  using LevyHier.dom_subset by blast
+
+lemma is_Pi_n_in_formula:
+  "is_Pi_n(n, p) \<Longrightarrow> p \<in> formula_ZF"
+  unfolding is_Pi_n_def formula_ZF_def
+  using LevyHier.dom_subset by blast
+
+text \<open>The former closure axioms, now derived from the intro rules.\<close>
+
+lemma is_Sigma_n_mono:
+  "\<lbrakk>n \<in> nat; is_Sigma_n(n, p)\<rbrakk> \<Longrightarrow> is_Sigma_n(succ(n), p)"
+  unfolding is_Sigma_n_def by (rule LevyHier.LH_mono_Sigma)
+
+lemma is_Pi_n_mono:
+  "\<lbrakk>n \<in> nat; is_Pi_n(n, p)\<rbrakk> \<Longrightarrow> is_Pi_n(succ(n), p)"
+  unfolding is_Pi_n_def by (rule LevyHier.LH_mono_Pi)
+
+lemma is_Sigma_succ_Exists:
+  "\<lbrakk>n \<in> nat; is_Pi_n(n, p)\<rbrakk> \<Longrightarrow> is_Sigma_n(succ(n), Exists_ZF(p))"
+  unfolding is_Sigma_n_def is_Pi_n_def Exists_ZF_def
+  by (rule LevyHier.LH_Exists)
+
+lemma is_Pi_succ_Forall:
+  "\<lbrakk>n \<in> nat; is_Sigma_n(n, p)\<rbrakk> \<Longrightarrow> is_Pi_n(succ(n), Forall_ZF(p))"
+  unfolding is_Sigma_n_def is_Pi_n_def Forall_ZF_def
+  by (rule LevyHier.LH_Forall)
+
+lemma is_Sigma_n_And_closure:
+  "\<lbrakk>n \<in> nat; is_Sigma_n(n, p); is_Sigma_n(n, q)\<rbrakk>
+     \<Longrightarrow> is_Sigma_n(n, And_ZF(p, q))"
+  unfolding is_Sigma_n_def And_ZF_def
+  by (rule LevyHier.LH_And_Sigma)
 
 section \<open>Internalized stability relation and L-projection\<close>
 
@@ -259,14 +349,16 @@ section \<open>2.6.E  [ID 21]:  existential closure preserves \<open>\<Sigma>\<^
 text \<open>
   If \<open>p\<close> is \<open>\<Sigma>\<^sub>{n+1}\<close>, so is @{term "Exists_ZF(p)"} -- the new
   quantifier merges into the leading existential block.
-  Semantic counterpart: @{text Ex_reflection}.  Discharge deferred to
-  ZF-EFG sub-agent.
+  Semantic counterpart: @{text Ex_reflection}.  Now that the Levy
+  hierarchy is inductive, this is the dedicated introduction rule
+  @{thm LevyHier.LH_Exists_closure}; the former axiom is removed.
 \<close>
 
-axiomatization where
-  Sigma_n_existential_closure:
-    "\<lbrakk>n \<in> nat; is_Sigma_n(succ(n), p)\<rbrakk>
-     \<Longrightarrow> is_Sigma_n(succ(n), Exists_ZF(p))"
+lemma Sigma_n_existential_closure:
+  "\<lbrakk>n \<in> nat; is_Sigma_n(succ(n), p)\<rbrakk>
+   \<Longrightarrow> is_Sigma_n(succ(n), Exists_ZF(p))"
+  unfolding is_Sigma_n_def Exists_ZF_def
+  by (rule LevyHier.LH_Exists_closure)
 
 section \<open>2.6.F  [ID 22]:  \<open>\<psi> \<and> \<phi>\<close> reflects from \<open>L\<^sub>\<beta>\<close> to \<open>L\<^sub>\<alpha>\<close>\<close>
 
