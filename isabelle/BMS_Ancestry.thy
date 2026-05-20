@@ -5489,10 +5489,47 @@ proof (induct k arbitrary: q rule: less_induct)
 qed
 
 text \<open>
+  Single-step block-shift for (iii): translate an \<open>A[n]\<close>-ancestry chain
+  whose source sits in block \<open>t+1\<close> and target in block \<open>t\<close> (offset by
+  exactly one block, source one block ahead of target) up by one further
+  block, to source \<open>t+2\<close> / target \<open>t+1\<close>. The shift stays inside \<open>A[n]\<close>
+  and preserves the +1 block offset between source and target. This is the
+  atomic step that, iterated, realizes Hunter's "trivial extension" of (ii)
+  (paper p.5). It is the genuinely substantive content of the \<open>n \<ge> 2\<close>
+  bridge — the within-\<open>A[n]\<close> analog of (ii)/(v) for a source-target pair
+  offset by one block — and is left as an internal \<open>sorry\<close> pending a
+  generalized block-translation helper.
+
+  Empirically verified (no offset-shift counterexample) via
+  \<open>verify/verify_iii_block_shift_bridge_n_ge_2.py\<close> (441 BMSs, 0 violations).
+\<close>
+
+lemma iii_single_step_t_to_Suc_t:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and i_lt: "i < l1 A"
+      and step_fits: "t + 1 < n"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A (t + 1) 0)
+                            (idx_B_in_expansion A t i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 2) 0)
+                                 (idx_B_in_expansion A (t + 1) i)"
+  sorry
+
+text \<open>
   Block-shift bridge for (iii) at \<open>n \<ge> 2\<close>: shift both source and target
   of an \<open>A[n]\<close>-ancestry chain by \<open>(n-1)\<close> blocks. Hunter's "trivial
   extension" generalization of (ii); substantive structural lemma about
   block-translation within \<open>A[n]\<close>.
+
+  Proof here is reduced to an induction on the shift amount \<open>t\<close>, composing
+  copies of @{thm iii_single_step_t_to_Suc_t}. The generalized claim
+  \<open>bridge_upto t\<close> states the LHS equivales the partially-shifted chain
+  with source block \<open>t+1\<close> / target block \<open>t\<close>; base case \<open>t = 0\<close> is
+  reflexivity (the LHS itself), and instantiating \<open>t = n - 1\<close> yields the
+  RHS \<open>(idx_B n 0, idx_B (n-1) i)\<close>.
 \<close>
 
 lemma iii_block_shift_bridge_n_ge_2:
@@ -5506,7 +5543,71 @@ lemma iii_block_shift_bridge_n_ge_2:
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A 1 0) (idx_B_in_expansion A 0 i)
        \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A n 0)
                                  (idx_B_in_expansion A (n - 1) i)"
-  sorry
+proof -
+  \<comment> \<open>Generalized claim: the LHS (source block 1 / target block 0) equivales
+      the chain shifted up by \<open>t\<close> blocks (source \<open>t+1\<close> / target \<open>t\<close>),
+      for every \<open>t \<le> n - 1\<close>. Proved by induction on \<open>t\<close>.\<close>
+  have bridge_upto:
+    "\<And>t. t \<le> n - 1 \<Longrightarrow>
+       m_ancestor (A[n]) k (idx_B_in_expansion A 1 0) (idx_B_in_expansion A 0 i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 1) 0)
+                                 (idx_B_in_expansion A t i)"
+  proof -
+    fix t :: nat
+    assume "t \<le> n - 1"
+    thus "m_ancestor (A[n]) k (idx_B_in_expansion A 1 0)
+                              (idx_B_in_expansion A 0 i)
+        \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 1) 0)
+                                   (idx_B_in_expansion A t i)"
+    proof (induct t)
+      case 0
+      show ?case by simp
+    next
+      case (Suc t)
+      have t_le: "t \<le> n - 1" using Suc.prems by simp
+      have IH: "m_ancestor (A[n]) k (idx_B_in_expansion A 1 0)
+                                    (idx_B_in_expansion A 0 i)
+             \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 1) 0)
+                                         (idx_B_in_expansion A t i)"
+        using Suc.hyps[OF t_le] .
+      \<comment> \<open>\<open>Suc t \<le> n - 1\<close> with \<open>2 \<le> n\<close> gives \<open>t + 1 < n\<close>, so the
+          single step from \<open>t\<close> to \<open>t + 1\<close> is well-formed.\<close>
+      have step_fits: "t + 1 < n" using Suc.prems n_ge_2 by linarith
+      have step: "m_ancestor (A[n]) k (idx_B_in_expansion A (t + 1) 0)
+                                      (idx_B_in_expansion A t i)
+               \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 2) 0)
+                                           (idx_B_in_expansion A (t + 1) i)"
+        by (rule iii_single_step_t_to_Suc_t
+                   [OF A_BMS A_ne b0 mp k_lt i_lt step_fits])
+      \<comment> \<open>Compose IH with the single step; the \<open>Suc t\<close> block indices on the
+          RHS of the goal are \<open>t + 2\<close> (source) and \<open>t + 1\<close> (target).\<close>
+      have combined:
+        "m_ancestor (A[n]) k (idx_B_in_expansion A 1 0)
+                             (idx_B_in_expansion A 0 i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 2) 0)
+                                  (idx_B_in_expansion A (t + 1) i)"
+        using IH step by blast
+      have idx1: "idx_B_in_expansion A (Suc t + 1) 0
+                = idx_B_in_expansion A (t + 2) 0"
+        by (simp add: idx_B_in_expansion_def)
+      have idx2: "idx_B_in_expansion A (Suc t) i
+                = idx_B_in_expansion A (t + 1) i"
+        by (simp add: idx_B_in_expansion_def)
+      show ?case
+        unfolding idx1 idx2 using combined .
+    qed
+  qed
+  \<comment> \<open>Instantiate \<open>t = n - 1\<close>: source block \<open>(n-1)+1 = n\<close>, target block
+      \<open>n - 1\<close>, which is exactly the RHS.\<close>
+  have n_minus_1_le: "n - 1 \<le> n - 1" by simp
+  have inst: "m_ancestor (A[n]) k (idx_B_in_expansion A 1 0)
+                                  (idx_B_in_expansion A 0 i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A ((n - 1) + 1) 0)
+                                  (idx_B_in_expansion A (n - 1) i)"
+    using bridge_upto[OF n_minus_1_le] .
+  have src_eq: "(n - 1) + 1 = n" using n_ge_2 by simp
+  show ?thesis using inst unfolding src_eq .
+qed
 
 text \<open>
   Step lemma for clause (iii): assumes IH (= full lemma_2_5_at at k' < k),
