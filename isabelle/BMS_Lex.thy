@@ -1880,7 +1880,53 @@ proof -
     by (rule m_ancestor_mono[OF le0 anc_t'])
 qed
 
-lemma bms_b0_col_row0_ancestor: \<comment> \<open>verified ancestry core of (*)\<close>
+text \<open>
+  Level-0 m-parent of \<open>i\<close> is its immediate predecessor \<open>i-1\<close>
+  exactly when row-0 strictly increases at that step. Pure list fact
+  (level 0 has no recursive \<open>m_ancestor\<close> side-condition, so safe from
+  the \<open>m_ancestor\<close>-unfold trap).
+\<close>
+
+lemma m_parent_zero_pred:
+  assumes i_pos: "0 < i" and lt: "elem A (i - 1) 0 < elem A i 0"
+  shows "m_parent A 0 i = Some (i - 1)"
+proof -
+  have split: "[0..<i] = [0..<i - 1] @ [i - 1]"
+    using i_pos by (metis Suc_diff_1 upt_Suc_append le0)
+  have filt: "[j \<leftarrow> [0..<i]. elem A j 0 < elem A i 0]
+            = [j \<leftarrow> [0..<i - 1]. elem A j 0 < elem A i 0] @ [i - 1]"
+    using split lt by simp
+  have ne: "[j \<leftarrow> [0..<i]. elem A j 0 < elem A i 0] \<noteq> []" using filt by simp
+  have lst: "last [j \<leftarrow> [0..<i]. elem A j 0 < elem A i 0] = i - 1"
+    using filt by simp
+  show ?thesis using ne lst by (simp add: Let_def)
+qed
+
+text \<open>
+  Refined (*) core (Batch 2D + focused probe, 2026-05-20): in any
+  \<open>A \<in> BMS\<close> with \<open>t = max_parent_level > 0\<close>, the row-0 values of
+  \<open>B\<^sub>0\<close> strictly increase along consecutive columns. Empirically:
+  \<open>verify/verify_b0_row0_consecutive.py\<close> (437 BMS, 0 violations) — in
+  fact \<open>elem A (s+j) 0 = elem A s 0 + j\<close> exactly (B_0 row-0 = consecutive
+  integers). This SHARPENS the old opaque \<open>bms_b0_col_row0_ancestor\<close>
+  sorry: the ancestry now follows by a consecutive level-0 m-parent
+  chain (proved below). Structural BMS-construction proof of this
+  consecutive-increase is the SINGLE remaining crux of Lemma 2.5
+  (it subsumes (ii) S-empty + (iv) block-n cores).
+\<close>
+
+lemma bms_b0_row0_consecutive_increasing:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < arr_len (B0_block A)"
+      and j_pos: "0 < j"
+  shows "elem A (s + j - 1) 0 < elem A (s + j) 0"
+  sorry
+
+lemma bms_b0_col_row0_ancestor: \<comment> \<open>ancestry core of (*), now proved from consecutive-increase\<close>
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and b0: "b0_start A = Some s"
@@ -1889,7 +1935,33 @@ lemma bms_b0_col_row0_ancestor: \<comment> \<open>verified ancestry core of (*)\
       and j_lt: "j < arr_len (B0_block A)"
       and j_pos: "0 < j"
   shows "m_ancestor A 0 (s + j) s"
-  sorry
+  using j_lt j_pos
+proof (induct j rule: less_induct)
+  case (less j)
+  note j_lt' = less.prems(1) and j_pos' = less.prems(2)
+  have lt: "elem A (s + j - 1) 0 < elem A (s + j) 0"
+    by (rule bms_b0_row0_consecutive_increasing[OF A_BMS A_ne b0 mp t_pos j_lt' j_pos'])
+  have sj_pos: "0 < s + j" using j_pos' by simp
+  have sj_pred: "(s + j) - 1 = s + j - 1" by simp
+  have mp_eq: "m_parent A 0 (s + j) = Some (s + j - 1)"
+    using m_parent_zero_pred[OF sj_pos] lt sj_pred by simp
+  show "m_ancestor A 0 (s + j) s"
+  proof (cases "j = 1")
+    case True
+    have "s + j - 1 = s" using True by simp
+    thus ?thesis using m_anc_via_parent_some[OF mp_eq] by simp
+  next
+    case False
+    hence j_gt1: "1 < j" using j_pos' by simp
+    have j1_lt_j: "j - 1 < j" using j_pos' by simp
+    have j1_pos: "0 < j - 1" using j_gt1 by simp
+    have j1_ltl1: "j - 1 < arr_len (B0_block A)" using j_lt' by linarith
+    have IH: "m_ancestor A 0 (s + (j - 1)) s"
+      using less.hyps[OF j1_lt_j j1_ltl1 j1_pos] .
+    have IH': "m_ancestor A 0 (s + j - 1) s" using IH j_pos' by simp
+    show ?thesis using m_anc_via_parent_some[OF mp_eq] IH' by simp
+  qed
+qed
 
 text \<open>
   Strict-at-row-0 (*) statement, now PROVEN modulo the single sharp
