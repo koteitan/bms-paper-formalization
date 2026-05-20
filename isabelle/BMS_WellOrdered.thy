@@ -480,6 +480,81 @@ proof -
   show ?thesis using bij mono stabY lt\<alpha> stabX by blast
 qed
 
+text \<open>
+  Sigma-alignment bridge for \<open>refl_exists\<close> (D-t27).  The C-t27 gap
+  diagnosis showed that the \<open>refl_exists\<close> shape with the \<^emph>\<open>data\<close>
+  bound \<open>\<beta> = f_w (arr_len A - 1)\<close> is not derivable directly from
+  @{thm lemma_2_6}, because that axiom only produces \<open>f \<delta>\<^sub>0 <\<^sub>o \<alpha>\<close>
+  for a \<^emph>\<open>sigma\<close> bound \<open>\<alpha>\<close>.  Hunter's argument resolves this by
+  keeping the seed's \<open>\<sigma>\<close>-pair throughout the recursion: at each step
+  there is a sigma element \<open>\<alpha>\<close> with \<open>\<omega>\<^sub>o <\<^sub>o \<alpha>\<close> that sits
+  \<^emph>\<open>at or below\<close> every \<open>B\<^sub>0\<close>-image (\<open>Y\<close>) yet \<^emph>\<open>strictly below\<close>
+  the data bound \<open>\<beta>\<close>, together with a larger sigma element
+  \<open>\<beta>\<^sub>p\<close> bounding \<open>Y\<close> at stability level \<open>n\<close>, while every
+  \<open>G\<close>-image (\<open>X\<close>) lies below \<open>\<alpha>\<close>.  Under that hypothesis the
+  \<open>refl_exists\<close> shape is derivable verbatim from
+  @{thm lemma_2_6_reflect_package}: the package yields \<open>f \<delta>\<^sub>0 <\<^sub>o \<alpha>\<close>
+  and \<open>\<alpha> <\<^sub>o \<beta>\<close> closes the fourth conjunct by transitivity.
+
+  This lemma isolates the residual obligation to the single
+  \<^emph>\<open>sigma-alignment\<close> hypothesis (the \<open>(\<alpha>, \<beta>\<^sub>p)\<close> existence),
+  which is the seed-in-\<open>\<sigma>\<close> infrastructure flagged as a separate
+  task; everything downstream of it is now fully proven.
+\<close>
+
+lemma refl_exists_from_sigma_align:
+  fixes X_set Y_set :: "Ord_t set" and \<beta> :: Ord_t
+  assumes X_fin: "finite X_set" and Y_fin: "finite Y_set"
+      and align:
+        "\<exists>\<alpha> \<beta>\<^sub>p. \<alpha> \<in> sigma_bound \<and> \<beta>\<^sub>p \<in> sigma_bound
+                \<and> \<omega>_o <\<^sub>o \<alpha> \<and> stable_lt n \<alpha> \<beta>\<^sub>p
+                \<and> \<alpha> <\<^sub>o \<beta>
+                \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta> \<in> Y_set.
+                     \<gamma> <\<^sub>o \<alpha> \<and> (\<alpha> = \<delta> \<or> \<alpha> <\<^sub>o \<delta>) \<and> \<delta> <\<^sub>o \<beta>\<^sub>p)"
+  shows
+    "\<exists>Y' f_refl.
+        bij_betw f_refl Y_set Y'
+      \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set.
+            \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1))
+      \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
+            stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1))
+      \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
+            \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
+      \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
+            stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f_refl \<delta>\<^sub>0))"
+proof -
+  from align obtain \<alpha> \<beta>\<^sub>p where
+        \<alpha>_in: "\<alpha> \<in> sigma_bound" and \<beta>p_in: "\<beta>\<^sub>p \<in> sigma_bound"
+    and \<omega>_lt: "\<omega>_o <\<^sub>o \<alpha>" and stab: "stable_lt n \<alpha> \<beta>\<^sub>p"
+    and \<alpha>_lt_\<beta>: "\<alpha> <\<^sub>o \<beta>"
+    and bound: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta> \<in> Y_set.
+                  \<gamma> <\<^sub>o \<alpha> \<and> (\<alpha> = \<delta> \<or> \<alpha> <\<^sub>o \<delta>) \<and> \<delta> <\<^sub>o \<beta>\<^sub>p"
+    by blast
+  obtain Y' f_refl where
+        bij: "bij_betw f_refl Y_set Y'"
+    and mono: "\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set.
+                 \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1)"
+    and stabY: "\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
+                  stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1)"
+    and lt\<alpha>: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
+                \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<alpha>"
+    and stabX: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
+                  stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f_refl \<delta>\<^sub>0)"
+    using lemma_2_6_reflect_package[OF \<alpha>_in \<beta>p_in \<omega>_lt stab X_fin Y_fin bound]
+    by blast
+  \<comment> \<open>The fourth conjunct: \<open>f_refl \<delta>\<^sub>0 <\<^sub>o \<alpha> <\<^sub>o \<beta>\<close> by transitivity.\<close>
+  have lt\<beta>: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
+                \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
+  proof (intro ballI)
+    fix \<gamma> \<delta>\<^sub>0 assume \<gamma>X: "\<gamma> \<in> X_set" and \<delta>Y: "\<delta>\<^sub>0 \<in> Y_set"
+    have "\<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<alpha>"
+      using lt\<alpha> \<gamma>X \<delta>Y by blast
+    thus "\<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
+      using \<alpha>_lt_\<beta> ord_lt_trans by blast
+  qed
+  show ?thesis using bij mono stabY lt\<beta> stabX by blast
+qed
+
 lemma stable_rep_extend_strict:
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []" and f_rep: "stable_rep A f"
   shows "\<exists>g \<beta>. \<beta> <\<^sub>o o_of A
@@ -586,22 +661,24 @@ next
               \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
         \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
               stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f_refl \<delta>\<^sub>0))"
-      \<comment> \<open>Residual.  GAP DIAGNOSIS (C-t27): as currently \<^emph>\<open>stated\<close>
-          this clause is NOT derivable from @{thm lemma_2_6}.  The
-          fourth conjunct demands \<open>f_refl \<delta>\<^sub>0 <\<^sub>o \<beta>\<close> with the
-          \<^emph>\<open>data\<close> value \<open>\<beta> = f_w (arr_len A - 1)\<close>, whereas
-          @{thm lemma_2_6} only ever produces \<open>f \<delta>\<^sub>0 <\<^sub>o \<alpha>\<close> for a
-          \<^emph>\<open>sigma\<close> element \<open>\<alpha>\<close>.  Forcing \<open>\<alpha> = \<beta>\<close> makes the
-          @{thm lemma_2_6} precondition contradictory: it would
-          require \<open>\<beta> = \<delta> \<or> \<beta> <\<^sub>o \<delta>\<close> AND \<open>\<delta> <\<^sub>o \<beta>\<close> for every
-          \<open>\<delta> \<in> Y_set\<close> (where in fact \<open>\<delta> <\<^sub>o \<beta>\<close> holds by
-          @{thm stable_rep_max_strict_below_last}).  RESOLUTION:
-          restate the obligation with the bound \<open>\<alpha>\<close> a sigma
-          element (Hunter's seed must be chosen with last value in
-          \<open>sigma_bound\<close>), then @{thm lemma_2_6_reflect_package}
-          discharges it verbatim.  Until the seed-in-sigma choice is
-          formalised, this remains a sorry.\<close>
-      sorry
+      \<comment> \<open>D-t27: discharged via @{thm refl_exists_from_sigma_align},
+          which derives this clause verbatim from
+          @{thm lemma_2_6_reflect_package} once the
+          \<^emph>\<open>sigma-alignment\<close> hypothesis \<open>sigma_align\<close> below is
+          available.  The single remaining residual is therefore the
+          sigma-alignment existence (Hunter's seed-in-\<open>\<sigma>\<close> invariant),
+          which is the separately-tracked stability-axiom task.\<close>
+    proof (rule refl_exists_from_sigma_align[OF X_finite Y_finite])
+      show "\<exists>\<alpha> \<beta>\<^sub>p. \<alpha> \<in> sigma_bound \<and> \<beta>\<^sub>p \<in> sigma_bound
+                \<and> \<omega>_o <\<^sub>o \<alpha> \<and> stable_lt (Suc n') \<alpha> \<beta>\<^sub>p
+                \<and> \<alpha> <\<^sub>o \<beta>
+                \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta> \<in> Y_set.
+                     \<gamma> <\<^sub>o \<alpha> \<and> (\<alpha> = \<delta> \<or> \<alpha> <\<^sub>o \<delta>) \<and> \<delta> <\<^sub>o \<beta>\<^sub>p)"
+        \<comment> \<open>Residual (sigma-alignment): Hunter's seed-in-\<open>\<sigma>\<close>
+            invariant supplies the \<open>(\<alpha>, \<beta>\<^sub>p)\<close> pair.  Tracked as the
+            \<open>sigma_pair_exists\<close>-extension task; bare sorry here.\<close>
+        sorry
+    qed
     obtain Y_set' f_refl where
           f_refl_bij: "bij_betw f_refl Y_set Y_set'"
       and f_refl_mono: "\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set.
