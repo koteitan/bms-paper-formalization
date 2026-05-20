@@ -6182,6 +6182,34 @@ proof -
 qed
 
 text \<open>
+  Sharper inductive step underlying the gateway property below. The
+  \<^emph>\<open>immediate\<close> \<open>m\<close>-parent of a block-\<open>n\<close> column \<open>idx_B(n, a)\<close> with
+  \<open>0 < a\<close> never lands strictly below the leftmost block-\<open>n\<close> column
+  \<open>idx_B(n, 0)\<close>: it either stays inside block \<open>n\<close> at a smaller offset,
+  or equals \<open>idx_B(n, 0)\<close> itself. In particular the parent is never a
+  \<open>G\<close>-column directly — to exit block \<open>n\<close> leftwards the chain must first
+  reach \<open>idx_B(n, 0)\<close>.
+
+  This is a refinement of clause (iv) (which allows a direct \<open>G\<close>-parent
+  in general); for \<open>a > 0\<close> the \<open>G\<close>-parent case is empirically vacuous.
+  Confirmed (yaBMS BFS, \<open>verify/verify_Bn_parent_not_below_zero.py\<close>:
+  885 BMSs, 0 failures; and a separate probe over 1246 expansions found
+  0 direct \<open>G\<close>-parents of any \<open>idx_B(n, a)\<close> with \<open>a > 0\<close>). Isolated as a
+  single \<open>sorry\<close>; the full gateway lemma is then proved from it by
+  induction on the block-\<open>n\<close> offset.
+\<close>
+
+lemma m_parent_block_n_stays_until_zero:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and a_pos: "0 < a" and a_lt: "a < l1 A"
+      and mp_eq: "m_parent (A[n]) m (idx_B_in_expansion A n a) = Some p"
+  shows "idx_B_in_expansion A n 0 \<le> p"
+  sorry
+
+text \<open>
   The \<open>B_n[0]\<close> gateway property. The leftmost block-\<open>n\<close> column
   \<open>idx_B(n, 0)\<close> is the unique entry point through which the upward
   \<open>m\<close>-ancestor chain of any block-\<open>n\<close> column \<open>idx_B(n, i)\<close> must pass
@@ -6190,9 +6218,91 @@ text \<open>
   ancestor of \<open>idx_B(n, i)\<close>, the gateway \<open>idx_B(n, 0)\<close> is one too.
 
   Empirically confirmed (yaBMS BFS, \<open>verify/verify_Bn0_gateway.py\<close>:
-  885 BMSs, 0 failures of the implication). Isolated here as a single
-  \<open>sorry\<close>; it is the sole remaining content of the chain-breaks branch.
+  885 BMSs, 0 failures of the implication). \<^emph>\<open>Now proved\<close> from the
+  sharper inductive step @{thm m_parent_block_n_stays_until_zero} by
+  strong induction on the block-\<open>n\<close> offset of the source column.
 \<close>
+
+text \<open>
+  Auxiliary: if \<open>q\<close> is a level-\<open>m\<close> ancestor of a block-\<open>n\<close> column
+  \<open>idx_B(n, a)\<close> with \<open>0 < a < l1\<close>, and \<open>q\<close> sits strictly below the
+  gateway \<open>idx_B(n, 0)\<close>, then the gateway is itself a level-\<open>m\<close> ancestor
+  of \<open>idx_B(n, a)\<close>. Strong induction on the offset \<open>a\<close>: the immediate
+  parent \<open>p\<close> satisfies \<open>idx_B(n, 0) \<le> p\<close> by
+  @{thm m_parent_block_n_stays_until_zero}; either \<open>p = idx_B(n, 0)\<close>
+  (done) or \<open>p\<close> is a strictly-smaller block-\<open>n\<close> offset to which the
+  induction hypothesis applies.
+\<close>
+
+lemma idx_B_n_zero_gateway_aux:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+  shows "\<And>a q. a < l1 A \<Longrightarrow> 0 < a
+         \<Longrightarrow> m_ancestor (A[n]) m (idx_B_in_expansion A n a) q
+         \<Longrightarrow> q < idx_B_in_expansion A n 0
+         \<Longrightarrow> m_ancestor (A[n]) m (idx_B_in_expansion A n a)
+                                 (idx_B_in_expansion A n 0)"
+proof -
+  fix a q
+  show "a < l1 A \<Longrightarrow> 0 < a
+        \<Longrightarrow> m_ancestor (A[n]) m (idx_B_in_expansion A n a) q
+        \<Longrightarrow> q < idx_B_in_expansion A n 0
+        \<Longrightarrow> m_ancestor (A[n]) m (idx_B_in_expansion A n a)
+                                (idx_B_in_expansion A n 0)"
+  proof (induct a arbitrary: q rule: less_induct)
+    case (less a q)
+    note IH = less.hyps
+    have a_lt: "a < l1 A" by (rule less.prems(1))
+    have a_pos: "0 < a" by (rule less.prems(2))
+    have anc_q: "m_ancestor (A[n]) m (idx_B_in_expansion A n a) q"
+      by (rule less.prems(3))
+    have q_lt_b0: "q < idx_B_in_expansion A n 0" by (rule less.prems(4))
+    \<comment> \<open>Expose the immediate parent \<open>p\<close> of \<open>idx_B(n, a)\<close>.\<close>
+    obtain p where mp: "m_parent (A[n]) m (idx_B_in_expansion A n a) = Some p"
+                and case_p: "p = q \<or> m_ancestor (A[n]) m p q"
+      using anc_q by (cases "m_parent (A[n]) m (idx_B_in_expansion A n a)") auto
+    \<comment> \<open>The parent does not land below the gateway.\<close>
+    have p_ge_b0: "idx_B_in_expansion A n 0 \<le> p"
+      using m_parent_block_n_stays_until_zero
+              [OF A_BMS A_ne b0 l1_pos a_pos a_lt mp] .
+    \<comment> \<open>The parent is strictly to the left of the source column.\<close>
+    have p_lt_src: "p < idx_B_in_expansion A n a"
+      using mp m_parent_lt by simp
+    show ?case
+    proof (cases "p = idx_B_in_expansion A n 0")
+      case True
+      \<comment> \<open>The gateway is the immediate parent, hence an ancestor.\<close>
+      show ?thesis using m_anc_via_parent_some[OF mp] True by simp
+    next
+      case False
+      \<comment> \<open>\<open>p\<close> lies strictly between the gateway and the source: it is a
+          block-\<open>n\<close> column \<open>idx_B(n, a')\<close> with \<open>0 < a' < a\<close>.\<close>
+      have b0_lt_p: "idx_B_in_expansion A n 0 < p" using p_ge_b0 False by simp
+      define a' where "a' = p - idx_B_in_expansion A n 0"
+      have p_eq: "p = idx_B_in_expansion A n a'"
+        using b0_lt_p a'_def unfolding idx_B_in_expansion_def by simp
+      have a'_pos: "0 < a'"
+        using b0_lt_p p_eq unfolding idx_B_in_expansion_def by simp
+      have a'_lt_a: "a' < a"
+        using p_lt_src p_eq unfolding idx_B_in_expansion_def by simp
+      have a'_lt: "a' < l1 A" using a'_lt_a a_lt by simp
+      \<comment> \<open>\<open>q\<close> is strictly below the gateway, hence below \<open>p\<close>; so \<open>p \<noteq> q\<close>
+          and \<open>q\<close> is an ancestor of \<open>p\<close>.\<close>
+      have q_lt_p: "q < p" using q_lt_b0 b0_lt_p by simp
+      have anc_pq: "m_ancestor (A[n]) m p q"
+        using case_p q_lt_p by auto
+      \<comment> \<open>Induction hypothesis at the strictly-smaller offset \<open>a'\<close>.\<close>
+      have anc_p_b0: "m_ancestor (A[n]) m (idx_B_in_expansion A n a')
+                                          (idx_B_in_expansion A n 0)"
+        using IH[OF a'_lt_a a'_lt a'_pos anc_pq[unfolded p_eq] q_lt_b0] .
+      \<comment> \<open>Lift through the immediate parent step.\<close>
+      show ?thesis
+        using m_anc_via_parent_some[OF mp] anc_p_b0[folded p_eq] by simp
+    qed
+  qed
+qed
 
 lemma idx_B_n_zero_gateway_for_earlier_block_ancestor:
   fixes A :: array and n :: nat
@@ -6206,7 +6316,14 @@ lemma idx_B_n_zero_gateway_for_earlier_block_ancestor:
                                     (idx_B_in_expansion A t j)"
   shows "m_ancestor (A[n]) m (idx_B_in_expansion A n i)
                             (idx_B_in_expansion A n 0)"
-  sorry
+proof -
+  \<comment> \<open>The earlier-block ancestor sits strictly below the gateway
+      \<open>idx_B(n, 0)\<close> (\<open>t < n\<close>).\<close>
+  have q_lt_b0: "idx_B_in_expansion A t j < idx_B_in_expansion A n 0"
+    using idx_B_earlier_block_lt_block_n[OF t_lt_n j_lt, of 0] .
+  show ?thesis
+    using idx_B_n_zero_gateway_aux[OF A_BMS A_ne b0 l1_pos i_lt i_pos anc q_lt_b0] .
+qed
 
 lemma clause_iv_intermediate_B_t_impossible_chain_breaks:
   fixes A :: array and n :: nat
