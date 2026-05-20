@@ -5935,6 +5935,33 @@ proof -
   qed
 qed
 
+text \<open>
+  The \<open>B_n[0]\<close> gateway property. The leftmost block-\<open>n\<close> column
+  \<open>idx_B(n, 0)\<close> is the unique entry point through which the upward
+  \<open>m\<close>-ancestor chain of any block-\<open>n\<close> column \<open>idx_B(n, i)\<close> must pass
+  before it can reach a column of an earlier block \<open>B_t\<close> (\<open>t < n\<close>).
+  Hence whenever an earlier-block column \<open>idx_B(t, j)\<close> is a level-\<open>m\<close>
+  ancestor of \<open>idx_B(n, i)\<close>, the gateway \<open>idx_B(n, 0)\<close> is one too.
+
+  Empirically confirmed (yaBMS BFS, \<open>verify/verify_Bn0_gateway.py\<close>:
+  885 BMSs, 0 failures of the implication). Isolated here as a single
+  \<open>sorry\<close>; it is the sole remaining content of the chain-breaks branch.
+\<close>
+
+lemma idx_B_n_zero_gateway_for_earlier_block_ancestor:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and i_pos: "0 < i" and i_lt: "i < l1 A"
+      and t_lt_n: "t < n"
+      and j_lt: "j < l1 A"
+      and anc: "m_ancestor (A[n]) m (idx_B_in_expansion A n i)
+                                    (idx_B_in_expansion A t j)"
+  shows "m_ancestor (A[n]) m (idx_B_in_expansion A n i)
+                            (idx_B_in_expansion A n 0)"
+  sorry
+
 lemma clause_iv_intermediate_B_t_impossible_chain_breaks:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -5952,7 +5979,34 @@ lemma clause_iv_intermediate_B_t_impossible_chain_breaks:
       and chain_breaks: "\<not> (\<forall>k' < k. m_ancestor (A[n]) k' (idx_B_in_expansion A n i)
                                                           (idx_B_in_expansion A n 0))"
   shows "False"
-  sorry
+proof -
+  let ?i = "idx_B_in_expansion A n i"
+  let ?b0 = "idx_B_in_expansion A n 0"
+  \<comment> \<open>Since \<open>0 < k\<close>, write \<open>k = Suc k\<^sub>0\<close>; the level-\<open>k\<close> parent \<open>p\<close> is then a
+      level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close> (definition of \<open>m_parent\<close>).\<close>
+  obtain k\<^sub>0 where k_eq: "k = Suc k\<^sub>0" using k_pos by (cases k) auto
+  have anc_p: "m_ancestor (A[n]) k\<^sub>0 ?i p"
+    using m_parent_Suc_implies_m_ancestor[OF mp_eq[unfolded k_eq]] .
+  \<comment> \<open>\<open>p = idx_B(t, j)\<close> is an earlier-block column (\<open>t < n\<close>) reached as a
+      level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close>. By the gateway property the leftmost
+      block-\<open>n\<close> column \<open>?b0 = idx_B(n, 0)\<close> is then also a level-\<open>k\<^sub>0\<close>
+      ancestor of \<open>?i\<close>.\<close>
+  have anc_b0_k0: "m_ancestor (A[n]) k\<^sub>0 ?i ?b0"
+    using idx_B_n_zero_gateway_for_earlier_block_ancestor
+            [OF A_BMS A_ne b0 l1_pos i_pos i_lt t_lt_n j_lt anc_p[unfolded p_eq]] .
+  \<comment> \<open>The chain-breaks hypothesis yields a witness level \<open>k_w < k\<close> at which
+      \<open>?b0\<close> fails to be an ancestor of \<open>?i\<close>.\<close>
+  obtain k_w where kw_lt: "k_w < k"
+               and kw_no_anc: "\<not> m_ancestor (A[n]) k_w ?i ?b0"
+    using chain_breaks by blast
+  \<comment> \<open>But \<open>k_w < Suc k\<^sub>0\<close> gives \<open>k_w \<le> k\<^sub>0\<close>, and ancestry is monotone in the
+      level, so the level-\<open>k\<^sub>0\<close> ancestor \<open>?b0\<close> is also a level-\<open>k_w\<close> ancestor
+      of \<open>?i\<close> — contradiction.\<close>
+  have kw_le_k0: "k_w \<le> k\<^sub>0" using kw_lt k_eq by simp
+  have "m_ancestor (A[n]) k_w ?i ?b0"
+    using m_ancestor_mono[OF kw_le_k0 anc_b0_k0] .
+  thus False using kw_no_anc by simp
+qed
 
 lemma clause_iv_intermediate_B_t_impossible:
   fixes A :: array
