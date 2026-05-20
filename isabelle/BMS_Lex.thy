@@ -1852,6 +1852,34 @@ text \<open>
   inside \<open>B\<^sub>0\<close> actually witnesses.
 \<close>
 
+text \<open>
+  Boundary case of the core, fully proven: the LAST column
+  (\<open>= s + l1\<close>) is a level-0 ancestor of \<open>s\<close>. Route: \<open>b0_start = Some s\<close>
+  means \<open>m_parent A t (last) = Some s\<close>; for \<open>t = Suc t'\<close> this gives
+  \<open>m_ancestor A t' (last) s\<close> (@{thm m_parent_Suc_implies_m_ancestor}),
+  and @{thm m_ancestor_mono} lowers the level to 0. The interior case
+  (arbitrary \<open>s + j\<close>, \<open>0 < j < l1\<close>) is the genuine remaining crux
+  in \<open>bms_b0_col_row0_ancestor\<close> below — it does NOT follow from
+  the last column alone, since the level-0 m-parent chain from the
+  last column need not pass through every interior B_0 column.
+\<close>
+
+lemma bms_b0_last_col_row0_ancestor:
+  fixes A :: array
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+  shows "m_ancestor A 0 (last_col_idx A) s"
+proof -
+  have mp_t: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
+  have anc_t': "m_ancestor A t' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mp_t[unfolded t_eq]] .
+  show "m_ancestor A 0 (last_col_idx A) s"
+    by (rule m_ancestor_mono[OF le0 anc_t'])
+qed
+
 lemma bms_b0_col_row0_ancestor: \<comment> \<open>verified ancestry core of (*)\<close>
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
