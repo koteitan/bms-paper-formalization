@@ -1902,6 +1902,103 @@ proof -
   show ?thesis using ne lst by (simp add: Let_def)
 qed
 
+subsection \<open>Global row-0 invariant: row-0 value = level-0 ancestor depth\<close>
+
+text \<open>
+  GLOBAL invariant (focused probe \<open>verify/verify_row0_eq_level0_depth.py\<close>,
+  437 BMS, 0 violations): for every column \<open>i\<close> of every \<open>A \<in> BMS\<close>,
+  the row-0 value equals the length of the level-0 \<open>m_parent\<close> chain from
+  \<open>i\<close>. We capture it in the equivalent LOCAL recursive form
+  \<open>elem A i 0 = (case m_parent A 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))\<close>
+  (which avoids defining a chain-length function: by induction on \<open>i\<close>,
+  this Some/None relation is equivalent to row-0 = chain length, since
+  \<open>m_parent A 0 i = Some p\<close> always has \<open>p < i\<close>).
+
+  This statement is UNIFORM (independent of \<open>b0_start\<close> / \<open>l1\<close> / \<open>t\<close>), so
+  unlike the empirically-refuted "structure preservation" conjectures it
+  is amenable to \<open>BMS.induct\<close>. It implies the \<open>B\<^sub>0\<close> consecutive-increase
+  crux (modulo an additional "no row-0 skip in \<open>[s, last]\<close>" argument).
+
+  The row-0 value is only well-defined on NON-EMPTY columns (e.g. the
+  degenerate \<open>seed 0 = [[],[]]\<close> has empty columns); the conclusion is
+  therefore guarded by \<open>0 < length (A ! i)\<close>, which makes the degenerate
+  cases vacuous and propagates cleanly through the induction.
+\<close>
+
+text \<open>
+  Seed case, fully proven: \<open>seed n = [replicate n 0, replicate n 1]\<close>
+  has \<open>arr_len = 2\<close>, row-0 \<open>= [0, 1]\<close> (for \<open>n > 0\<close>). Column 0 has
+  \<open>m_parent = None\<close> (no earlier column) and row-0 value 0; column 1 has
+  \<open>m_parent = Some 0\<close> (column 0 has strictly smaller row-0) and row-0
+  value \<open>1 = Suc 0\<close>. Pure level-0 list computation (no \<open>m_ancestor\<close>
+  recursion), safe from the unfold trap.
+\<close>
+
+lemma seed_row0_eq_recursive:
+  assumes n_pos: "0 < n" and i_lt: "i < arr_len (seed n)"
+  shows "elem (seed n) i 0
+         = (case m_parent (seed n) 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (seed n) p 0))"
+proof -
+  have len2: "arr_len (seed n) = 2" using length_seed by simp
+  have i01: "i = 0 \<or> i = 1" using i_lt len2 by auto
+  have e0: "elem (seed n) 0 0 = 0"
+    unfolding elem_def seed_def using n_pos by simp
+  have e1: "elem (seed n) 1 0 = 1"
+    unfolding elem_def seed_def using n_pos by simp
+  show ?thesis
+  proof (cases "i = 0")
+    case True
+    have "m_parent (seed n) 0 0 = None" by simp
+    thus ?thesis using True e0 by simp
+  next
+    case False
+    hence i1: "i = 1" using i01 by simp
+    have filt: "[j \<leftarrow> [0..<1]. elem (seed n) j 0 < elem (seed n) 1 0] = [0]"
+      using e0 e1 by simp
+    have mp: "m_parent (seed n) 0 1 = Some 0"
+      using filt by (simp add: Let_def)
+    have val: "(case m_parent (seed n) 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (seed n) p 0)) = 1"
+      using i1 mp e0 by simp
+    show ?thesis unfolding val using i1 e1 by simp
+  qed
+qed
+
+text \<open>
+  Global invariant via \<open>BMS.induct\<close>. Seed case discharged by
+  @{thm seed_row0_eq_recursive}. The expand case
+  (\<open>A[n] = strip_zero_rows (G_block A @ Bs_concat A n)\<close>) is the deep
+  remaining work: it must track row-0 across the \<open>G + B\<^sub>0 + \<dots> + B_n\<close>
+  decomposition (row-0 ascends iff \<open>0 < max_parent_level\<close>, bumping by
+  \<open>i \<cdot> delta A 0\<close>) and recompute \<open>m_parent (A[n]) 0 k\<close> in the
+  concatenation. This is co-extensive with the \<open>B\<^sub>0\<close> consecutive-increase
+  crux and is left as the single \<open>sorry\<close> here.
+\<close>
+
+lemma bms_row0_eq_chainlen0:
+  assumes "A \<in> BMS"
+  shows "\<forall>i. i < arr_len A \<longrightarrow> 0 < length (A ! i) \<longrightarrow>
+            elem A i 0 = (case m_parent A 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+  using assms
+proof (induct A rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case
+  proof (intro allI impI)
+    fix i assume i_lt: "i < arr_len (seed n)" and col_ne: "0 < length (seed n ! i)"
+    have len2: "arr_len (seed n) = 2" using length_seed by simp
+    have i01: "i = 0 \<or> i = 1" using i_lt len2 by auto
+    have len_eq_n: "length (seed n ! i) = n" using i01 by (auto simp: seed_def)
+    have n_pos: "0 < n" using col_ne len_eq_n by simp
+    show "elem (seed n) i 0
+          = (case m_parent (seed n) 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (seed n) p 0))"
+      by (rule seed_row0_eq_recursive[OF n_pos i_lt])
+  qed
+next
+  case (expand_in_BMS A n)
+  \<comment> \<open>Deep expand case: track row-0 through \<open>strip_zero_rows (G @ B\<^sub>0 @ \<dots> @ B_n)\<close>.
+      Co-extensive with the consecutive-increase crux; left as the single sorry.\<close>
+  show ?case sorry
+qed
+
 text \<open>
   Refined (*) core (Batch 2D + focused probe, 2026-05-20): in any
   \<open>A \<in> BMS\<close> with \<open>t = max_parent_level > 0\<close>, the row-0 values of
