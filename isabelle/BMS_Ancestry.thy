@@ -6584,16 +6584,52 @@ text \<open>
 \<close>
 
 text \<open>
-  Forward step of (v): the \<open>n\<^sub>1 \<rightarrow> n\<^sub>1+1\<close> block-shift of the
-  source column preserves \<open>m\<close>-ancestry into a fixed lower copy
-  \<open>idx_B(n\<^sub>0, i)\<close>. This is the substantive content of (v): a chain
-  from \<open>idx_B(n\<^sub>1, j)\<close> down to \<open>idx_B(n\<^sub>0, i)\<close> walks back through
-  successively lower B-copies; (iv)@k bounds the parent of each
-  B-column out of its own copy, (iii)@k transfers the gateway
-  \<open>idx_B(c, 0)\<close> chain one copy down, and (ii)@k transfers within-copy
-  links. Bumping \<open>n\<^sub>1\<close> by one shifts the whole upper segment of the
-  chain uniformly, leaving the lower endpoint \<open>idx_B(n\<^sub>0, i)\<close> and the
-  ancestry verdict unchanged. Leaf isolated as a sorry.
+  Substantive content of (v), stated as a single biconditional: the
+  \<open>n\<^sub>1 \<rightarrow> n\<^sub>1+1\<close> block-shift of the source column preserves
+  \<open>m\<close>-ancestry into the fixed lower copy \<open>idx_B(n\<^sub>0, i)\<close>, in both
+  directions simultaneously. A chain from \<open>idx_B(n\<^sub>1, j)\<close> down to
+  \<open>idx_B(n\<^sub>0, i)\<close> walks back through successively lower B-copies;
+  (iv)@k bounds the parent of each B-column out of its own copy,
+  (iii)@k transfers the gateway \<open>idx_B(c, 0)\<close> chain one copy down,
+  and (ii)@k transfers within-copy links. Bumping \<open>n\<^sub>1\<close> by one
+  shifts the whole upper segment of the chain uniformly, leaving the
+  lower endpoint \<open>idx_B(n\<^sub>0, i)\<close> and the ancestry verdict unchanged.
+
+  This iff is the single remaining substantive leaf of (v); both
+  forward and backward directions are derived from it below by
+  @{thm iffD1}/@{thm iffD2}, eliminating the duplicated dual
+  reasoning that two separate leaves would require. The structural
+  analog is @{thm iii_single_step_t_to_Suc_t} (source one block ahead
+  of target), here specialized to a source bump with the target held
+  fixed at the lower copy \<open>n\<^sub>0\<close>.
+
+  Empirically verified (both directions, all \<open>k\<close>) across 232 Hunter
+  BMS arrays with no counter-example
+  (\<open>verify/verify_clause_v_step.py\<close>).
+\<close>
+
+lemma lemma_2_5_v_clause_step_iff:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and n_ge_2: "2 \<le> n"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_i_at_k: "lemma_2_5_i_clause A n k"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+      and i_lt: "i < l1 A" and j_lt: "j < l1 A"
+      and n01: "n\<^sub>0 < n\<^sub>1" and n1n: "n\<^sub>1 < n"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n\<^sub>1 j)
+                              (idx_B_in_expansion A n\<^sub>0 i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (n\<^sub>1 + 1) j)
+                                  (idx_B_in_expansion A n\<^sub>0 i)"
+  sorry
+
+text \<open>
+  Forward step of (v): \<open>iffD1\<close> projection of
+  @{thm lemma_2_5_v_clause_step_iff}. Bumping the source copy from
+  \<open>n\<^sub>1\<close> to \<open>n\<^sub>1+1\<close> preserves \<open>m\<close>-ancestry into \<open>idx_B(n\<^sub>0, i)\<close>.
 \<close>
 
 lemma lemma_2_5_v_clause_step_forward:
@@ -6612,13 +6648,15 @@ lemma lemma_2_5_v_clause_step_forward:
                                    (idx_B_in_expansion A n\<^sub>0 i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A (n\<^sub>1 + 1) j)
                               (idx_B_in_expansion A n\<^sub>0 i)"
-  sorry
+  using lemma_2_5_v_clause_step_iff
+          [OF A_BMS A_ne b0 n_ge_2 IH clause_i_at_k clause_ii_at_k
+              clause_iii_at_k clause_iv_at_k i_lt j_lt n01 n1n] H
+  by (rule iffD1)
 
 text \<open>
-  Backward step of (v): dual of @{thm lemma_2_5_v_clause_step_forward};
-  shifting the source down from \<open>n\<^sub>1+1\<close> to \<open>n\<^sub>1\<close> preserves ancestry
-  into \<open>idx_B(n\<^sub>0, i)\<close>. Symmetric chain argument. Leaf isolated as a
-  sorry.
+  Backward step of (v): \<open>iffD2\<close> projection of
+  @{thm lemma_2_5_v_clause_step_iff}; shifting the source down from
+  \<open>n\<^sub>1+1\<close> to \<open>n\<^sub>1\<close> preserves ancestry into \<open>idx_B(n\<^sub>0, i)\<close>.
 \<close>
 
 lemma lemma_2_5_v_clause_step_backward:
@@ -6637,7 +6675,10 @@ lemma lemma_2_5_v_clause_step_backward:
                                    (idx_B_in_expansion A n\<^sub>0 i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A n\<^sub>1 j)
                               (idx_B_in_expansion A n\<^sub>0 i)"
-  sorry
+  using lemma_2_5_v_clause_step_iff
+          [OF A_BMS A_ne b0 n_ge_2 IH clause_i_at_k clause_ii_at_k
+              clause_iii_at_k clause_iv_at_k i_lt j_lt n01 n1n] H
+  by (rule iffD2)
 
 lemma lemma_2_5_v_clause_step_substantive:
   fixes A :: array and n :: nat
