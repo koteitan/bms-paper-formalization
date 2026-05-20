@@ -5978,10 +5978,27 @@ text \<open>
   (\<open>p < l0\<close>), never in an intermediate block \<open>B_t\<close> with \<open>t < n\<close>.
 
   Empirically confirmed (1279 yaBMSs, 0 violations;
-  \<open>verify/verify_iv_at_zero_no_Bt_parent.py\<close>). The within-block landing
-  (\<open>S\<close> non-empty) is discharged fully below by
+  \<open>verify/verify_iv_at_zero_no_Bt_parent.py\<close>; re-run 2026-05-20).
+  The within-block landing (\<open>S\<close> non-empty) is discharged fully below by
   @{thm idx_B_earlier_block_lt_block_n}; only this outside-block-to-\<open>G\<close>
   refinement remains as a single isolated \<open>sorry\<close>.
+
+  \<^bold>\<open>Why this is the hard residual (math obstruction).\<close> With
+  \<open>m_parent (A[n]) 0 (idx_B(n, i)) = Some p\<close> the parent \<open>p\<close> is the
+  rightmost index below \<open>idx_B(n, i)\<close> whose row-0 value is strictly
+  below \<open>elem (A[n]) (idx_B(n, i)) 0\<close>. The existing \<open>outside_block\<close>
+  helpers give only \<open>p < idx_B(n, 0)\<close>; to upgrade to \<open>p < l0\<close> one
+  must exclude every \<^emph>\<open>intermediate-block\<close> candidate \<open>idx_B(t, j')\<close>
+  (\<open>0 \<le> t < n\<close>, \<open>j' < l1\<close>). Under \<open>max_parent_level A = Some 0\<close>,
+  @{thm elem_AEn_idx_B_eq_block_zero_at_row_zero_when_m0_zero} collapses
+  the row-0 value of any such candidate to \<open>elem (A[n]) (idx_B(0, j')) 0\<close>.
+  Crucially the \<open>S\<close>-empty hypothesis only forbids \<open>j' < i\<close>; a candidate
+  with offset \<open>j' \<ge> i\<close> still has block position below \<open>idx_B(n, i)\<close>,
+  so excluding it requires that \<open>elem (A[n]) (idx_B(0, i)) 0\<close> is a
+  row-0 \<^emph>\<open>minimum over all offsets\<close>, not merely over \<open>j' < i\<close>. That
+  global-minimum fact is genuine new BMS structure (it is the same core
+  shared with @{thm idx_B_n_zero_no_intermediate_B_t_ancestor} below) and
+  is not derivable from the current library; hence the isolated \<open>sorry\<close>.
 \<close>
 
 lemma clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G:
@@ -6120,6 +6137,17 @@ text \<open>
   \<open>verify/verify_chain_through_Bn_first.py\<close>: 0 of 441 BMSs realize the
   full premise combination), so the obligation is vacuously discharged;
   it is isolated here as a single \<open>sorry\<close>.
+
+  \<^bold>\<open>Math obstruction (shared core).\<close> By @{thm m_ancestor_target_lt} the
+  ancestor \<open>idx_B(t, j)\<close> already sits below \<open>idx_B(n, 0)\<close>
+  (@{thm idx_B_earlier_block_lt_block_n}), so positions alone yield no
+  contradiction: the chain from \<open>idx_B(n, 0)\<close> \<^emph>\<open>is\<close> allowed to leave
+  block \<open>n\<close> leftwards. What must be ruled out is that it leaves onto an
+  \<^emph>\<open>intermediate\<close> block column rather than a \<open>G\<close>-column — exactly the
+  intermediate-block-exclusion content shared with
+  @{thm clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G}.
+  Discharging it needs the row-0 global-minimum property of the
+  block structure, which is not in the current library; isolated \<open>sorry\<close>.
 \<close>
 
 lemma idx_B_n_zero_no_intermediate_B_t_ancestor:
@@ -6207,10 +6235,21 @@ text \<open>
   This is a refinement of clause (iv) (which allows a direct \<open>G\<close>-parent
   in general); for \<open>a > 0\<close> the \<open>G\<close>-parent case is empirically vacuous.
   Confirmed (yaBMS BFS, \<open>verify/verify_Bn_parent_not_below_zero.py\<close>:
-  885 BMSs, 0 failures; and a separate probe over 1246 expansions found
-  0 direct \<open>G\<close>-parents of any \<open>idx_B(n, a)\<close> with \<open>a > 0\<close>). Isolated as a
-  single \<open>sorry\<close>; the full gateway lemma is then proved from it by
-  induction on the block-\<open>n\<close> offset.
+  885 BMSs, 0 failures, re-run 2026-05-20; and a separate probe over
+  1246 expansions found 0 direct \<open>G\<close>-parents of any \<open>idx_B(n, a)\<close> with
+  \<open>a > 0\<close>). Isolated as a single \<open>sorry\<close>; the full gateway lemma is then
+  proved from it by induction on the block-\<open>n\<close> offset (see
+  @{thm idx_B_n_zero_gateway_aux}, which is fully discharged modulo this
+  step).
+
+  \<^bold>\<open>Math obstruction.\<close> At level \<open>m = 0\<close> the parent is the rightmost
+  candidate below \<open>idx_B(n, a)\<close>; the \<open>outside_block\<close> helper shows the
+  candidate set, restricted to indices \<open>< idx_B(n, 0)\<close>, would force
+  \<open>p < idx_B(n, 0)\<close> precisely when the within-block set \<open>S\<close> is empty.
+  So this step needs that \<open>S\<close> is \<^emph>\<open>non-empty\<close> for every \<open>a > 0\<close>: some
+  smaller block-\<open>n\<close> offset has a strictly smaller row-0 value. That is
+  the dual of the global-minimum property used by the two clause-(iv)
+  helpers above, and equally not yet in the library — bare \<open>sorry\<close>.
 \<close>
 
 lemma m_parent_block_n_stays_until_zero:
