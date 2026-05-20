@@ -1829,6 +1829,51 @@ text \<open>
   sorry there.
 \<close>
 
+text \<open>
+  Sharp ancestry conjecture that closes (*) at row 0 directly.
+
+  Empirically verified across 785 BMSs by
+  \<open>verify/verify_b0_col_ancestor_at_t.py\<close> (level-\<open>t\<close> form,
+  0 counter-examples) and the row-0 + level-monotonicity refinement
+  (0 counter-examples for both ``every \<open>s+j\<close> is a level-0
+  m-ancestor of \<open>s\<close>'' and ``level-\<open>t\<close> ancestry implies level-0
+  ancestry''): for \<open>A \<in> BMS\<close> with \<open>b0_start A = Some s\<close>,
+  \<open>max_parent_level A = Some t\<close>, \<open>t > 0\<close>, and \<open>0 < j\<close>
+  inside \<open>B\<^sub>0\<close> (\<open>j < arr_len (B0_block A) = l1 A\<close>), the
+  column \<open>s + j\<close> has \<open>s\<close> as a level-0 m-ancestor.
+
+  This is the SINGLE remaining structural fact behind (*); once
+  proven, \<open>bms_b0_col_clex_strict_row0\<close> below follows with no
+  further structural reasoning (just @{thm m_ancestor_elem_lt}).
+  The previously-tried BMS-induct on (*) itself was refuted, but
+  this ancestry form is the cleaner target: it isolates the
+  "\<open>s\<close> is the maximal common ancestor of the whole \<open>B\<^sub>0\<close>
+  block at level 0" property, which is what the m-parent chain
+  inside \<open>B\<^sub>0\<close> actually witnesses.
+\<close>
+
+lemma bms_b0_col_row0_ancestor: \<comment> \<open>verified ancestry core of (*)\<close>
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < arr_len (B0_block A)"
+      and j_pos: "0 < j"
+  shows "m_ancestor A 0 (s + j) s"
+  sorry
+
+text \<open>
+  Strict-at-row-0 (*) statement, now PROVEN modulo the single sharp
+  ancestry conjecture @{thm bms_b0_col_row0_ancestor}: a level-0
+  m-ancestor's row-0 element is strictly smaller
+  (@{thm m_ancestor_elem_lt} at \<open>m = 0\<close>), and \<open>elem A i 0 =
+  (A ! i) ! 0\<close> by @{thm elem_def}. No structural BMS induction is
+  used here; the proof is a one-line consequence of the ancestry
+  lemma, so the inductive \<open>sorry\<close> is now confined to the sharper
+  @{thm bms_b0_col_row0_ancestor}.
+\<close>
+
 lemma bms_b0_col_clex_strict_row0: \<comment> \<open>strict (*)-equivalent lex statement\<close>
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -1838,7 +1883,14 @@ lemma bms_b0_col_clex_strict_row0: \<comment> \<open>strict (*)-equivalent lex s
       and j_lt: "j < arr_len (B0_block A)"
       and j_pos: "0 < j"
   shows "(A ! s) ! 0 < (A ! (s + j)) ! 0"
-  sorry
+proof -
+  have anc: "m_ancestor A 0 (s + j) s"
+    by (rule bms_b0_col_row0_ancestor[OF A_BMS A_ne b0 mp t_pos j_lt j_pos])
+  have "elem A s 0 < elem A (s + j) 0"
+    by (rule m_ancestor_elem_lt[OF anc])
+  thus "(A ! s) ! 0 < (A ! (s + j)) ! 0"
+    unfolding elem_def .
+qed
 
 
 subsection \<open>Reverse direction: col_lt at row 0 to elem inequality\<close>
