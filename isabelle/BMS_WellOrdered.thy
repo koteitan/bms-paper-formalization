@@ -437,6 +437,49 @@ proof -
   thus ?thesis by blast
 qed
 
+text \<open>
+  Reflection bridge: a directly-provable repackaging of
+  @{thm lemma_2_6} into the exact five-clause shape consumed by the
+  \<open>refl_exists\<close> obligation in @{thm stable_rep_extend_strict}
+  below.  The crucial difference from the (currently unprovable as
+  stated) \<open>refl_exists\<close> is that the upper bound on the reflected
+  values is the \<^emph>\<open>sigma element\<close> \<open>\<alpha>\<close> supplied as a hypothesis,
+  \<^emph>\<open>not\<close> the data-dependent witness \<open>\<beta> = f_w (arr_len A - 1)\<close>.
+  Hunter's argument requires the seed's stable representation to be
+  chosen so that its last value lies in \<open>sigma_bound\<close>; under that
+  (not-yet-formalised) choice one can instantiate \<open>\<alpha>\<close> with that
+  value and this lemma discharges \<open>refl_exists\<close> verbatim.  We drop
+  @{thm lemma_2_6}'s trailing
+  \<open>stable_lt m \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt m (f \<delta>\<^sub>0) \<alpha>\<close> clause, which the
+  caller does not use.
+\<close>
+
+lemma lemma_2_6_reflect_package:
+  assumes \<alpha>_in: "\<alpha> \<in> sigma_bound" and \<beta>_in: "\<beta> \<in> sigma_bound"
+      and \<omega>_lt: "\<omega>_o <\<^sub>o \<alpha>" and stab: "stable_lt n \<alpha> \<beta>"
+      and X_fin: "finite X" and Y_fin: "finite Y"
+      and bound: "\<forall>\<gamma> \<in> X. \<forall>\<delta> \<in> Y. \<gamma> <\<^sub>o \<alpha> \<and> (\<alpha> = \<delta> \<or> \<alpha> <\<^sub>o \<delta>) \<and> \<delta> <\<^sub>o \<beta>"
+  shows "\<exists>Y' f.
+            bij_betw f Y Y'
+          \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f \<delta>\<^sub>0) <\<^sub>o (f \<delta>\<^sub>1))
+          \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<forall>k.
+                stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f \<delta>\<^sub>0) (f \<delta>\<^sub>1))
+          \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0) \<and> (f \<delta>\<^sub>0) <\<^sub>o \<alpha>)
+          \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<forall>k.
+                stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f \<delta>\<^sub>0))"
+proof -
+  obtain Y' f where
+        bij: "bij_betw f Y Y'"
+    and lt\<alpha>: "\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0) \<and> (f \<delta>\<^sub>0) <\<^sub>o \<alpha>"
+    and stabX: "\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<forall>k.
+                  stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f \<delta>\<^sub>0)"
+    and mono: "\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f \<delta>\<^sub>0) <\<^sub>o (f \<delta>\<^sub>1)"
+    and stabY: "\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<forall>k.
+                  stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f \<delta>\<^sub>0) (f \<delta>\<^sub>1)"
+    using lemma_2_6[OF \<alpha>_in \<beta>_in \<omega>_lt stab X_fin Y_fin bound] by blast
+  show ?thesis using bij mono stabY lt\<alpha> stabX by blast
+qed
+
 lemma stable_rep_extend_strict:
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []" and f_rep: "stable_rep A f"
   shows "\<exists>g \<beta>. \<beta> <\<^sub>o o_of A
@@ -543,16 +586,21 @@ next
               \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
         \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
               stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f_refl \<delta>\<^sub>0))"
-      \<comment> \<open>Residual: package the @{thm lemma_2_6} application.
-          Inputs: \<open>X_set\<close>, \<open>Y_set\<close> finite (above); choice of
-          \<open>\<alpha>\<^sub>L\<^sub>2\<^sub>6 = \<beta>\<close> in \<open>sigma_bound\<close> (needs
-          \<open>\<beta> \<in> sigma_bound\<close>, which is part of Hunter's choice of
-          stable rep on the seed via @{thm sigma_pair_exists});
-          choice of \<open>\<beta>\<^sub>L\<^sub>2\<^sub>6 \<in> sigma_bound\<close> strictly above \<open>\<beta>\<close>
-          with \<open>stable_lt n \<beta> \<beta>\<^sub>L\<^sub>2\<^sub>6\<close>.  The application then yields
-          exactly the requested data, dropping the trailing
-          \<open>stable_lt m \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt m (f \<delta>\<^sub>0) \<alpha>\<close>
-          clause that we do not need at this granularity.\<close>
+      \<comment> \<open>Residual.  GAP DIAGNOSIS (C-t27): as currently \<^emph>\<open>stated\<close>
+          this clause is NOT derivable from @{thm lemma_2_6}.  The
+          fourth conjunct demands \<open>f_refl \<delta>\<^sub>0 <\<^sub>o \<beta>\<close> with the
+          \<^emph>\<open>data\<close> value \<open>\<beta> = f_w (arr_len A - 1)\<close>, whereas
+          @{thm lemma_2_6} only ever produces \<open>f \<delta>\<^sub>0 <\<^sub>o \<alpha>\<close> for a
+          \<^emph>\<open>sigma\<close> element \<open>\<alpha>\<close>.  Forcing \<open>\<alpha> = \<beta>\<close> makes the
+          @{thm lemma_2_6} precondition contradictory: it would
+          require \<open>\<beta> = \<delta> \<or> \<beta> <\<^sub>o \<delta>\<close> AND \<open>\<delta> <\<^sub>o \<beta>\<close> for every
+          \<open>\<delta> \<in> Y_set\<close> (where in fact \<open>\<delta> <\<^sub>o \<beta>\<close> holds by
+          @{thm stable_rep_max_strict_below_last}).  RESOLUTION:
+          restate the obligation with the bound \<open>\<alpha>\<close> a sigma
+          element (Hunter's seed must be chosen with last value in
+          \<open>sigma_bound\<close>), then @{thm lemma_2_6_reflect_package}
+          discharges it verbatim.  Until the seed-in-sigma choice is
+          formalised, this remains a sorry.\<close>
       sorry
     obtain Y_set' f_refl where
           f_refl_bij: "bij_betw f_refl Y_set Y_set'"
