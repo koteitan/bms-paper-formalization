@@ -440,7 +440,7 @@ qed
 text \<open>
   Reflection bridge: a directly-provable repackaging of
   @{thm lemma_2_6} into the exact five-clause shape consumed by the
-  \<open>refl_exists\<close> obligation in @{thm stable_rep_extend_strict}
+  \<open>refl_exists\<close> obligation in \<open>stable_rep_extend_strict\<close>
   below.  The crucial difference from the (currently unprovable as
   stated) \<open>refl_exists\<close> is that the upper bound on the reflected
   values is the \<^emph>\<open>sigma element\<close> \<open>\<alpha>\<close> supplied as a hypothesis,

@@ -3657,25 +3657,39 @@ proof -
     assume ne: "[x \<leftarrow> [0..<j]. ?P x] \<noteq> []"
     \<comment> \<open>Pick a witness \<open>x\<^sub>0\<close>: a \<open>(Suc k')\<close>-parent candidate of \<open>(s+j)\<close>
         sitting in \<open>[s, s+j)\<close>.\<close>
-    obtain x0 where x0_in: "x0 \<in> set [x \<leftarrow> [0..<j]. ?P x]"
-      using ne by (cases "[x \<leftarrow> [0..<j]. ?P x]") auto
-    have x0_lt_j: "x0 < j" using x0_in by auto
-    have Px0: "?P x0" using x0_in by auto
+    have nonempty_ex: "\<exists>x \<in> set [0..<j]. ?P x"
+    proof (rule ccontr)
+      assume "\<not> (\<exists>x \<in> set [0..<j]. ?P x)"
+      hence "\<forall>x \<in> set [0..<j]. \<not> ?P x" by blast
+      hence "[x \<leftarrow> [0..<j]. ?P x] = []" using filter_empty_conv by blast
+      thus False using ne by simp
+    qed
+    then obtain x0 where x0_in_upt: "x0 \<in> set [0..<j]" and Px0: "?P x0"
+      by blast
+    have x0_lt_j: "x0 < j" using x0_in_upt by simp
     have elem_lt: "elem A (s + x0) (Suc k') < elem A (s + j) (Suc k')"
-      using Px0 by simp
-    have anc_k': "m_ancestor A k' (s + j) (s + x0)" using Px0 by simp
+      using Px0 by blast
+    have anc_k': "m_ancestor A k' (s + j) (s + x0)" using Px0 by blast
     \<comment> \<open>So \<open>s+x0\<close> is a candidate for \<open>m_parent A (Suc k') (s+j)\<close>.\<close>
     let ?Q = "\<lambda>p. elem A p (Suc k') < elem A (s + j) (Suc k')
                   \<and> m_ancestor A k' (s + j) p"
-    have sx0_cand: "?Q (s + x0)" using elem_lt anc_k' by simp
+    have sx0_cand: "?Q (s + x0)" using elem_lt anc_k' by blast
     have sx0_in_cands: "(s + x0) \<in> set (filter ?Q [0..<(s + j)])"
-      using x0_lt_j sx0_cand by simp
+    proof -
+      have "s + x0 \<in> set [0..<(s + j)]" using x0_lt_j by simp
+      thus ?thesis using sx0_cand by (simp only: set_filter) blast
+    qed
     have cands_ne: "filter ?Q [0..<(s + j)] \<noteq> []"
-      using sx0_in_cands by (cases "filter ?Q [0..<(s + j)]") auto
+      using sx0_in_cands by (metis empty_iff list.set(1))
     \<comment> \<open>Hence \<open>m_parent A (Suc k') (s+j) = Some q\<^sub>1\<close> with \<open>q\<^sub>1 = last cands\<close>.\<close>
-    obtain q1 where mp_sj: "m_parent A (Suc k') (s + j) = Some q1"
-                and q1_eq: "q1 = last (filter ?Q [0..<(s + j)])"
-      using cands_ne by (auto simp add: Let_def)
+    have mp_eq: "m_parent A (Suc k') (s + j)
+               = (if filter ?Q [0..<(s + j)] = [] then None
+                  else Some (last (filter ?Q [0..<(s + j)])))"
+      by (simp add: Let_def)
+    define q1 where "q1 \<equiv> last (filter ?Q [0..<(s + j)])"
+    have mp_sj: "m_parent A (Suc k') (s + j) = Some q1"
+      using mp_eq cands_ne q1_def by simp
+    have q1_eq: "q1 = last (filter ?Q [0..<(s + j)])" using q1_def by simp
     \<comment> \<open>\<open>q\<^sub>1 \<ge> s + x0 \<ge> s\<close> by maximality (\<open>last\<close> of a sorted candidate list).\<close>
     have q1_ge_sx0: "s + x0 \<le> q1"
     proof -
@@ -6643,7 +6657,7 @@ proof -
     show ?thesis
       \<comment> \<open>RESIDUAL (forward, asc): uniform-translation chain-transfer through
           the matched parent step (n\<cdot>delta), recursing on the parent column.
-          Sound by @{file \<open>verify/verify_clause_i_forward.py\<close>}.\<close>
+          Sound by \<open>verify/verify_clause_i_forward.py\<close>.\<close>
       sorry
   qed
 qed
@@ -6693,7 +6707,7 @@ proof -
       \<comment> \<open>RESIDUAL (forward, not-asc): chain-transfer through the matched
           parent step, recursing on the strictly smaller parent column.
           Sound by the empirical check
-          @{file \<open>verify/verify_clause_i_forward.py\<close>} (441 BMS arrays,
+          \<open>verify/verify_clause_i_forward.py\<close> (441 BMS arrays,
           no counter-example).\<close>
       sorry
   qed
@@ -6794,7 +6808,7 @@ proof -
     show ?thesis
       \<comment> \<open>RESIDUAL (backward, asc): uniform-translation chain-transfer
           through the matched parent step, recursing on the parent column.
-          Sound by @{file \<open>verify/verify_clause_i_forward.py\<close>}.\<close>
+          Sound by \<open>verify/verify_clause_i_forward.py\<close>.\<close>
       sorry
   qed
 qed
@@ -6835,7 +6849,7 @@ proof -
     show ?thesis
       \<comment> \<open>RESIDUAL (backward, not-asc): chain-transfer through the matched
           parent step, recursing on the parent column.
-          Sound by @{file \<open>verify/verify_clause_i_forward.py\<close>}.\<close>
+          Sound by \<open>verify/verify_clause_i_forward.py\<close>.\<close>
       sorry
   qed
 qed
