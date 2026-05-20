@@ -6411,8 +6411,69 @@ next
 qed
 
 text \<open>
-  Backward direction of (i) at \<open>k\<close>, dual to the forward direction.
+  Backward direction of (i) at \<open>k\<close>, dual to the forward direction:
+  a chain from \<open>B_n[j]\<close> reaching \<open>G[i]\<close> transfers to a chain from
+  \<open>B_0[j]\<close>. The proof mirrors the forward direction structurally,
+  using the same per-column ascending case-split on column \<open>j\<close>
+  (Hunter paper page 7), with (iv) at \<open>k\<close>, (ii) at \<open>k\<close>, and IH (i)
+  at \<open>k' < k\<close>.
+
+  Empirical status: the iff (both directions, all \<open>k\<close>) holds across
+  441 Hunter BMS arrays with no counter-example
+  (\<open>verify/verify_clause_i_forward.py\<close>, which exercises the full
+  biconditional and hence the backward direction as well). The proof
+  is structured by the case-split on whether the target column \<open>j\<close>
+  ascends at level \<open>k\<close>, giving two named sub-lemmas whose proofs are
+  left as labelled \<open>sorry\<close>s:
+
+    \<bullet> CASE (A) \<open>ascends A j k\<close>: every row of column \<open>j\<close> at or
+      below \<open>k\<close> is uniformly translated by \<open>n \<cdot> delta\<close> between
+      \<open>B_0\<close> and \<open>B_n\<close>; combined with (iv) at \<open>k\<close> and IH (i) at
+      \<open>k' < k\<close>, the \<open>k\<close>-chain from \<open>B_n[j]\<close> to \<open>G[i]\<close> transfers
+      back to \<open>B_0[j]\<close>.
+
+    \<bullet> CASE (B) \<open>\<not> ascends A j k\<close>: row \<open>k\<close> of column \<open>j\<close>
+      coincides between \<open>B_0\<close> and \<open>B_n\<close>
+      (\<open>elem_AEn_cross_block_when_not_ascends\<close>), so the \<open>k\<close>-ancestor
+      relation toward \<open>G[i]\<close> is preserved; (ii) at \<open>k\<close> together with
+      IH (i) transfer the chain.
 \<close>
+
+lemma lemma_2_5_i_clause_step_backward_case_ascends:
+  \<comment> \<open>CASE (A): target column \<open>j\<close> ascends at level \<open>k\<close> (dual of
+      @{thm lemma_2_5_i_clause_step_forward_case_ascends}).\<close>
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and n_pos: "0 < n"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+      and i_lt: "i < l0 A" and j_lt: "j < l1 A"
+      and asc: "ascends A j k"
+      and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+  sorry
+
+lemma lemma_2_5_i_clause_step_backward_case_not_ascends:
+  \<comment> \<open>CASE (B): target column \<open>j\<close> does not ascend at level \<open>k\<close>
+      (dual of @{thm lemma_2_5_i_clause_step_forward_case_not_ascends}).\<close>
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and n_pos: "0 < n"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+      and i_lt: "i < l0 A" and j_lt: "j < l1 A"
+      and not_asc: "\<not> ascends A j k"
+      and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+  sorry
 
 lemma lemma_2_5_i_clause_step_backward:
   fixes A :: array and n :: nat
@@ -6427,7 +6488,23 @@ lemma lemma_2_5_i_clause_step_backward:
       and i_lt: "i < l0 A" and j_lt: "j < l1 A"
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
-  sorry
+proof (cases "ascends A j k")
+  case True
+  \<comment> \<open>CASE (A): uniform translation by \<open>n \<cdot> delta\<close>; (iv) + (ii) + IH.\<close>
+  show ?thesis
+    by (rule lemma_2_5_i_clause_step_backward_case_ascends
+              [OF A_BMS A_ne b0 l1_pos n_pos IH
+                  clause_ii_at_k clause_iii_at_k clause_iv_at_k
+                  i_lt j_lt True H])
+next
+  case False
+  \<comment> \<open>CASE (B): row \<open>k\<close> coincides across blocks; (ii) + IH.\<close>
+  show ?thesis
+    by (rule lemma_2_5_i_clause_step_backward_case_not_ascends
+              [OF A_BMS A_ne b0 l1_pos n_pos IH
+                  clause_ii_at_k clause_iii_at_k clause_iv_at_k
+                  i_lt j_lt False H])
+qed
 
 lemma lemma_2_5_i_clause_step:
   fixes A :: array
