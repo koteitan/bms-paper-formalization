@@ -43,7 +43,8 @@ graph LR
   - 🚨 `stable_rep_extend_strict` Suc n' Some s case (BMS_WellOrdered.thy) — dispatch 構造化済、 残 3 sorry
     - ✅ β 構成 [ID 14]: `stable_rep_max_strict_below_last` + `o_of_beta_witness_from_stable_rep` で β = f(arr_len A - 1) witness 確立 (Ord_t 線形性不要)
     - ✅ `lemma_2_6_reflect_package` — Lemma 2.6 を refl_exists の 5-clause 形に再パッケージ (bound = sigma 元 α 版、 完全証明)
-    - 🤖 🚨 `refl_exists` [ID 43] — Lemma 2.6 適用で X/Y/f reflection witness 存在。 **bound mismatch 診断済**: refl は data 値 β を要求するが lemma_2_6 は sigma 元 α を出す → seed stable rep の最終値を sigma_bound に取る infra が要
+    - ✅ `refl_exists_from_sigma_align` — sigma-alignment 仮説下で lemma_2_6_reflect_package から refl_exists の 5-clause を完全証明 (bijection 構成済)
+    - 🤖 🚨 `refl_exists` [ID 43] — 残 residual は **sigma-alignment 存在のみ** (sigma 元 α と β_p で α<ₒβ + stable_lt、 Hunter の seed-in-σ invariant、 `sigma_pair_exists` 拡張 [ID 67] と一致)
     - 🤖 🚨 `g_stable_rep` [ID 12,13] — g 構成 (G_block→f、 B_i→Y' 反射値) が stable_rep を満たす証明 (Lemma 2.5 本質的使用)
     - 🤖 🚨 `g_lt_β` — g の値が β 未満
     - ✅ `stable_rep_extend_strict_zero`: n=0 base [ID 31]
@@ -75,10 +76,10 @@ graph LR
     - ✅ 2.6.B: `φ_1` が Σ_{n+1} [ID 18] (`LevyHier` inductive + nat 帰納で axiom→lemma)
     - ✅ 2.6.D: 有限 Σ_{n+1} 連言閉包 [ID 20] (`is_Sigma_n_And_closure` lemma)
     - ✅ 2.6.E: Σ_{n+1} 存在閉包 [ID 21] (`LH_Exists_closure` で axiom→lemma)
-    - 🤖 🚨 2.6.C: `φ_2(η,k) := L_η ≺_{Σ_{k+1}} L` が Π_{k+1} (Kranakis 1982 Thm 1.8) [ID 19] — `L_elem_fm` 定数の明示定義が要
-    - 🤖 🚨 2.6.F: ψ ∧ φ の L_β から L_α への反射 [ID 22] — `sats_L` 定義 + Paulson `Ex_reflection`+`And_reflection`
-    - 🤖 🚨 2.6.G: L_α 内の証拠から Y' と全単射 f を構成 [ID 23] — `bij_ZF`/`witness_fm` 定義
-    - 🤖 🚨 `stab_fm_is_Sigma_succ_k` base axiom — `stab_fm` の Member/Forall/Nand 明示定義で discharge
+    - ✅ 2.6.C: `φ_2` が Π_{k+1} [ID 19] — `L_elem_fm := Forall(stab_matrix)` 定義 + `LH_Forall` で axiom→lemma
+    - ✅ `stab_fm_is_Sigma_succ_k` — `stab_fm := Exists(stab_matrix)` 明示定義 + `Sigma_0_imp_is_Pi_n` で axiom→lemma (axiomatize ブロック削除)
+    - 🤖 🚨 2.6.F: ψ ∧ φ の L_β から L_α への反射 [ID 22] — `Lset_ZF`/`sats_L` は Paulson `Lset`/`sats` に definition 化済、 statement は Paulson `Ex_reflection`+`And_reflection` (ClEx 経由) で discharge 要 (現 axiom)
+    - 🤖 🚨 2.6.G: L_α 内の証拠から Y' と全単射 f を構成 [ID 23] — `bij_ZF` は Paulson `bij` に definition 化済、 witness 抽出 (`DPow_absolute` 要) は現 axiom
   - 🚨 **Lemma 2.5**: 5 clauses ancestry — layered per-clause induction
     - 🚨 `lemma_2_5_at_main` (旧 5-AND assembly 削除済、 layered 5-stage 組み立て待ち)
       - ✅ `lemma_2_5_at_n_zero`: n=0 base
@@ -92,7 +93,7 @@ graph LR
         - ✅ `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0; (*) + less_induct + m_parent_row0_b0_when_row0_lt helper で証明完了
         - ✅ `m_parent_row0_b0_when_row0_lt` — BMS-free helper: elem A s 0 < elem A (s+j) 0 + j>0 から m_parent A 0 (s+j) ∈ Some p with p ∈ [s, s+j-1] を導出
         - ✅ `bms_b0_row0_gt_s` — (*): t>0 ⟹ elem A s 0 < elem A (s+j) 0; BMS.induct 戦略 (構造保存) は refuted、 lex clex 経由に転換 (`bms_b0_row0_strict_from_clex`)、 BMS_Ancestry 側は sorry-free 化、 核を BMS_Lex に移動
-        - 🤖 🚨 `bms_b0_col_row0_ancestor` (BMS_Lex) — (*) lex 核: s が B_0 全列の level-0 共通祖先 (785 BMS 経験真)
+        - 🤖 🚨 `bms_b0_col_row0_ancestor` (BMS_Lex) — (*) lex 核: s が B_0 全列の level-0 共通祖先 (785 BMS 経験真)。 **収束核 (Batch 2D 発見)**: (ii) の chain_step_stays, (iv) の block_n_stays/no_intermediate_B_t/lands_in_G は全てこの「BMS 標準形で B_0 第1列が row-0 global 最小」 に帰着。 既存 library では到達不可、 BMS 構築 (lex order) からの本格構造理論が要 (循環依存 row0_gt_s→clex_strict_row0→row0_ancestor あり)
         - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc` — case (A) 本体 helper: 全 col ascend at row 0 仮定で row-0 chain block 不変、 less_induct on j + within/outside m_parent helpers で証明 (~300 line)
         - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc` — within-block m_parent at row 0 under all_asc、 elem_AEn_lt_block_invariant_when_both_ascend で filter_cong
         - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc` — outside-block m_parent at row 0 under all_asc、 contradiction via candidate-in-block ⇒ in S contradiction
@@ -123,7 +124,7 @@ graph LR
     - 🚨 **Stage 3: ∀k. (iii)@k** `lemma_2_5_iii_main` (induction 不要、 直接 corollary)
       - ✅ step `lemma_2_5_iii_clause_step` (入力: (ii)@k via Stage 1; **IH 不要**) — body sorry-free、 STEP 1 + n=1 + n≥2 全て dispatch
       - ✅ `iii_block_shift_bridge_n_ge_2` — t-induction (`bridge_upto t`) で完全証明、 核を iii_single_step_t_to_Suc_t に局所化 (441 BMS 経験真)
-      - 🤖 🚨 `iii_single_step_t_to_Suc_t` — (iii) 核: source block t+1/target t → t+2/t+1 の +1 offset 単一ブロック shift 不変性
+      - 🤖 🚨 `iii_single_step_t_to_Suc_t` — (iii) 核: +1 offset 単一ブロック shift 不変性。 scaffold 済 (両端点が +delta 一様平行移動を `elem_AEn_idx_B_block_shift_diff` で閉形式証明、 残ギャップ「平行移動が ancestry verdict 保存」 のみ)
     - 🚨 **Stage 4: ∀k. (i)@k** `lemma_2_5_i_main` (k-induction wrapper、 provides **IH(i)**)
       - ✅ step `lemma_2_5_i_clause_step` (入力: **IH(i)** + (ii)(iii)(iv)@k via Stages 1-3) — body sorry-free、 trivial + iff 構造で 2 named lemmas に dispatch
       - ✅ `lemma_2_5_i_clause_step_forward` / `_backward` — dispatch `proof (cases "ascends A j k")` で完全証明、 核を 4 case leaf に局所化
