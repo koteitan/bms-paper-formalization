@@ -6360,7 +6360,31 @@ lemma lemma_2_5_i_clause_step_forward_case_ascends:
       and asc: "ascends A j k"
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
-  sorry
+proof -
+  \<comment> \<open>As in the not-asc case, peel the first \<open>m_parent\<close> step. With \<open>j\<close>
+      ascending at \<open>k\<close>, every row of column \<open>j\<close> at or below \<open>k\<close> is
+      uniformly translated by \<open>n \<cdot> delta\<close> across blocks
+      (@{thm elem_AEn_cross_block_when_ascends}); combined with (iv)@k the
+      parent stays in a \<open>G\<close>- or block-\<open>n\<close> column, never an intermediate
+      block. The None case is impossible by @{thm H}.\<close>
+  have tgt_lt_src0: "idx_G A i < idx_B_in_expansion A 0 j"
+    using i_lt
+    by (simp add: idx_G_def idx_B_in_expansion_def)
+  show ?thesis
+  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A 0 j)")
+    case None
+    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+      using m_anc_via_parent_none[OF None] .
+    thus ?thesis using H by simp
+  next
+    case (Some p0)
+    show ?thesis
+      \<comment> \<open>RESIDUAL (forward, asc): uniform-translation chain-transfer through
+          the matched parent step (n\<cdot>delta), recursing on the parent column.
+          Sound by @{file \<open>verify/verify_clause_i_forward.py\<close>}.\<close>
+      sorry
+  qed
+qed
 
 lemma lemma_2_5_i_clause_step_forward_case_not_ascends:
   \<comment> \<open>CASE (B): source column \<open>j\<close> does not ascend at level \<open>k\<close>.\<close>
@@ -6377,7 +6401,41 @@ lemma lemma_2_5_i_clause_step_forward_case_not_ascends:
       and not_asc: "\<not> ascends A j k"
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
-  sorry
+proof -
+  \<comment> \<open>Opening move shared with the B\<rightarrow>B engine
+      @{thm m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc}:
+      peel the first \<open>m_parent\<close> step of the source column. The target
+      \<open>idx_G A i = i < l0 A\<close> sits strictly below every B-column index
+      \<open>idx_B_in_expansion A c x = l0 A + c * l1 A + x\<close>, so it can only be
+      reached once the chain leaves the B-region (outside-block step). The
+      None case is impossible because the source has a \<open>k\<close>-ancestor by
+      @{thm H}.\<close>
+  have tgt_lt_src0: "idx_G A i < idx_B_in_expansion A 0 j"
+    using i_lt
+    by (simp add: idx_G_def idx_B_in_expansion_def)
+  show ?thesis
+  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A 0 j)")
+    case None
+    \<comment> \<open>No parent: @{thm H} is then false, discharging the goal.\<close>
+    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+      using m_anc_via_parent_none[OF None] .
+    thus ?thesis using H by simp
+  next
+    case (Some p0)
+    \<comment> \<open>The chain steps through the parent \<open>p0\<close> of the block-0 source. To
+        transfer the chain to the block-\<open>n\<close> source we must match \<open>p0\<close>
+        with the parent of \<open>idx_B_in_expansion A n j\<close>; this is the
+        residual recursive core (B\<rightarrow>G analogue of the B\<rightarrow>B engine), left as
+        a labelled sorry below.\<close>
+    show ?thesis
+      \<comment> \<open>RESIDUAL (forward, not-asc): chain-transfer through the matched
+          parent step, recursing on the strictly smaller parent column.
+          Sound by the empirical check
+          @{file \<open>verify/verify_clause_i_forward.py\<close>} (441 BMS arrays,
+          no counter-example).\<close>
+      sorry
+  qed
+qed
 
 lemma lemma_2_5_i_clause_step_forward:
   fixes A :: array and n :: nat
@@ -6455,7 +6513,29 @@ lemma lemma_2_5_i_clause_step_backward_case_ascends:
       and asc: "ascends A j k"
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
-  sorry
+proof -
+  \<comment> \<open>Dual of @{thm lemma_2_5_i_clause_step_forward_case_ascends}: peel the
+      first \<open>m_parent\<close> step of the block-\<open>n\<close> source. The None case is
+      impossible by @{thm H}; the residual recursive transfer is left as a
+      labelled sorry.\<close>
+  have tgt_lt_srcn: "idx_G A i < idx_B_in_expansion A n j"
+    using i_lt
+    by (simp add: idx_G_def idx_B_in_expansion_def)
+  show ?thesis
+  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A n j)")
+    case None
+    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+      using m_anc_via_parent_none[OF None] .
+    thus ?thesis using H by simp
+  next
+    case (Some pn)
+    show ?thesis
+      \<comment> \<open>RESIDUAL (backward, asc): uniform-translation chain-transfer
+          through the matched parent step, recursing on the parent column.
+          Sound by @{file \<open>verify/verify_clause_i_forward.py\<close>}.\<close>
+      sorry
+  qed
+qed
 
 lemma lemma_2_5_i_clause_step_backward_case_not_ascends:
   \<comment> \<open>CASE (B): target column \<open>j\<close> does not ascend at level \<open>k\<close>
@@ -6473,7 +6553,30 @@ lemma lemma_2_5_i_clause_step_backward_case_not_ascends:
       and not_asc: "\<not> ascends A j k"
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
-  sorry
+proof -
+  \<comment> \<open>Dual of @{thm lemma_2_5_i_clause_step_forward_case_not_ascends}:
+      row \<open>k\<close> of column \<open>j\<close> coincides across blocks
+      (@{thm elem_AEn_cross_block_when_not_ascends}), so peeling the first
+      \<open>m_parent\<close> step of the block-\<open>n\<close> source and transferring it back to
+      block 0 via (ii)@k preserves ancestry. None case impossible by @{thm H}.\<close>
+  have tgt_lt_srcn: "idx_G A i < idx_B_in_expansion A n j"
+    using i_lt
+    by (simp add: idx_G_def idx_B_in_expansion_def)
+  show ?thesis
+  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A n j)")
+    case None
+    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+      using m_anc_via_parent_none[OF None] .
+    thus ?thesis using H by simp
+  next
+    case (Some pn)
+    show ?thesis
+      \<comment> \<open>RESIDUAL (backward, not-asc): chain-transfer through the matched
+          parent step, recursing on the parent column.
+          Sound by @{file \<open>verify/verify_clause_i_forward.py\<close>}.\<close>
+      sorry
+  qed
+qed
 
 lemma lemma_2_5_i_clause_step_backward:
   fixes A :: array and n :: nat
