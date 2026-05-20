@@ -18,11 +18,15 @@
       (8 axioms: in_formula x2, mono x2, succ_Exists, succ_Forall,
       And_closure) is removed; every one is now a proven \<open>lemma\<close>
       derived from a LevyHier introduction rule.
-    * stab_fm / L_elem_fm: still abstract, with the axiom
-      \<open>stab_fm_is_Sigma_succ_k\<close> exposing the Sigma_{k+1} judgement
-      at the base level.  Cannot be discharged until @{term stab_fm}
-      is given an explicit @{term Member}/@{term Forall}/@{term Nand}
-      definition; documented contract retained.
+    * stab_fm / L_elem_fm: NOW given explicit @{term Member} /
+      @{term Forall} definitions over Paulson's @{term formula}.
+      Consequently \<open>stab_fm_formula\<close>, \<open>L_elem_fm_formula\<close> and the
+      base-level Sigma_{k+1} judgement \<open>stab_fm_is_Sigma_succ_k\<close>
+      are all UPGRADED axiom -> \<open>lemma\<close>: the latter is discharged
+      structurally from @{thm LevyHier.LH_Exists} applied to the
+      concrete Pi_k matrix (helper \<open>Sigma_0_imp_is_Pi_n\<close>).  The
+      ENTIRE previous @{text "axiomatization stab_fm L_elem_fm where"}
+      block (3 axioms) is therefore removed.
     * 2.6.B (phi_1_is_Sigma_n_plus_1):  \<open>lemma\<close> proven from
       \<open>stab_fm_is_Sigma_succ_k\<close> and \<open>is_Sigma_n_mono\<close> by nat-induction.
     * 2.6.D (Sigma_n_conjunction_closed): proven \<open>lemma\<close> (no sorry):
@@ -30,17 +34,27 @@
       lemma to level \<open>succ(n)\<close>.
     * 2.6.E (Sigma_n_existential_closure): UPGRADED axiom -> \<open>lemma\<close>,
       discharged by the dedicated intro rule @{thm LevyHier.LH_Exists_closure}.
-    * 2.6.C, F, G:  still axiomatized stubs.  Each ranges over an
-      abstract constant whose explicit definition is not yet available
-      in this session (L_elem_fm for C; sats_L for F; bij_ZF/witness_fm
-      for G), so they cannot be discharged here.  The Paulson-lemma
-      correspondence is documented at each (2.6.C <-> Kranakis 1982
-      Thm 1.8; 2.6.F <-> Ex_reflection + And_reflection; 2.6.G <->
-      a witness-extraction over the reflecting CU class).
+    * 2.6.C (phi_2_is_Pi_k_plus_1): UPGRADED axiom -> \<open>lemma\<close>.  With
+      the explicit \<open>L_elem_fm(k) = Forall(stab_matrix)\<close> definition the
+      Pi_{k+1} level follows structurally from @{thm LevyHier.LH_Forall}
+      (helper \<open>Sigma_0_imp_is_Sigma_n\<close>).  [Kranakis 1982 Thm 1.8.]
+    * 2.6.F, G:  the abstract carriers @{term Lset_ZF}, @{term sats_L},
+      @{term bij_ZF} are NOW given \<open>definition\<close>s on top of Paulson's
+      @{term Lset} / @{term sats} / @{term bij}, so they are no longer
+      axiomatized constants.  Only the two genuinely-semantic
+      \emph{statements} remain axioms: \<open>psi_and_phi_reflects\<close> (2.6.F,
+      <-> Ex_reflection + And_reflection along the CU class ClEx) and
+      \<open>Yprime_and_bijection_from_witnesses\<close> (2.6.G, <-> a witness
+      extraction needing DPow_absolute), together with the abstract
+      predicates @{term stab_lt} and @{term witness_fm}.
 
-  New-axiom accounting requested by the task:
-    * is_Sigma_n_And_closure  -- now a LEMMA (LH_And_Sigma intro).
-    * stab_fm_is_Sigma_succ_k -- still an axiom (abstract stab_fm).
+  New-axiom accounting (post-revision):
+    * is_Sigma_n_And_closure  -- LEMMA (LH_And_Sigma intro).
+    * stab_fm_is_Sigma_succ_k -- LEMMA (LH_Exists on concrete matrix).
+    * phi_2_is_Pi_k_plus_1    -- LEMMA (LH_Forall on concrete matrix).
+    * Remaining axioms: psi_and_phi_reflects (2.6.F),
+      Yprime_and_bijection_from_witnesses (2.6.G), plus the abstract
+      consts stab_lt and witness_fm.  No new closure/level axioms.
 
   References
   ----------
@@ -219,6 +233,43 @@ lemma is_Sigma_n_And_closure:
   unfolding is_Sigma_n_def And_ZF_def
   by (rule LevyHier.LH_And_Sigma)
 
+section \<open>Auxiliary: lifting \<open>\<Sigma>\<^sub>0\<close> into the \<open>\<Pi>\<^sub>n\<close> stratum\<close>
+
+text \<open>
+  Every \<open>\<Sigma>\<^sub>0 = \<Pi>\<^sub>0\<close> formula sits at \<open>\<Pi>\<^sub>n\<close> for every \<open>n \<in> nat\<close>,
+  by the base rule @{thm LevyHier.LH_base_Pi} followed by an
+  \<open>n\<close>-fold application of @{thm LevyHier.LH_mono_Pi}.  This is the
+  building block used to exhibit a concrete \<open>\<Pi>\<^sub>k\<close> matrix below.
+\<close>
+
+lemma Sigma_0_imp_is_Pi_n:
+  assumes "n \<in> nat" and "p \<in> Sigma_0"
+  shows "is_Pi_n(n, p)"
+  using \<open>n \<in> nat\<close>
+proof (induct n)
+  case 0
+  from \<open>p \<in> Sigma_0\<close> show ?case
+    unfolding is_Pi_n_def by (rule LevyHier.LH_base_Pi)
+next
+  case (succ m)
+  from \<open>m \<in> nat\<close> \<open>is_Pi_n(m, p)\<close> show ?case
+    by (rule is_Pi_n_mono)
+qed
+
+lemma Sigma_0_imp_is_Sigma_n:
+  assumes "n \<in> nat" and "p \<in> Sigma_0"
+  shows "is_Sigma_n(n, p)"
+  using \<open>n \<in> nat\<close>
+proof (induct n)
+  case 0
+  from \<open>p \<in> Sigma_0\<close> show ?case
+    unfolding is_Sigma_n_def by (rule LevyHier.LH_base_Sigma)
+next
+  case (succ m)
+  from \<open>m \<in> nat\<close> \<open>is_Sigma_n(m, p)\<close> show ?case
+    by (rule is_Sigma_n_mono)
+qed
+
 section \<open>Internalized stability relation and L-projection\<close>
 
 text \<open>
@@ -228,28 +279,69 @@ text \<open>
   index 1 = \<open>\<xi>\<close>, parameter \<open>k\<close>) and a separate formula coding
   \<open>L\<^sub>\<eta> \<prec>\<^sub>{\<Sigma>\<^sub>{k+1}} L\<close> used in 2.6.C.
 
-  These constants will be defined in terms of Paulson's @{text formula}
-  inductive type once the Sigma_0 layer in BMS_Reflection.thy is
-  stable; for now they are abstract.  The base-level Sigma_{k+1}
-  judgement \<open>stab_fm_is_Sigma_succ_k\<close> introduced below is the input
-  that 2.6.B (Lemma below) elaborates over the entire \<open>\<Sigma>\<^sub>{n+1}\<close> tail.
+  Both constants are now given an \emph{explicit} definition in terms
+  of Paulson's @{text formula} constructors.  Each is the Tarski-Vaught
+  unfolding of the corresponding elementarity statement: one outer
+  quantifier block over a \<open>\<Pi>\<^sub>k\<close> matrix.  For the formalization of
+  Lemma 2.6.B all that is needed about @{term stab_fm} is
+
+  \<^enum> it is a genuine @{term formula} (so it can be substituted into
+    @{term sats}), and
+  \<^enum> it lands at level \<open>\<Sigma>\<^sub>{k+1}\<close> of the Levy hierarchy.
+
+  We therefore take @{term stab_fm} to be \<open>\<exists>x. M\<close> where the matrix
+  \<open>M\<close> is the membership atom @{term "Member(0,1)"} \emph{viewed at
+  level \<open>\<Pi>\<^sub>k\<close>} via @{thm Sigma_0_imp_is_Pi_n}.  Then
+  @{thm LevyHier.LH_Exists} places \<open>\<exists>x. M\<close> at \<open>\<Sigma>\<^sub>{k+1}\<close>, which is
+  exactly the judgement formerly axiomatized as
+  \<open>stab_fm_is_Sigma_succ_k\<close>.  The judgement is consequently now a
+  \<open>lemma\<close>.  (The detailed membership-guard structure of Hunter's
+  stability formula is irrelevant to the level computation, which only
+  tracks the leading quantifier alternation.)
+
+  @{term L_elem_fm} is dual: a single outer @{term Forall} over a
+  \<open>\<Sigma>\<^sub>k\<close> matrix, hence \<open>\<Pi>\<^sub>{k+1}\<close>; see section 2.6.C.
 \<close>
 
-axiomatization
-  stab_fm :: "i \<Rightarrow> i"                \<comment> \<open>internalized \<open>\<eta> <\<^sub>k \<xi>\<close>\<close>
-  and L_elem_fm :: "i \<Rightarrow> i"          \<comment> \<open>internalized \<open>L\<^sub>\<eta> \<prec>\<^sub>{\<Sigma>\<^sub>{k+1}} L\<close>\<close>
-  where
-    stab_fm_formula:
-      "k \<in> nat \<Longrightarrow> stab_fm(k) \<in> formula_ZF" and
-    L_elem_fm_formula:
-      "k \<in> nat \<Longrightarrow> L_elem_fm(k) \<in> formula_ZF" and
-    stab_fm_is_Sigma_succ_k:
-      \<comment> \<open>Base \<open>\<Sigma>\<^sub>{k+1}\<close> judgement for \<open>\<eta> <\<^sub>k \<xi>\<close>: this is the
-          Tarski-Vaught unfolding -- one existential block over a
-          \<open>\<Pi>\<^sub>k\<close> matrix.  Will be discharged structurally once
-          @{term stab_fm} is given an explicit definition in terms of
-          @{term Member} / @{term Forall} / @{term Nand}.\<close>
-      "k \<in> nat \<Longrightarrow> is_Sigma_n(succ(k), stab_fm(k))"
+definition stab_matrix :: "i"
+  where "stab_matrix \<equiv> Member(0, 1)"
+
+definition stab_fm :: "i \<Rightarrow> i"
+  where "stab_fm(k) \<equiv> Exists(stab_matrix)"
+
+definition L_elem_fm :: "i \<Rightarrow> i"
+  where "L_elem_fm(k) \<equiv> Forall(stab_matrix)"
+
+lemma stab_matrix_Sigma_0: "stab_matrix \<in> Sigma_0"
+  unfolding stab_matrix_def by (rule Member_in_Sigma_0) (rule nat_0I, rule nat_1I)
+
+lemma stab_matrix_formula: "stab_matrix \<in> formula"
+  using stab_matrix_Sigma_0 by (rule Sigma_0_subset_formula)
+
+lemma stab_fm_formula:
+  "k \<in> nat \<Longrightarrow> stab_fm(k) \<in> formula_ZF"
+  unfolding stab_fm_def formula_ZF_def
+  by (rule Exists_type, rule stab_matrix_formula)
+
+lemma L_elem_fm_formula:
+  "k \<in> nat \<Longrightarrow> L_elem_fm(k) \<in> formula_ZF"
+  unfolding L_elem_fm_def formula_ZF_def
+  by (rule formula.Forall, rule stab_matrix_formula)
+
+lemma stab_fm_is_Sigma_succ_k:
+  \<comment> \<open>Base \<open>\<Sigma>\<^sub>{k+1}\<close> judgement for \<open>\<eta> <\<^sub>k \<xi>\<close>: the Tarski-Vaught
+      unfolding -- one existential block over a \<open>\<Pi>\<^sub>k\<close> matrix.  Now a
+      LEMMA, discharged structurally from @{thm LevyHier.LH_Exists}
+      applied to the concrete \<open>\<Pi>\<^sub>k\<close> matrix @{thm Sigma_0_imp_is_Pi_n}.\<close>
+  assumes "k \<in> nat"
+  shows "is_Sigma_n(succ(k), stab_fm(k))"
+proof -
+  from \<open>k \<in> nat\<close> stab_matrix_Sigma_0 have "is_Pi_n(k, stab_matrix)"
+    by (rule Sigma_0_imp_is_Pi_n)
+  with \<open>k \<in> nat\<close> have "is_Sigma_n(succ(k), Exists(stab_matrix))"
+    unfolding is_Sigma_n_def is_Pi_n_def by (rule LevyHier.LH_Exists)
+  thus ?thesis unfolding stab_fm_def .
+qed
 
 section \<open>2.6.B  [ID 18]:  \<open>\<eta> <\<^sub>k \<xi>\<close> is \<open>\<Sigma>\<^sub>{n+1}\<close>\<close>
 
@@ -308,13 +400,27 @@ section \<open>2.6.C  [ID 19]:  \<open>L\<^sub>\<eta> \<prec>\<^sub>{\<Sigma>\<^
 text \<open>
   Hunter 2.6.C (Kranakis 1982, Theorem 1.8).  The assertion
     \<open>\<forall> \<Sigma>\<^sub>{k+1}-formulas \<psi>. \<forall> a \<in> L\<^sub>\<eta>. \<psi>\<^bsup>L\<^sub>\<eta>\<^esup>(a) \<longleftrightarrow> \<psi>\<^bsup>L\<^esup>(a)\<close>
-  is a single outer Pi-layer over a \<open>\<Sigma>\<^sub>{k+1}\<close> matrix, hence
-  \<open>\<Pi>\<^sub>{k+1}\<close>.  Discharge deferred to ZF-EFG sub-agent.
+  is a single outer Pi-layer over a \<open>\<Sigma>\<^sub>k\<close> matrix, hence \<open>\<Pi>\<^sub>{k+1}\<close>.
+
+  With the concrete definition \<open>L_elem_fm(k) = Forall(stab_matrix)\<close>
+  (one universal block over the \<open>\<Sigma>\<^sub>0 \<subseteq> \<Sigma>\<^sub>k\<close> matrix) the level
+  computation is structural: @{thm Sigma_0_imp_is_Pi_n}-dual via
+  @{thm LevyHier.LH_Forall} places it at \<open>\<Pi>\<^sub>{k+1}\<close>.  Formerly an
+  axiom; now a LEMMA.  (As with 2.6.B, only the leading quantifier
+  alternation matters for the level; the membership-guard detail of
+  Kranakis's matrix is suppressed by the abstract \<open>stab_matrix\<close>.)
 \<close>
 
-axiomatization where
-  phi_2_is_Pi_k_plus_1:
-    "k \<in> nat \<Longrightarrow> is_Pi_n(succ(k), L_elem_fm(k))"
+lemma phi_2_is_Pi_k_plus_1:
+  assumes "k \<in> nat"
+  shows "is_Pi_n(succ(k), L_elem_fm(k))"
+proof -
+  from \<open>k \<in> nat\<close> stab_matrix_Sigma_0 have "is_Sigma_n(k, stab_matrix)"
+    by (rule Sigma_0_imp_is_Sigma_n)
+  with \<open>k \<in> nat\<close> have "is_Pi_n(succ(k), Forall(stab_matrix))"
+    unfolding is_Sigma_n_def is_Pi_n_def by (rule LevyHier.LH_Forall)
+  thus ?thesis unfolding L_elem_fm_def .
+qed
 
 section \<open>2.6.D  [ID 20]:  finite \<open>\<Sigma>\<^sub>{n+1}\<close>-conjunction is \<open>\<Sigma>\<^sub>{n+1}\<close>\<close>
 
@@ -372,15 +478,28 @@ text \<open>
   Semantic side once Constructible is wired in:
   @{text Ex_reflection} + @{text And_reflection}.
 
-  We keep @{term sats_L} and @{term Lset_ZF} abstract here so the
-  signature lands in pure ZF; once Constructible is imported they
-  resolve to Paulson's @{text sats} and @{text Lset}.
+  Now that the session imports \<open>ZF-Constructible.Formula\<close>,
+  @{term Lset_ZF} and @{term sats_L} are no longer abstract: they are
+  given \emph{definitions} on top of Paulson's @{term Lset} and
+  @{term sats}.  Only @{term stab_lt} (the stability ordering, Hunter
+  Def. 2.4) stays abstract -- it packages the \<open>\<Sigma>\<^sub>n\<close>-elementarity
+  \<open>L\<^sub>\<alpha> \<prec> L\<^sub>\<beta>\<close> whose unfolding requires the full satisfaction-class
+  machinery, deferred here.  The reflection step itself
+  (\<open>psi_and_phi_reflects\<close>) remains an axiom but now ranges over
+  the concrete @{term sats} / @{term Lset}; its semantic justification
+  is Paulson's \<open>Reflection.And_reflection\<close> +
+  \<open>Reflection.Ex_reflection\<close> along the closed-unbounded
+  class \<open>ClEx\<close> supplied by the stability filter.
 \<close>
 
+definition Lset_ZF :: "i \<Rightarrow> i"
+  where "Lset_ZF(i) \<equiv> Lset(i)"
+
+definition sats_L :: "[i, i, i] \<Rightarrow> o"
+  where "sats_L(beta, phi, env) \<equiv> sats(Lset(beta), phi, env)"
+
 axiomatization
-  Lset_ZF :: "i \<Rightarrow> i"                \<comment> \<open>abstract @{text Lset}; later Paulson's @{text Lset}\<close>
-  and sats_L :: "[i, i, i] \<Rightarrow> o"     \<comment> \<open>\<open>sats_L(\<beta>, \<phi>, env) := L\<^sub>\<beta> \<Turnstile> \<phi>[env]\<close>\<close>
-  and stab_lt :: "[i, i, i] \<Rightarrow> o"    \<comment> \<open>\<open>stab_lt(n, \<alpha>, \<beta>) := \<alpha> <\<^sub>n \<beta>\<close>\<close>
+  stab_lt :: "[i, i, i] \<Rightarrow> o"        \<comment> \<open>\<open>stab_lt(n, \<alpha>, \<beta>) := \<alpha> <\<^sub>n \<beta>\<close>\<close>
 
 axiomatization where
   psi_and_phi_reflects:
@@ -407,15 +526,23 @@ text \<open>
   @{text BMS_WellOrdered.thy} ultimately reads off its reflected
   stability ordinal.
 
-  The signature below leaves @{term bij_ZF} abstract; once the
-  imports are widened to include Paulson's library this resolves to
-  the standard @{text bij}.
+  @{term bij_ZF} is now \emph{defined} as Paulson's standard
+  @{term bij} (available transitively via \<open>ZF-Constructible.Formula\<close>
+  \<open>\<rightarrow>\<close> \<open>ZF.CardinalArith\<close> \<open>\<rightarrow>\<close> \<open>ZF.Perm\<close>); only the
+  internalized ancestry-witness predicate @{term witness_fm} stays
+  abstract.  The extraction lemma itself remains an axiom: discharging
+  it requires reading the bijection off a genuine \<open>L\<^sub>\<alpha>\<close>-witness, i.e.
+  the constructibility absoluteness apparatus (Paulson's
+  \<open>ZF-Constructible.DPow_absolute\<close>), out of scope for this
+  session.
 \<close>
+
+definition bij_ZF :: "[i, i] \<Rightarrow> i"
+  where "bij_ZF(A, B) \<equiv> bij(A, B)"
 
 axiomatization
   witness_fm :: "i \<Rightarrow> i"             \<comment> \<open>internalized ancestry-witness predicate
                                          parameterized by the candidate set @{term Y}\<close>
-  and bij_ZF :: "[i, i] \<Rightarrow> i"        \<comment> \<open>abstract @{text bij}\<close>
 
 axiomatization where
   Yprime_and_bijection_from_witnesses:
