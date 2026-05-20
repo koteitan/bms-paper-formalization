@@ -5675,7 +5675,94 @@ lemma iii_single_step_t_to_Suc_t:
                             (idx_B_in_expansion A t i)
        \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 2) 0)
                                  (idx_B_in_expansion A (t + 1) i)"
-  sorry
+proof -
+  \<comment> \<open>Well-formedness scaffold shared by any proof of the diagonal shift.
+      We expose the geometry (\<open>l\<^sub>0, l\<^sub>1\<close>), the strip bound \<open>k < keep_of\<close>,
+      and the closed-form \<open>elem\<close> values of both endpoints at block level
+      \<open>t\<close> and \<open>t+1\<close>. The block-shift adds exactly one \<open>delta A k\<close> at
+      ascending rows to each endpoint (uniform translation), per
+      @{thm elem_AEn_idx_B_block_shift_diff}. The remaining structural
+      gap — that this uniform translation of source/target leaves the
+      \<open>m\<close>-ancestry verdict unchanged — is isolated as a single internal
+      \<open>sorry\<close>, the within-\<open>A[n]\<close> analog of the (v) source-shift leaf
+      (\<open>lemma_2_5_v_clause_step_iff\<close>, stated later in this theory).\<close>
+  let ?P = "G_block A @ Bs_concat A n"
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by linarith
+  have l1_pos: "0 < l1 A"
+    using b0 s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
+  have n_pos: "0 < n" using step_fits by simp
+  \<comment> \<open>Strip bound: every row \<open>k < m\<^sub>0\<close> is kept by the strip.\<close>
+  have keep_ge: "m\<^sub>0 \<le> keep_of ?P"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
+  have k_lt_keep: "k < keep_of ?P" using k_lt keep_ge by linarith
+  \<comment> \<open>Column-length facts for the two relevant original columns
+      (\<open>s + 0\<close> for the source col, \<open>s + i\<close> for the target col).\<close>
+  have k_lt_HA: "k < height A"
+    using k_lt max_parent_level_lt[OF mp] by linarith
+  have len_s0: "length (A ! (s + 0)) = height A"
+    using length_col_arr[OF is_arr A_ne] s_lt_arr by simp
+  have k_lt_col0: "k < length (A ! (s + 0))" using k_lt_HA len_s0 by simp
+  have si_lt_arr: "s + i < arr_len A"
+  proof -
+    have "s + i < s + l1 A" using i_lt by simp
+    also have "s + l1 A = last_col_idx A"
+      using b0 s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
+    also have "\<dots> < arr_len A" using last_lt_arr .
+    finally show ?thesis .
+  qed
+  have len_si: "length (A ! (s + i)) = height A"
+    using length_col_arr[OF is_arr A_ne si_lt_arr] .
+  have k_lt_coli: "k < length (A ! (s + i))" using k_lt_HA len_si by simp
+  \<comment> \<open>Block-fit bounds: source block \<open>t+2 \<le> n\<close>, target block \<open>t+1 \<le> n\<close>.\<close>
+  have src_fit: "Suc (t + 1) \<le> n" using step_fits by simp
+  have tgt_fit: "Suc t \<le> n" using step_fits by simp
+  \<comment> \<open>Source endpoint (col \<open>0\<close>): one block shift adds \<open>delta A k\<close>
+      at ascending rows.\<close>
+  have src_shift:
+    "elem (A[n]) (idx_B_in_expansion A (t + 2) 0) k
+       = elem (A[n]) (idx_B_in_expansion A (t + 1) 0) k
+       + (if ascends A 0 k then delta A k else 0)"
+  proof -
+    have "elem (A[n]) (idx_B_in_expansion A (Suc (t + 1)) 0) k
+        = elem (A[n]) (idx_B_in_expansion A (t + 1) 0) k
+        + (if ascends A 0 k then delta A k else 0)"
+      using elem_AEn_idx_B_block_shift_diff
+              [OF A_ne b0 src_fit l1_pos k_lt_keep k_lt_col0] .
+    thus ?thesis by (simp add: numeral_2_eq_2)
+  qed
+  \<comment> \<open>Target endpoint (col \<open>i\<close>): same uniform one-block shift.\<close>
+  have tgt_shift:
+    "elem (A[n]) (idx_B_in_expansion A (t + 1) i) k
+       = elem (A[n]) (idx_B_in_expansion A t i) k
+       + (if ascends A i k then delta A k else 0)"
+  proof -
+    have "elem (A[n]) (idx_B_in_expansion A (Suc t) i) k
+        = elem (A[n]) (idx_B_in_expansion A t i) k
+        + (if ascends A i k then delta A k else 0)"
+      using elem_AEn_idx_B_block_shift_diff
+              [OF A_ne b0 tgt_fit i_lt k_lt_keep k_lt_coli] .
+    thus ?thesis by simp
+  qed
+  \<comment> \<open>Structural core: the diagonal block-shift preserves \<open>m\<close>-ancestry.
+      Both endpoints translate by the same per-block bump \<open>delta A k\<close>
+      (at ascending rows); the candidate set walked by the parent chain
+      translates uniformly across the contiguous B-region, leaving the
+      ancestry verdict invariant. This is the genuine substantive content
+      Hunter waves through as the "trivial extension" (paper p.5); a full
+      machine proof needs a general within-\<open>A[n]\<close> block-translation
+      lemma not yet available in this development. Left as the single
+      internal \<open>sorry\<close>; the surrounding scaffold (geometry, strip bound,
+      endpoint shift values) is fully discharged above.\<close>
+  show "m_ancestor (A[n]) k (idx_B_in_expansion A (t + 1) 0)
+                            (idx_B_in_expansion A t i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (t + 2) 0)
+                                 (idx_B_in_expansion A (t + 1) i)"
+    using src_shift tgt_shift
+    sorry
+qed
 
 text \<open>
   Block-shift bridge for (iii) at \<open>n \<ge> 2\<close>: shift both source and target
