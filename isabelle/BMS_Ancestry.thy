@@ -1015,6 +1015,412 @@ qed
 
 
 text \<open>
+  \<open>========================================================\<close>
+  The ``max_parent_level \<le> Some 0'' linchpin cluster.
+  \<open>========================================================\<close>
+
+  We package the property ``\<open>A\<close>'s last column has no \<open>m\<close>-parent
+  above level \<open>0\<close>'' as a predicate \<open>mpl_le_zero\<close>, give a clean
+  characterization in terms of \<open>m_parent\<close> at levels \<open>m \<ge> 1\<close>,
+  and prove it is preserved by \<open>strip_zero_rows\<close> on well-formed
+  arrays. These are the structural glue lemmas behind the
+  ``\<open>max_parent_level (A[n]) \<in> {None, Some 0}\<close>'' linchpin.
+
+  CAVEAT (empirically established, see
+  \<open>verify/verify_maxparent_zero_preserved.py\<close> and the brute-force
+  search of arbitrary \<open>2\<close>-row arrays): the linchpin
+  \<open>mpl_le_zero A \<Longrightarrow> mpl_le_zero (A[n])\<close> is FALSE for an arbitrary
+  \<open>is_array A\<close>. Counterexample
+  \<open>A = (0,0)(1,1)(0,0)\<close>: \<open>max_parent_level A = None\<close> yet
+  \<open>A[0] = (0,0)(1,1)\<close> has \<open>max_parent_level = Some 1\<close>. The
+  linchpin holds only for \<open>A \<in> BMS\<close> (every column of a BMS array
+  is reachable, never a gratuitous duplicate of an earlier column).
+\<close>
+
+definition mpl_le_zero :: "array \<Rightarrow> bool" where
+  "mpl_le_zero A \<longleftrightarrow>
+     (max_parent_level A = None \<or> max_parent_level A = Some 0)"
+
+text \<open>
+  Characterization: \<open>mpl_le_zero A\<close> holds iff the last column of
+  \<open>A\<close> has no \<open>m\<close>-parent at any level \<open>m \<ge> 1\<close>. Pure unfolding
+  of \<open>max_parent_level\<close> as \<open>Max\<close> over the level-witness set.
+\<close>
+
+lemma mpl_le_zero_iff_no_high_parent:
+  assumes A_ne: "A \<noteq> []"
+  shows "mpl_le_zero A
+       \<longleftrightarrow> (\<forall>m. 0 < m \<longrightarrow> m < height A
+                  \<longrightarrow> m_parent A m (last_col_idx A) = None)"
+proof -
+  let ?C = "last_col_idx A"
+  let ?H = "height A"
+  let ?ms = "[m \<leftarrow> [0..<?H]. m_parent A m ?C \<noteq> None]"
+  have mp_form: "max_parent_level A
+               = (if ?ms = [] then None else Some (Max (set ?ms)))"
+    using A_ne unfolding max_parent_level_def by (simp add: Let_def)
+  show ?thesis
+  proof
+    assume "mpl_le_zero A"
+    hence le0: "max_parent_level A = None \<or> max_parent_level A = Some 0"
+      unfolding mpl_le_zero_def .
+    show "\<forall>m. 0 < m \<longrightarrow> m < ?H \<longrightarrow> m_parent A m ?C = None"
+    proof (intro allI impI)
+      fix m assume m_pos: "0 < m" and m_lt: "m < ?H"
+      show "m_parent A m ?C = None"
+      proof (rule ccontr)
+        assume ne: "m_parent A m ?C \<noteq> None"
+        have m_in_range: "m \<in> set [0..<?H]" using m_lt by simp
+        have m_in: "m \<in> set ?ms"
+          unfolding set_filter using m_in_range ne by blast
+        have ms_ne': "?ms \<noteq> []"
+        proof
+          assume "?ms = []"
+          hence "set ?ms = {}" by simp
+          thus False using m_in by simp
+        qed
+        have fin: "finite (set ?ms)" by simp
+        have m_le: "m \<le> Max (set ?ms)" using fin m_in by (rule Max_ge)
+        have mpl0: "max_parent_level A = Some (Max (set ?ms))"
+          using mp_form ms_ne' by simp
+        have "Max (set ?ms) = 0" using le0 mpl0 by simp
+        thus False using m_le m_pos by simp
+      qed
+    qed
+  next
+    assume hi: "\<forall>m. 0 < m \<longrightarrow> m < ?H \<longrightarrow> m_parent A m ?C = None"
+    have set_sub: "set ?ms \<subseteq> {0}"
+    proof
+      fix m assume m_in: "m \<in> set ?ms"
+      hence par_ne: "m_parent A m ?C \<noteq> None"
+        by (simp add: set_filter)
+      have m_lt: "m < ?H" using m_in by (simp add: set_filter)
+      have "\<not> 0 < m"
+      proof
+        assume "0 < m"
+        hence "m_parent A m ?C = None" using hi m_lt by simp
+        thus False using par_ne by simp
+      qed
+      thus "m \<in> {0}" by simp
+    qed
+    have mpl_eq: "max_parent_level A = None \<or> max_parent_level A = Some 0"
+    proof (cases "?ms = []")
+      case True
+      hence "max_parent_level A = None" using mp_form by simp
+      thus ?thesis by simp
+    next
+      case False
+      have fin: "finite (set ?ms)" by simp
+      have ne: "set ?ms \<noteq> {}"
+      proof
+        assume "set ?ms = {}"
+        hence "?ms = []" by simp
+        thus False using False by simp
+      qed
+      have max_in: "Max (set ?ms) \<in> set ?ms"
+        using fin ne by (rule Max_in)
+      have max0: "Max (set ?ms) = 0" using max_in set_sub by auto
+      have "max_parent_level A = Some (Max (set ?ms))"
+        using mp_form False by simp
+      hence "max_parent_level A = Some 0" using max0 by simp
+      thus ?thesis by simp
+    qed
+    show "mpl_le_zero A" unfolding mpl_le_zero_def using mpl_eq by simp
+  qed
+qed
+
+text \<open>
+  \<open>mpl_le_zero\<close> is preserved by \<open>strip_zero_rows\<close> on a
+  well-formed array, PROVIDED its (un-stripped) last column already
+  has no \<open>m\<close>-parent at any level \<open>m \<ge> 1\<close>. This is the clean,
+  unconditional ``strip glue'': since
+  @{thm m_parent_m_ancestor_strip} shows \<open>m_parent\<close> is invariant
+  under \<open>strip_zero_rows\<close> at every in-range column index and level,
+  and \<open>strip_zero_rows\<close> only ever shrinks the height
+  (\<open>height (strip P) = keep_of P \<le> height P\<close>), the absence of a
+  high-level parent transfers verbatim.
+\<close>
+
+lemma mpl_le_zero_strip:
+  assumes is_arr: "is_array P"
+      and P_ne: "P \<noteq> []"
+      and no_hi: "\<forall>m. 0 < m \<longrightarrow> m < height P
+                       \<longrightarrow> m_parent P m (last_col_idx P) = None"
+  shows "mpl_le_zero (strip_zero_rows P)"
+proof -
+  let ?S = "strip_zero_rows P"
+  have len_eq: "arr_len ?S = arr_len P"
+    by (rule length_strip_zero_rows)
+  have S_ne: "?S \<noteq> []" using P_ne len_eq by (cases ?S) auto
+  have C_eq: "last_col_idx ?S = last_col_idx P"
+    using len_eq by simp
+  have C_lt: "last_col_idx P < arr_len P" using P_ne by (cases P) auto
+  have h_le: "height ?S \<le> height P"
+  proof -
+    have strip_map: "?S = map (\<lambda>c. take (keep_of P) c) P"
+      by (rule strip_zero_rows_eq_map_take[OF P_ne])
+    have hd_eq: "hd ?S = take (keep_of P) (hd P)"
+      using strip_map P_ne by (cases P) auto
+    have "height ?S = length (hd ?S)" using S_ne by (cases ?S) auto
+    also have "\<dots> = length (take (keep_of P) (hd P))" using hd_eq by simp
+    also have "\<dots> = min (keep_of P) (height P)"
+      using P_ne by (cases P) auto
+    finally have "height ?S = min (keep_of P) (height P)" .
+    thus ?thesis by simp
+  qed
+  have no_hi_S: "\<forall>m. 0 < m \<longrightarrow> m < height ?S
+                      \<longrightarrow> m_parent ?S m (last_col_idx ?S) = None"
+  proof (intro allI impI)
+    fix m assume m_pos: "0 < m" and m_lt: "m < height ?S"
+    have m_ltP: "m < height P" using m_lt h_le by linarith
+    have strip_all:
+      "\<forall>i. i < arr_len P
+            \<longrightarrow> m_parent ?S m i = m_parent P m i"
+      using m_parent_m_ancestor_strip[OF is_arr] by (rule conjunct1)
+    have par_eq: "m_parent ?S m (last_col_idx P) = m_parent P m (last_col_idx P)"
+      using strip_all C_lt by simp
+    have "m_parent P m (last_col_idx P) = None"
+      using no_hi m_pos m_ltP by simp
+    thus "m_parent ?S m (last_col_idx ?S) = None"
+      using par_eq C_eq by simp
+  qed
+  show ?thesis
+    using mpl_le_zero_iff_no_high_parent[OF S_ne] no_hi_S by simp
+qed
+
+text \<open>
+  The LINCHPIN. For \<open>A \<in> BMS\<close>, if \<open>A\<close>'s last column has no
+  \<open>m\<close>-parent above level \<open>0\<close> (\<open>mpl_le_zero A\<close>), then neither
+  does the last column of any expansion \<open>A[n]\<close>.
+
+  By @{thm mpl_le_zero_strip} (with \<open>P = G_block A @ Bs_concat A n\<close>,
+  which is well-formed and non-empty for \<open>A \<in> BMS\<close>) this reduces
+  to the BMS-specific structural fact that the pre-strip last column
+  of the expansion has no level-\<open>\<ge> 1\<close> \<open>m\<close>-parent. That last
+  fact is exactly the repeated-copy crux co-extensive with the open
+  \<open>lemma_2_5\<close> development; it is the single remaining gap below.
+
+  NOTE: the \<open>A \<in> BMS\<close> hypothesis is ESSENTIAL — the statement is
+  FALSE for arbitrary well-formed arrays (counterexample
+  \<open>(0,0)(1,1)(0,0)\<close>, see the cluster header comment).
+\<close>
+
+lemma maxparent_zero_preserved:
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and mpl0: "mpl_le_zero A"
+  shows "mpl_le_zero (expansion A n)"
+proof -
+  let ?P = "G_block A @ Bs_concat A n"
+  have is_arr: "is_array A" using A_BMS by (rule BMS_is_array)
+  have exp_eq: "expansion A n = strip_zero_rows ?P"
+    using A_ne unfolding expansion_def by simp
+  show ?thesis
+  proof (cases "?P = []")
+    case True
+    \<comment> \<open>Degenerate single-column case: the expansion is empty, whose
+        \<open>max_parent_level\<close> is \<open>None\<close>, so \<open>mpl_le_zero\<close> holds.\<close>
+    have "expansion A n = []"
+      using exp_eq True by (simp add: strip_zero_rows_def)
+    thus ?thesis
+      unfolding mpl_le_zero_def max_parent_level_def by simp
+  next
+    case P_ne: False
+    have P_arr: "is_array ?P"
+    proof -
+      let ?H = "height A"
+      have all_A: "\<forall>c \<in> set A. length c = ?H"
+        using is_arr unfolding is_array_def by blast
+      have all_G: "\<forall>c \<in> set (G_block A). length c = ?H"
+        using G_block_subset_A all_A by blast
+      have all_Bs: "\<forall>c \<in> set (Bs_concat A n). length c = ?H"
+        using Bs_concat_uniform[OF is_arr A_ne] .
+      have all_P: "\<forall>c \<in> set ?P. length c = ?H"
+        using all_G all_Bs by auto
+      have hd_in: "hd ?P \<in> set ?P" using P_ne by (cases ?P) auto
+      have h_eq: "height ?P = ?H"
+      proof -
+        have "height ?P = length (hd ?P)" using P_ne by (cases ?P) auto
+        also have "\<dots> = ?H" using hd_in all_P by blast
+        finally show ?thesis .
+      qed
+      show ?thesis unfolding is_array_def using all_P h_eq P_ne by simp
+    qed
+    have no_hi: "\<forall>m. 0 < m \<longrightarrow> m < height ?P
+                      \<longrightarrow> m_parent ?P m (last_col_idx ?P) = None" sorry
+      \<comment> \<open>GAP (the genuine BMS crux): the pre-strip last column of the
+          expansion has no \<open>m\<close>-parent at any level \<open>\<ge> 1\<close>. Mechanism:
+          when \<open>mpl_le_zero A\<close>, no column of \<open>B\<^sub>0\<close> ascends, so every
+          \<open>B_i\<close> is a literal copy of \<open>B\<^sub>0\<close> (Bi_block_eq_B0_when_m0_zero
+          / Bi_block_no_b0); the last pre-strip column is then a copy
+          of an existing earlier column and creates no new high-level
+          ancestor. Empirically verified
+          (verify/verify_maxparent_zero_preserved.py: 2065 BMS
+          expansions, 0 violations). FALSE without \<open>A \<in> BMS\<close>
+          (counterexample \<open>(0,0)(1,1)(0,0)\<close>).\<close>
+    show ?thesis
+      using exp_eq mpl_le_zero_strip[OF P_arr P_ne no_hi] by simp
+  qed
+qed
+
+text \<open>
+  Guarded \<open>B\<^sub>0\<close> row-0 consecutiveness invariant, proven by
+  \<open>BMS.induct\<close>. For every \<open>A \<in> BMS\<close>, IF \<open>b0_start A = Some s\<close> and
+  \<open>max_parent_level A = Some t\<close> with \<open>0 < t\<close>, THEN row-0 of
+  \<open>B\<^sub>0\<close> is the consecutive run \<open>elem A (s+j) 0 = elem A s 0 + j\<close>
+  (for \<open>j \<le> l1 A\<close>). The seed case is a direct list computation;
+  the expand case dispatches on \<open>max_parent_level A\<close> into the
+  \<open>mpl_le_zero\<close> branch (preserved by @{thm maxparent_zero_preserved},
+  making the inner guard vacuous) and the \<open>0 < t\<close> branch
+  (discharged by @{thm consec_preserved_under_expansion}, whose
+  conclusion is exactly this guarded statement for \<open>expansion A n\<close>).
+\<close>
+
+lemma bms_consec_guarded:
+  assumes "A \<in> BMS"
+  shows "case b0_start A of None \<Rightarrow> True | Some s \<Rightarrow>
+           (case max_parent_level A of None \<Rightarrow> True | Some t \<Rightarrow>
+              0 < t \<longrightarrow> (\<forall>j. j \<le> l1 A \<longrightarrow> elem A (s + j) 0 = elem A s 0 + j))"
+  using assms
+proof (induct A rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case
+  proof (cases "0 < n")
+    case False
+    hence "n = 0" by simp
+    hence "b0_start (seed n) = None"
+    proof -
+      have "max_parent_level (seed 0) = None"
+        unfolding max_parent_level_def using seed_nonempty
+        by (simp add: length_seed seed_def Let_def height_seed)
+      thus "b0_start (seed n) = None"
+        unfolding b0_start_def using \<open>n = 0\<close> by simp
+    qed
+    thus ?thesis by simp
+  next
+    case True
+    note n_pos = True
+    have b0: "b0_start (seed n) = Some 0" by (rule b0_start_seed[OF n_pos])
+    have mp: "max_parent_level (seed n) = Some (n - 1)"
+      by (rule max_parent_level_seed[OF n_pos])
+    have last_idx: "last_col_idx (seed n) = 1" by (simp add: length_seed)
+    have B0_eq: "B0_block (seed n) = take 1 (seed n)"
+      unfolding B0_block_def using b0 last_idx by simp
+    have l1_eq: "l1 (seed n) = 1"
+      unfolding l1_def B0_eq using length_seed by simp
+    have e0: "elem (seed n) 0 0 = 0"
+      unfolding elem_def seed_def using n_pos by simp
+    have e1: "elem (seed n) 1 0 = 1"
+      unfolding elem_def seed_def using n_pos by simp
+    have goal: "0 < n - 1 \<longrightarrow> (\<forall>j. j \<le> l1 (seed n) \<longrightarrow>
+                  elem (seed n) (0 + j) 0 = elem (seed n) 0 0 + j)"
+    proof (intro impI allI)
+      fix j assume "j \<le> l1 (seed n)"
+      hence "j = 0 \<or> j = 1" using l1_eq by linarith
+      thus "elem (seed n) (0 + j) 0 = elem (seed n) 0 0 + j"
+        using e0 e1 by auto
+    qed
+    show ?thesis unfolding b0 mp option.case by (rule goal)
+  qed
+next
+  case (expand_in_BMS A n)
+  have A_BMS: "A \<in> BMS" using expand_in_BMS.hyps(1) .
+  show ?case
+  proof (cases "A = []")
+    case True
+    have "expansion A n = []" using True by (simp add: expansion_def)
+    hence "b0_start (expansion A n) = None"
+      unfolding b0_start_def max_parent_level_def by simp
+    thus ?thesis by simp
+  next
+    case False
+    note A_ne = False
+    show ?thesis
+    proof (cases "max_parent_level A")
+      case None
+      \<comment> \<open>\<open>mpl_le_zero A\<close>: preserved, so the inner guard is vacuous.\<close>
+      have mpl0: "mpl_le_zero A" unfolding mpl_le_zero_def using None by simp
+      have mpl0E: "mpl_le_zero (expansion A n)"
+        by (rule maxparent_zero_preserved[OF A_BMS A_ne mpl0])
+      show ?thesis
+      proof (cases "b0_start (expansion A n)")
+        case None thus ?thesis by simp
+      next
+        case (Some s')
+        show ?thesis
+        proof (cases "max_parent_level (expansion A n)")
+          case None thus ?thesis using Some by simp
+        next
+          case (Some t')
+          have "t' = 0"
+            using mpl0E Some unfolding mpl_le_zero_def by simp
+          thus ?thesis using \<open>b0_start (expansion A n) = Some s'\<close> Some by simp
+        qed
+      qed
+    next
+      case (Some m0)
+      show ?thesis
+      proof (cases "0 < m0")
+        case False
+        \<comment> \<open>\<open>m0 = 0\<close>: same vacuous \<open>mpl_le_zero\<close> branch.\<close>
+        hence "m0 = 0" by simp
+        have mpl0: "mpl_le_zero A"
+          unfolding mpl_le_zero_def using Some \<open>m0 = 0\<close> by simp
+        have mpl0E: "mpl_le_zero (expansion A n)"
+          by (rule maxparent_zero_preserved[OF A_BMS A_ne mpl0])
+        show ?thesis
+        proof (cases "b0_start (expansion A n)")
+          case None thus ?thesis by simp
+        next
+          case (Some s')
+          show ?thesis
+          proof (cases "max_parent_level (expansion A n)")
+            case None thus ?thesis using Some by simp
+          next
+            case (Some t')
+            have "t' = 0"
+              using mpl0E Some unfolding mpl_le_zero_def by simp
+            thus ?thesis using \<open>b0_start (expansion A n) = Some s'\<close> Some by simp
+          qed
+        qed
+      next
+        case True
+        note m0_pos = True
+        note mp = Some
+        \<comment> \<open>\<open>0 < m0\<close>: \<open>b0_start A = Some s\<close> and the IH gives the consec
+            hypothesis; @{thm consec_preserved_under_expansion} closes it.\<close>
+        obtain s where b0: "b0_start A = Some s"
+        proof -
+          define C where "C = last_col_idx A"
+          define H where "H = height A"
+          define ms where "ms = [m \<leftarrow> [0..<H]. m_parent A m C \<noteq> None]"
+          have eq: "max_parent_level A
+                  = (if ms = [] then None else Some (Max (set ms)))"
+            using A_ne unfolding max_parent_level_def C_def H_def ms_def
+            by (simp add: Let_def)
+          have ms_ne: "ms \<noteq> []" using eq mp by (cases "ms = []") auto
+          have m0_eq: "m0 = Max (set ms)" using eq mp ms_ne by simp
+          have "Max (set ms) \<in> set ms" using ms_ne by (simp add: Max_in)
+          hence "m0 \<in> set ms" using m0_eq by simp
+          hence "m_parent A m0 C \<noteq> None" unfolding ms_def by auto
+          then obtain s where "m_parent A m0 C = Some s" by auto
+          hence "b0_start A = Some s"
+            unfolding b0_start_def C_def using mp by simp
+          thus thesis using that by blast
+        qed
+        have IH: "case b0_start A of None \<Rightarrow> True | Some s \<Rightarrow>
+                    (case max_parent_level A of None \<Rightarrow> True | Some t \<Rightarrow>
+                       0 < t \<longrightarrow> (\<forall>j. j \<le> l1 A \<longrightarrow> elem A (s + j) 0 = elem A s 0 + j))"
+          using expand_in_BMS.hyps(2) .
+        have consec: "\<forall>j. j \<le> l1 A \<longrightarrow> elem A (s + j) 0 = elem A s 0 + j"
+          using IH b0 mp m0_pos by simp
+        show ?thesis
+          by (rule consec_preserved_under_expansion[OF A_BMS A_ne b0 mp m0_pos consec])
+      qed
+    qed
+  qed
+qed
+
+text \<open>
   Refined (*) core (Batch 2D + focused probe, 2026-05-20): in any
   \<open>A \<in> BMS\<close> with \<open>t = max_parent_level > 0\<close>, the row-0 values of
   \<open>B\<^sub>0\<close> strictly increase along consecutive columns. Empirically:
@@ -1036,7 +1442,16 @@ lemma bms_b0_row0_consecutive_increasing:
       and j_lt: "j < arr_len (B0_block A)"
       and j_pos: "0 < j"
   shows "elem A (s + j - 1) 0 < elem A (s + j) 0"
-  sorry
+proof -
+  have consec: "\<forall>j. j \<le> l1 A \<longrightarrow> elem A (s + j) 0 = elem A s 0 + j"
+    using bms_consec_guarded[OF A_BMS] b0 mp t_pos by (simp split: option.splits)
+  have j_le: "j \<le> l1 A" using j_lt unfolding l1_def by simp
+  have j1_le: "j - 1 \<le> l1 A" using j_le by simp
+  have ej: "elem A (s + j) 0 = elem A s 0 + j" using consec j_le by simp
+  have ej1: "elem A (s + (j - 1)) 0 = elem A s 0 + (j - 1)" using consec j1_le by simp
+  have idx: "s + (j - 1) = s + j - 1" using j_pos by simp
+  show ?thesis using ej ej1 idx j_pos by simp
+qed
 
 lemma bms_b0_col_row0_ancestor: \<comment> \<open>ancestry core of (*), now proved from consecutive-increase\<close>
   fixes A :: array
@@ -1718,253 +2133,6 @@ text \<open>
   co-extensive with the \<open>B\<^sub>0\<close> consecutive-increase crux.
 \<close>
 
-text \<open>
-  \<open>========================================================\<close>
-  The ``max_parent_level \<le> Some 0'' linchpin cluster.
-  \<open>========================================================\<close>
-
-  We package the property ``\<open>A\<close>'s last column has no \<open>m\<close>-parent
-  above level \<open>0\<close>'' as a predicate \<open>mpl_le_zero\<close>, give a clean
-  characterization in terms of \<open>m_parent\<close> at levels \<open>m \<ge> 1\<close>,
-  and prove it is preserved by \<open>strip_zero_rows\<close> on well-formed
-  arrays. These are the structural glue lemmas behind the
-  ``\<open>max_parent_level (A[n]) \<in> {None, Some 0}\<close>'' linchpin.
-
-  CAVEAT (empirically established, see
-  \<open>verify/verify_maxparent_zero_preserved.py\<close> and the brute-force
-  search of arbitrary \<open>2\<close>-row arrays): the linchpin
-  \<open>mpl_le_zero A \<Longrightarrow> mpl_le_zero (A[n])\<close> is FALSE for an arbitrary
-  \<open>is_array A\<close>. Counterexample
-  \<open>A = (0,0)(1,1)(0,0)\<close>: \<open>max_parent_level A = None\<close> yet
-  \<open>A[0] = (0,0)(1,1)\<close> has \<open>max_parent_level = Some 1\<close>. The
-  linchpin holds only for \<open>A \<in> BMS\<close> (every column of a BMS array
-  is reachable, never a gratuitous duplicate of an earlier column).
-\<close>
-
-definition mpl_le_zero :: "array \<Rightarrow> bool" where
-  "mpl_le_zero A \<longleftrightarrow>
-     (max_parent_level A = None \<or> max_parent_level A = Some 0)"
-
-text \<open>
-  Characterization: \<open>mpl_le_zero A\<close> holds iff the last column of
-  \<open>A\<close> has no \<open>m\<close>-parent at any level \<open>m \<ge> 1\<close>. Pure unfolding
-  of \<open>max_parent_level\<close> as \<open>Max\<close> over the level-witness set.
-\<close>
-
-lemma mpl_le_zero_iff_no_high_parent:
-  assumes A_ne: "A \<noteq> []"
-  shows "mpl_le_zero A
-       \<longleftrightarrow> (\<forall>m. 0 < m \<longrightarrow> m < height A
-                  \<longrightarrow> m_parent A m (last_col_idx A) = None)"
-proof -
-  let ?C = "last_col_idx A"
-  let ?H = "height A"
-  let ?ms = "[m \<leftarrow> [0..<?H]. m_parent A m ?C \<noteq> None]"
-  have mp_form: "max_parent_level A
-               = (if ?ms = [] then None else Some (Max (set ?ms)))"
-    using A_ne unfolding max_parent_level_def by (simp add: Let_def)
-  show ?thesis
-  proof
-    assume "mpl_le_zero A"
-    hence le0: "max_parent_level A = None \<or> max_parent_level A = Some 0"
-      unfolding mpl_le_zero_def .
-    show "\<forall>m. 0 < m \<longrightarrow> m < ?H \<longrightarrow> m_parent A m ?C = None"
-    proof (intro allI impI)
-      fix m assume m_pos: "0 < m" and m_lt: "m < ?H"
-      show "m_parent A m ?C = None"
-      proof (rule ccontr)
-        assume ne: "m_parent A m ?C \<noteq> None"
-        have m_in_range: "m \<in> set [0..<?H]" using m_lt by simp
-        have m_in: "m \<in> set ?ms"
-          unfolding set_filter using m_in_range ne by blast
-        have ms_ne': "?ms \<noteq> []"
-        proof
-          assume "?ms = []"
-          hence "set ?ms = {}" by simp
-          thus False using m_in by simp
-        qed
-        have fin: "finite (set ?ms)" by simp
-        have m_le: "m \<le> Max (set ?ms)" using fin m_in by (rule Max_ge)
-        have mpl0: "max_parent_level A = Some (Max (set ?ms))"
-          using mp_form ms_ne' by simp
-        have "Max (set ?ms) = 0" using le0 mpl0 by simp
-        thus False using m_le m_pos by simp
-      qed
-    qed
-  next
-    assume hi: "\<forall>m. 0 < m \<longrightarrow> m < ?H \<longrightarrow> m_parent A m ?C = None"
-    have set_sub: "set ?ms \<subseteq> {0}"
-    proof
-      fix m assume m_in: "m \<in> set ?ms"
-      hence par_ne: "m_parent A m ?C \<noteq> None"
-        by (simp add: set_filter)
-      have m_lt: "m < ?H" using m_in by (simp add: set_filter)
-      have "\<not> 0 < m"
-      proof
-        assume "0 < m"
-        hence "m_parent A m ?C = None" using hi m_lt by simp
-        thus False using par_ne by simp
-      qed
-      thus "m \<in> {0}" by simp
-    qed
-    have mpl_eq: "max_parent_level A = None \<or> max_parent_level A = Some 0"
-    proof (cases "?ms = []")
-      case True
-      hence "max_parent_level A = None" using mp_form by simp
-      thus ?thesis by simp
-    next
-      case False
-      have fin: "finite (set ?ms)" by simp
-      have ne: "set ?ms \<noteq> {}"
-      proof
-        assume "set ?ms = {}"
-        hence "?ms = []" by simp
-        thus False using False by simp
-      qed
-      have max_in: "Max (set ?ms) \<in> set ?ms"
-        using fin ne by (rule Max_in)
-      have max0: "Max (set ?ms) = 0" using max_in set_sub by auto
-      have "max_parent_level A = Some (Max (set ?ms))"
-        using mp_form False by simp
-      hence "max_parent_level A = Some 0" using max0 by simp
-      thus ?thesis by simp
-    qed
-    show "mpl_le_zero A" unfolding mpl_le_zero_def using mpl_eq by simp
-  qed
-qed
-
-text \<open>
-  \<open>mpl_le_zero\<close> is preserved by \<open>strip_zero_rows\<close> on a
-  well-formed array, PROVIDED its (un-stripped) last column already
-  has no \<open>m\<close>-parent at any level \<open>m \<ge> 1\<close>. This is the clean,
-  unconditional ``strip glue'': since
-  @{thm m_parent_m_ancestor_strip} shows \<open>m_parent\<close> is invariant
-  under \<open>strip_zero_rows\<close> at every in-range column index and level,
-  and \<open>strip_zero_rows\<close> only ever shrinks the height
-  (\<open>height (strip P) = keep_of P \<le> height P\<close>), the absence of a
-  high-level parent transfers verbatim.
-\<close>
-
-lemma mpl_le_zero_strip:
-  assumes is_arr: "is_array P"
-      and P_ne: "P \<noteq> []"
-      and no_hi: "\<forall>m. 0 < m \<longrightarrow> m < height P
-                       \<longrightarrow> m_parent P m (last_col_idx P) = None"
-  shows "mpl_le_zero (strip_zero_rows P)"
-proof -
-  let ?S = "strip_zero_rows P"
-  have len_eq: "arr_len ?S = arr_len P"
-    by (rule length_strip_zero_rows)
-  have S_ne: "?S \<noteq> []" using P_ne len_eq by (cases ?S) auto
-  have C_eq: "last_col_idx ?S = last_col_idx P"
-    using len_eq by simp
-  have C_lt: "last_col_idx P < arr_len P" using P_ne by (cases P) auto
-  have h_le: "height ?S \<le> height P"
-  proof -
-    have strip_map: "?S = map (\<lambda>c. take (keep_of P) c) P"
-      by (rule strip_zero_rows_eq_map_take[OF P_ne])
-    have hd_eq: "hd ?S = take (keep_of P) (hd P)"
-      using strip_map P_ne by (cases P) auto
-    have "height ?S = length (hd ?S)" using S_ne by (cases ?S) auto
-    also have "\<dots> = length (take (keep_of P) (hd P))" using hd_eq by simp
-    also have "\<dots> = min (keep_of P) (height P)"
-      using P_ne by (cases P) auto
-    finally have "height ?S = min (keep_of P) (height P)" .
-    thus ?thesis by simp
-  qed
-  have no_hi_S: "\<forall>m. 0 < m \<longrightarrow> m < height ?S
-                      \<longrightarrow> m_parent ?S m (last_col_idx ?S) = None"
-  proof (intro allI impI)
-    fix m assume m_pos: "0 < m" and m_lt: "m < height ?S"
-    have m_ltP: "m < height P" using m_lt h_le by linarith
-    have strip_all:
-      "\<forall>i. i < arr_len P
-            \<longrightarrow> m_parent ?S m i = m_parent P m i"
-      using m_parent_m_ancestor_strip[OF is_arr] by (rule conjunct1)
-    have par_eq: "m_parent ?S m (last_col_idx P) = m_parent P m (last_col_idx P)"
-      using strip_all C_lt by simp
-    have "m_parent P m (last_col_idx P) = None"
-      using no_hi m_pos m_ltP by simp
-    thus "m_parent ?S m (last_col_idx ?S) = None"
-      using par_eq C_eq by simp
-  qed
-  show ?thesis
-    using mpl_le_zero_iff_no_high_parent[OF S_ne] no_hi_S by simp
-qed
-
-text \<open>
-  The LINCHPIN. For \<open>A \<in> BMS\<close>, if \<open>A\<close>'s last column has no
-  \<open>m\<close>-parent above level \<open>0\<close> (\<open>mpl_le_zero A\<close>), then neither
-  does the last column of any expansion \<open>A[n]\<close>.
-
-  By @{thm mpl_le_zero_strip} (with \<open>P = G_block A @ Bs_concat A n\<close>,
-  which is well-formed and non-empty for \<open>A \<in> BMS\<close>) this reduces
-  to the BMS-specific structural fact that the pre-strip last column
-  of the expansion has no level-\<open>\<ge> 1\<close> \<open>m\<close>-parent. That last
-  fact is exactly the repeated-copy crux co-extensive with the open
-  \<open>lemma_2_5\<close> development; it is the single remaining gap below.
-
-  NOTE: the \<open>A \<in> BMS\<close> hypothesis is ESSENTIAL — the statement is
-  FALSE for arbitrary well-formed arrays (counterexample
-  \<open>(0,0)(1,1)(0,0)\<close>, see the cluster header comment).
-\<close>
-
-lemma maxparent_zero_preserved:
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and mpl0: "mpl_le_zero A"
-  shows "mpl_le_zero (expansion A n)"
-proof -
-  let ?P = "G_block A @ Bs_concat A n"
-  have is_arr: "is_array A" using A_BMS by (rule BMS_is_array)
-  have exp_eq: "expansion A n = strip_zero_rows ?P"
-    using A_ne unfolding expansion_def by simp
-  show ?thesis
-  proof (cases "?P = []")
-    case True
-    \<comment> \<open>Degenerate single-column case: the expansion is empty, whose
-        \<open>max_parent_level\<close> is \<open>None\<close>, so \<open>mpl_le_zero\<close> holds.\<close>
-    have "expansion A n = []"
-      using exp_eq True by (simp add: strip_zero_rows_def)
-    thus ?thesis
-      unfolding mpl_le_zero_def max_parent_level_def by simp
-  next
-    case P_ne: False
-    have P_arr: "is_array ?P"
-    proof -
-      let ?H = "height A"
-      have all_A: "\<forall>c \<in> set A. length c = ?H"
-        using is_arr unfolding is_array_def by blast
-      have all_G: "\<forall>c \<in> set (G_block A). length c = ?H"
-        using G_block_subset_A all_A by blast
-      have all_Bs: "\<forall>c \<in> set (Bs_concat A n). length c = ?H"
-        using Bs_concat_uniform[OF is_arr A_ne] .
-      have all_P: "\<forall>c \<in> set ?P. length c = ?H"
-        using all_G all_Bs by auto
-      have hd_in: "hd ?P \<in> set ?P" using P_ne by (cases ?P) auto
-      have h_eq: "height ?P = ?H"
-      proof -
-        have "height ?P = length (hd ?P)" using P_ne by (cases ?P) auto
-        also have "\<dots> = ?H" using hd_in all_P by blast
-        finally show ?thesis .
-      qed
-      show ?thesis unfolding is_array_def using all_P h_eq P_ne by simp
-    qed
-    have no_hi: "\<forall>m. 0 < m \<longrightarrow> m < height ?P
-                      \<longrightarrow> m_parent ?P m (last_col_idx ?P) = None" sorry
-      \<comment> \<open>GAP (the genuine BMS crux): the pre-strip last column of the
-          expansion has no \<open>m\<close>-parent at any level \<open>\<ge> 1\<close>. Mechanism:
-          when \<open>mpl_le_zero A\<close>, no column of \<open>B\<^sub>0\<close> ascends, so every
-          \<open>B_i\<close> is a literal copy of \<open>B\<^sub>0\<close> (Bi_block_eq_B0_when_m0_zero
-          / Bi_block_no_b0); the last pre-strip column is then a copy
-          of an existing earlier column and creates no new high-level
-          ancestor. Empirically verified
-          (verify/verify_maxparent_zero_preserved.py: 2065 BMS
-          expansions, 0 violations). FALSE without \<open>A \<in> BMS\<close>
-          (counterexample \<open>(0,0)(1,1)(0,0)\<close>).\<close>
-    show ?thesis
-      using exp_eq mpl_le_zero_strip[OF P_arr P_ne no_hi] by simp
-  qed
-qed
 
 
 
@@ -2361,8 +2529,28 @@ next
             qed
           next
             case (Suc t')
-            \<comment> \<open>\<open>max_parent_level A = Some (Suc t')\<close>: remaining crux.\<close>
-            show ?thesis sorry
+            \<comment> \<open>\<open>max_parent_level A = Some (Suc t')\<close>: row-0 over the bumped
+                region is the consecutive run, by @{thm chainlen0_bumped_tiling}
+                (its \<open>consec\<close> hypothesis comes from @{thm bms_consec_guarded}).\<close>
+            note mp = Some[unfolded \<open>t = Suc t'\<close>]
+            have A_BMS: "A \<in> BMS" using expand_in_BMS.hyps(1) .
+            have t_pos: "0 < Suc t'" by simp
+            have b0_not_none: "b0_start A \<noteq> None"
+            proof
+              assume "b0_start A = None"
+              hence "max_parent_level A = None"
+                using b0_start_None_imp_max_parent_level_None[OF A_ne] by simp
+              thus False using mp by simp
+            qed
+            then obtain s where b0: "b0_start A = Some s" by auto
+            have consec: "\<forall>j. j \<le> l1 A \<longrightarrow> elem A (s + j) 0 = elem A s 0 + j"
+              using bms_consec_guarded[OF A_BMS] b0 mp t_pos
+              by (simp split: option.splits)
+            have L_eq: "?L = l0 A + l1 A"
+              unfolding l0_def l1_def by simp
+            have k_ge: "l0 A + l1 A \<le> k" using k_geL L_eq by simp
+            show ?thesis
+              by (rule chainlen0_bumped_tiling[OF A_BMS A_ne b0 mp t_pos consec k_ge k_lt col_ne])
           qed
         qed
       qed
