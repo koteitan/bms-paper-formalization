@@ -93,15 +93,14 @@ graph LR
         - ✅ `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0; (*) + less_induct + m_parent_row0_b0_when_row0_lt helper で証明完了
         - ✅ `m_parent_row0_b0_when_row0_lt` — BMS-free helper: elem A s 0 < elem A (s+j) 0 + j>0 から m_parent A 0 (s+j) ∈ Some p with p ∈ [s, s+j-1] を導出
         - ✅ `bms_b0_row0_gt_s` — (*): t>0 ⟹ elem A s 0 < elem A (s+j) 0; BMS.induct 戦略 (構造保存) は refuted、 lex clex 経由に転換 (`bms_b0_row0_strict_from_clex`)、 BMS_Ancestry 側は sorry-free 化、 核を BMS_Lex に移動
-        - 🤖 🚨 `bms_b0_col_row0_ancestor` (BMS_Lex) — (*) lex 核: s が B_0 全列の level-0 共通祖先 (785 BMS 経験真)。 **収束核 (Batch 2D 発見)**: (ii) の chain_step_stays, (iv) の block_n_stays/no_intermediate_B_t/lands_in_G は全てこの「BMS 標準形で B_0 第1列が row-0 global 最小」 に帰着。 既存 library では到達不可、 BMS 構築 (lex order) からの本格構造理論が要 (循環依存 row0_gt_s→clex_strict_row0→row0_ancestor あり)
-        - 🚨 `bms_row0_eq_chainlen0` (BMS_Ancestry) — global 不変量 elem A i 0 = level-0 chain 長。 BMS.induct: seed ✅、 expand G+B_0 ✅、 bumped t_A=0 (None/within-block ✅、 S-empty は `gmin` 核に隔離 🚨)、 bumped t_A>0 ✅ (`chainlen0_bumped_tiling` 結線)
-          - ✅ `bms_consec_guarded` — ガード付き consec 不変量を BMS.induct で証明 (expand: t>0→`consec_preserved`、 t≤0→`maxparent_zero_preserved` で vacuous)。 `bms_b0_row0_consecutive_increasing` ((ii) consumer) はこれから導出 ✅
-          - ✅ `chainlen0_bumped_tiling` / `consec_run_expansion_row0` / `prestrip_*` / `consec_b0_*` — proven infra
-          - **(ii) row-0 ルートは正確に3つの既約核に収束** (他は全 proven):
-            - 🤖🚨 `gmin` (BMS_Ancestry chainlen0 t=0 S-empty) — G-prefix に bumped 値より小さい row-0 が無い (234 ケース 0 viol)
-            - 🤖🚨 `s' < l0` (`consec_preserved_under_expansion`) — b0_start(A[n]) が G-prefix に入る時の consec 延長 (891 ケース 0 viol)
-            - 🤖🚨 `no_hi` (`maxparent_zero_preserved`/linchpin) — BMS で pre-strip 最終列が level≥1 親なし (2065 展開 0 viol)
-            - 3 核は「G-prefix の row-0 挙動」+「BMS repeated-copy 構造」に帰着
+        - 🤖 🚨 `bms_b0_col_row0_ancestor` (BMS_Ancestry に再配置) — **(ii) の真の target**: s が B_0 全列の level-0 共通祖先 `m_ancestor A 0 (s+j) s` (3394 t>0 BMS、 正しく strip して 0 viol)。 系として CLAIM1 `elem A s 0 < elem A (s+j) 0` (s が B_0 row-0 の狭義最小) = `bms_b0_col_clex_strict_row0`。 **consec 経由でなく直接証明が必要** (この session で consec 経由は dead-end 化、 下記)
+        - ✅ `bms_row0_eq_chainlen0` (BMS_Ancestry) — global 不変量 elem A i 0 = level-0 chain 長 (**真**、 4865 BMS strip 済 0 viol、 strip 不変)。 BMS.induct: seed ✅、 expand G+B_0 ✅、 bumped t_A=0 (None/within-block ✅、 S-empty は `gmin` 核 🚨)、 bumped t_A>0 (`chainlen0_bumped_tiling` 結線、 ただし consec 仮説依存 → 下記訂正で要見直し)
+          - 🤖🚨 `gmin` (chainlen0 t=0 S-empty) — agent が `b0min` (t=0 で B_0 row-0 全体最小) に縮小。 chainlen0 は真なので有効な残核 (worktree agent-aececef)
+        - 🛑 **2026-05-23 訂正: 下記 consec/linchpin 系は偽と判明 (strip 漏れ検証の偽陰性、 [[strip-before-bms-verify]])**:
+          - 🛑 `bms_b0_row0_consecutive_increasing` (consec、 B_0 row-0 連続) — **偽** (63反例/3394、 反例 `(0,0)(1,1)(2,0)(3,1)(3,1)(3,1)(3,1)` で B_0 row-0=[2,3,3,3] plateau)。 over-strengthening。 (ii) は弱い `bms_b0_col_row0_ancestor` で十分
+          - 🛑 `maxparent_zero_preserved` (linchpin、 t∈{None,0} 展開保存) — **偽** (16反例/1312、 `(0,0)(1,1)(2,0)` t=0 → `A[0]` t'=1)。 sub-agent eval で machine-check 反証
+          - 🛑 `bms_consec_guarded` / `consec_preserved_under_expansion` / `consec_run_expansion_row0` / `consec_b0_*` — 偽命題依存の dead-end。 commit cb4e886/fdb1b7e/ee32098 の consec/linchpin 部分は revert/作り直し要 (全 sorry ゲート付きで unsound な「証明済」主張は無し)
+          - worktree 未 harvest: agent-acd3878 (s'<l0→A_consec_down)、 agent-aef5740 (no_hi 反証 cex lemmas) — consec dead-end 由来なので破棄候補、 cex lemmas のみ documentation 価値あり
         - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc` — case (A) 本体 helper: 全 col ascend at row 0 仮定で row-0 chain block 不変、 less_induct on j + within/outside m_parent helpers で証明 (~300 line)
         - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc` — within-block m_parent at row 0 under all_asc、 elem_AEn_lt_block_invariant_when_both_ascend で filter_cong
         - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc` — outside-block m_parent at row 0 under all_asc、 contradiction via candidate-in-block ⇒ in S contradiction
