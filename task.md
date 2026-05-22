@@ -94,8 +94,13 @@ graph LR
         - ✅ `m_parent_row0_b0_when_row0_lt` — BMS-free helper: elem A s 0 < elem A (s+j) 0 + j>0 から m_parent A 0 (s+j) ∈ Some p with p ∈ [s, s+j-1] を導出
         - ✅ `bms_b0_row0_gt_s` — (*): t>0 ⟹ elem A s 0 < elem A (s+j) 0; BMS.induct 戦略 (構造保存) は refuted、 lex clex 経由に転換 (`bms_b0_row0_strict_from_clex`)、 BMS_Ancestry 側は sorry-free 化、 核を BMS_Lex に移動
         - 🤖 🚨 `bms_b0_col_row0_ancestor` (BMS_Lex) — (*) lex 核: s が B_0 全列の level-0 共通祖先 (785 BMS 経験真)。 **収束核 (Batch 2D 発見)**: (ii) の chain_step_stays, (iv) の block_n_stays/no_intermediate_B_t/lands_in_G は全てこの「BMS 標準形で B_0 第1列が row-0 global 最小」 に帰着。 既存 library では到達不可、 BMS 構築 (lex order) からの本格構造理論が要 (循環依存 row0_gt_s→clex_strict_row0→row0_ancestor あり)
-        - 🚨 `bms_row0_eq_chainlen0` (BMS_Lex) — global 不変量: elem A i 0 = level-0 m_parent chain 長 (universal、 t-guard 不要、 7998 BMS 0 viol)、 局所再帰形 `elem A i 0 = (case m_parent A 0 i of None⇒0 | Some p⇒Suc(elem A p 0))` (空列は `0<length(A!i)` で guard)。 BMS.induct: seed ✅ (`seed_row0_eq_recursive`)、 expand の G+B_0 領域 (k<l0+l1 = butlast A と列同一 → IH 転送) ✅、 残 sorry は bumped 領域 k≥l0+l1 (B_1…B_n、 t_A=0 は bump なし/t_A>0 は delta_0=l 連続タイル、 consecutive-increase 核と co-extensive)
-          - ✅ `prestrip_take_eq_butlast` / `prestrip_nth_eq_orig` — 展開前配列 G_block@Bs_concat の先頭 l0+l1 列 = butlast A の prefix 同一性 (G_block_B0_block + Bs_concat_take_l1 経由)
+        - 🚨 `bms_row0_eq_chainlen0` (BMS_Ancestry に再配置) — global 不変量: elem A i 0 = level-0 m_parent chain 長 (universal、 t-guard 不要、 7998 BMS 0 viol)。 BMS.induct: seed ✅、 expand G+B_0 領域 (k<l0+l1 = butlast A 転送) ✅、 bumped 領域 k≥l0+l1 を `max_parent_level A` で case split:
+          - ✅ t_A=0 None branch (bumped 領域 空) / t_A=0 Some 0 within-block (block-twin へ転送)
+          - 🚨 t_A=0 Some 0 S-empty (inter-block escape、 残 crux、 BMS_Ancestry:1752)
+          - 🚨 t_A>0 (BMS_Ancestry:1757、 B の `chainlen0_bumped_tiling` で埋める対象、 consec 仮説要 → combined invariant 組み立て待ち)
+          - ✅ `prestrip_take_eq_butlast` / `prestrip_nth_eq_orig` — prefix 同一性 (先頭 l0+l1 列 = butlast A)
+          - ✅ `chainlen0_bumped_tiling` (+ `consec_b0_row0_ancestor` / `consec_b0_ascends_row0` / `consec_delta_row0`) — consec 仮説下で t_A>0 bumped の chainlen0 (tiling → m_parent_zero_pred、 全 proven)
+          - 🚧 [私] linchpin (t∈{None,0} 展開保存、 5920 BMS 0 viol) 証明 + 強化複合不変量 (chainlen0 ∧ consec) simultaneous induct で 764/1752/1757 を閉じる
         - ✅ `m_anc_zero_idx_B_in_block_shift_when_t_pos_all_asc` — case (A) 本体 helper: 全 col ascend at row 0 仮定で row-0 chain block 不変、 less_induct on j + within/outside m_parent helpers で証明 (~300 line)
         - ✅ `m_parent_AEn_zero_idx_B_within_block_when_t_pos_all_asc` — within-block m_parent at row 0 under all_asc、 elem_AEn_lt_block_invariant_when_both_ascend で filter_cong
         - ✅ `m_parent_AEn_zero_idx_B_outside_block_when_t_pos_all_asc` — outside-block m_parent at row 0 under all_asc、 contradiction via candidate-in-block ⇒ in S contradiction
