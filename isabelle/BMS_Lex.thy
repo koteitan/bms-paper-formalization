@@ -1964,14 +1964,52 @@ proof -
 qed
 
 text \<open>
+  Prefix identity for the expansion's pre-strip array: the first
+  \<open>l0 + l1\<close> columns of \<open>G_block A @ Bs_concat A n\<close> coincide with
+  \<open>butlast A\<close> (i.e. the \<open>G + B\<^sub>0\<close> block is bit-identical to \<open>A\<close>
+  minus its last column, because the \<open>i = 0\<close> bump is the identity).
+\<close>
+
+lemma prestrip_take_eq_butlast:
+  assumes A_ne: "A \<noteq> []"
+  shows "take (length (G_block A) + length (B0_block A)) (G_block A @ Bs_concat A n)
+       = butlast A"
+proof -
+  have take_l1: "take (length (B0_block A)) (Bs_concat A n) = B0_block A"
+    by (rule Bs_concat_take_l1[OF A_ne])
+  have "take (length (G_block A) + length (B0_block A)) (G_block A @ Bs_concat A n)
+      = G_block A @ take (length (B0_block A)) (Bs_concat A n)"
+    by (simp add: take_append)
+  also have "\<dots> = G_block A @ B0_block A" using take_l1 by simp
+  also have "\<dots> = butlast A" by (rule G_block_B0_block[OF A_ne])
+  finally show ?thesis .
+qed
+
+lemma prestrip_nth_eq_orig:
+  assumes A_ne: "A \<noteq> []" and k_lt: "k < length (G_block A) + length (B0_block A)"
+  shows "(G_block A @ Bs_concat A n) ! k = A ! k"
+proof -
+  have lb: "length (butlast A) = length (G_block A) + length (B0_block A)"
+    by (metis G_block_B0_block[OF A_ne] length_append)
+  have k_lt_bl: "k < length (butlast A)" using k_lt lb by simp
+  have "(G_block A @ Bs_concat A n) ! k
+      = take (length (G_block A) + length (B0_block A)) (G_block A @ Bs_concat A n) ! k"
+    by (rule nth_take[OF k_lt, symmetric])
+  also have "\<dots> = butlast A ! k"
+    by (subst prestrip_take_eq_butlast[OF A_ne]) (rule refl)
+  also have "\<dots> = A ! k" by (rule nth_butlast[OF k_lt_bl])
+  finally show ?thesis .
+qed
+
+text \<open>
   Global invariant via \<open>BMS.induct\<close>. Seed case discharged by
   @{thm seed_row0_eq_recursive}. The expand case
-  (\<open>A[n] = strip_zero_rows (G_block A @ Bs_concat A n)\<close>) is the deep
-  remaining work: it must track row-0 across the \<open>G + B\<^sub>0 + \<dots> + B_n\<close>
-  decomposition (row-0 ascends iff \<open>0 < max_parent_level\<close>, bumping by
-  \<open>i \<cdot> delta A 0\<close>) and recompute \<open>m_parent (A[n]) 0 k\<close> in the
-  concatenation. This is co-extensive with the \<open>B\<^sub>0\<close> consecutive-increase
-  crux and is left as the single \<open>sorry\<close> here.
+  (\<open>A[n] = strip_zero_rows (G_block A @ Bs_concat A n)\<close>) splits into
+  the \<open>G + B\<^sub>0\<close> region (columns \<open>k < l0 + l1\<close>), which is
+  bit-identical to \<open>butlast A\<close> and so transfers from the induction
+  hypothesis, and the bumped region (\<open>k \<ge> l0 + l1\<close>, blocks
+  \<open>B\<^sub>1, \<dots>, B_n\<close>), which is the remaining \<open>sorry\<close> and is
+  co-extensive with the \<open>B\<^sub>0\<close> consecutive-increase crux.
 \<close>
 
 lemma bms_row0_eq_chainlen0:
@@ -1994,9 +2032,104 @@ proof (induct A rule: BMS.induct)
   qed
 next
   case (expand_in_BMS A n)
-  \<comment> \<open>Deep expand case: track row-0 through \<open>strip_zero_rows (G @ B\<^sub>0 @ \<dots> @ B_n)\<close>.
-      Co-extensive with the consecutive-increase crux; left as the single sorry.\<close>
-  show ?case sorry
+  have IH: "\<forall>i. i < arr_len A \<longrightarrow> 0 < length (A ! i) \<longrightarrow>
+              elem A i 0 = (case m_parent A 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+    using expand_in_BMS.hyps(2) .
+  show ?case
+  proof (cases "A = []")
+    case True
+    thus ?thesis by (simp add: expansion_def)
+  next
+    case False
+    note A_ne = False
+    let ?P = "G_block A @ Bs_concat A n"
+    let ?L = "length (G_block A) + length (B0_block A)"
+    have An_eq: "A[n] = strip_zero_rows ?P" using A_ne by (simp add: expansion_def)
+    have len_An: "arr_len (A[n]) = length ?P"
+      using An_eq by (simp add: length_strip_zero_rows)
+    have lenP: "length ?P = length (G_block A) + Suc n * length (B0_block A)"
+      by (simp add: length_Bs_concat)
+    have L_le: "?L \<le> length ?P" using lenP by simp
+    have arrA_pos: "0 < arr_len A" using A_ne by simp
+    have Leq: "?L = arr_len A - 1"
+      by (metis G_block_B0_block[OF A_ne] length_append length_butlast)
+    show ?thesis
+    proof (intro allI impI)
+      fix k assume k_lt: "k < arr_len (A[n])" and col_ne: "0 < length ((A[n]) ! k)"
+      have Pne: "?P \<noteq> []" using k_lt len_An by auto
+      have k_ltP: "k < arr_len ?P" using k_lt len_An by simp
+      have An_map: "A[n] = map (take (keep_of ?P)) ?P"
+        by (simp only: An_eq strip_zero_rows_eq_map_take[OF Pne])
+      have An_k: "(A[n]) ! k = take (keep_of ?P) (?P ! k)"
+        by (simp only: An_map nth_map[OF k_ltP])
+      have keep_pos: "0 < keep_of ?P"
+      proof (rule ccontr)
+        assume "\<not> 0 < keep_of ?P"
+        hence "(A[n]) ! k = []" using An_k by simp
+        thus False using col_ne by simp
+      qed
+      have elem_eq: "\<And>j. j < ?L \<Longrightarrow> elem (A[n]) j 0 = elem A j 0"
+      proof -
+        fix j assume j_lt: "j < ?L"
+        have j_ltP: "j < arr_len ?P" using j_lt L_le by simp
+        have "elem (A[n]) j 0 = elem ?P j 0"
+          using An_eq elem_strip_lt_keep[OF Pne j_ltP keep_pos] by simp
+        also have "\<dots> = (?P ! j) ! 0" by (simp add: elem_def)
+        also have "\<dots> = (A ! j) ! 0" using prestrip_nth_eq_orig[OF A_ne j_lt] by simp
+        also have "\<dots> = elem A j 0" by (simp add: elem_def)
+        finally show "elem (A[n]) j 0 = elem A j 0" .
+      qed
+      show "elem (A[n]) k 0
+              = (case m_parent (A[n]) 0 k of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+      proof (cases "k < ?L")
+        case True
+        note k_ltL = True
+        have k_lt_arrA: "k < arr_len A" using k_ltL Leq arrA_pos by linarith
+        have col_ne_A: "0 < length (A ! k)"
+        proof -
+          have le1: "length ((A[n]) ! k) \<le> length (?P ! k)" using An_k by simp
+          have "0 < length (?P ! k)" using le1 col_ne by linarith
+          thus ?thesis using prestrip_nth_eq_orig[OF A_ne k_ltL] by simp
+        qed
+        have mp_eq: "m_parent (A[n]) 0 k = m_parent A 0 k"
+        proof -
+          have "[j\<leftarrow>[0..<k]. elem (A[n]) j 0 < elem (A[n]) k 0]
+              = [j\<leftarrow>[0..<k]. elem A j 0 < elem A k 0]"
+          proof (rule filter_cong[OF refl])
+            fix x assume "x \<in> set [0..<k]"
+            hence x_lt: "x < k" by simp
+            have x_ltL: "x < ?L" using x_lt k_ltL by simp
+            show "(elem (A[n]) x 0 < elem (A[n]) k 0) = (elem A x 0 < elem A k 0)"
+              using elem_eq[OF x_ltL] elem_eq[OF k_ltL] by simp
+          qed
+          thus ?thesis by (simp add: m_parent.simps(1))
+        qed
+        have ek: "elem (A[n]) k 0 = elem A k 0" using elem_eq[OF k_ltL] .
+        have ihk: "elem A k 0
+                   = (case m_parent A 0 k of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+          using IH k_lt_arrA col_ne_A by blast
+        show ?thesis
+        proof (cases "m_parent A 0 k")
+          case None
+          have "elem A k 0 = 0" using ihk None by simp
+          thus ?thesis using ek mp_eq None by simp
+        next
+          case (Some p)
+          have p_lt_k: "p < k" using m_parent_lt[OF Some] .
+          have p_ltL: "p < ?L" using p_lt_k k_ltL by simp
+          have "elem A k 0 = Suc (elem A p 0)" using ihk Some by simp
+          also have "\<dots> = Suc (elem (A[n]) p 0)" using elem_eq[OF p_ltL] by simp
+          finally show ?thesis using ek mp_eq Some by simp
+        qed
+      next
+        case False
+        \<comment> \<open>Bumped region \<open>k \<ge> l0 + l1\<close> (blocks \<open>B\<^sub>1, \<dots>, B_n\<close>):
+            row-0 value is \<open>elem A (s+j) 0 + (if ascends then t\<cdot>delta\<^sub>0 else 0)\<close>;
+            remaining crux, co-extensive with consecutive-increase.\<close>
+        show ?thesis sorry
+      qed
+    qed
+  qed
 qed
 
 text \<open>
