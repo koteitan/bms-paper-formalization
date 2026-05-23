@@ -5417,7 +5417,15 @@ text \<open>
   recall \<open>l1' = 1\<close>). The genuine NEW location fact: the expansion's bad
   root re-enters \<open>G'\<close> and is a \<open>t\<close>-ancestor of the predecessor's bad
   root (132/132; here \<open>t = t'\<close> in 123/132, \<open>t > t'\<close> in 9/132,
-  \<open>t < t'\<close> never).
+  \<open>t < t'\<close> never). SHARP FORM (\<open>verify/probe_R2_H4_sharp.py\<close>,
+  132/132 incl. all 9 \<open>t > t'\<close>): \<open>s = m_parent A' t l0'\<close> -- the bad
+  root of \<open>A'[n]\<close> is EXACTLY the \<open>t\<close>-parent (in \<open>A'\<close>) of \<open>A'\<close>'s bad
+  root. Mechanism: at the top level \<open>t\<close> the bumped copies \<open>b\<^sub>0..b\<^sub>n\<close>
+  tie (bumping needs level \<open>< t'\<close>), so the \<open>t\<close>-parent search for the
+  last column \<open>C = b\<^sub>n\<close> skips them and, by G'-preservation of
+  \<open>m_parent\<close> (\<open>verify/probe_R2_H4_mechanism.py\<close> M1, 696/696:
+  \<open>m_parent (A'[n]) t p = m_parent A' t p\<close> for \<open>p < l0'\<close>), lands at
+  \<open>m_parent A' t l0'\<close>. Then H4 follows by @{thm m_anc_via_parent_some}.
 
   (R2a) the STRONGER \<open>m_ancestor A' t c s\<close> for EVERY \<open>s < c \<le> l0'\<close>
   (564/564) -- \<open>s\<close> is a \<open>t\<close>-ancestor in \<open>A'\<close> of every column up to
