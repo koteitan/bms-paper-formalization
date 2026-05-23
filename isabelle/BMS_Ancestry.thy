@@ -5294,6 +5294,199 @@ text \<open>
   now the lone (ii) crux.
 \<close>
 
+text \<open>
+  Generic ``last of a filtered prefix is \<open>\<ge>\<close> any member'' fact: the
+  candidate list inside @{const m_parent} is @{term "filter P [0..<i]"},
+  which is sorted ascending, so its @{const last} dominates every element.
+\<close>
+
+lemma last_filter_upt_ge_member:
+  assumes mem: "x \<in> set (filter P [0..<i])"
+  shows "x \<le> last (filter P [0..<i])"
+proof -
+  have ne: "filter P [0..<i] \<noteq> []" using mem by (cases "filter P [0..<i]") auto
+  have sorted: "sorted (filter P [0..<i])"
+    using sorted_wrt_filter[of "(\<le>)" "[0..<i]" P] by simp
+  have last_mem: "last (filter P [0..<i]) \<in> set (filter P [0..<i])"
+    using ne by (rule last_in_set)
+  obtain n where n_lt: "n < length (filter P [0..<i])"
+             and x_eq: "x = filter P [0..<i] ! n"
+    using mem unfolding in_set_conv_nth by blast
+  have last_eq: "last (filter P [0..<i])
+               = filter P [0..<i] ! (length (filter P [0..<i]) - 1)"
+    using ne by (simp add: last_conv_nth)
+  have len_pos: "length (filter P [0..<i]) - 1 < length (filter P [0..<i])"
+    using ne by (cases "filter P [0..<i]") auto
+  have "n \<le> length (filter P [0..<i]) - 1" using n_lt by simp
+  hence "filter P [0..<i] ! n \<le> filter P [0..<i] ! (length (filter P [0..<i]) - 1)"
+    using sorted_nth_mono[OF sorted _ len_pos] by simp
+  thus ?thesis using x_eq last_eq by simp
+qed
+
+text \<open>
+  If a column \<open>s\<close> is a level-\<open>r\<close> parent-candidate of \<open>i\<close> --- i.e.\
+  \<open>s < i\<close>, \<open>elem A s r < elem A i r\<close>, and (when \<open>r = Suc r'\<close>)
+  \<open>s\<close> is a level-\<open>r'\<close> m-ancestor of \<open>i\<close> --- then \<open>i\<close> has a level-\<open>r\<close>
+  m-parent and that parent is \<open>\<ge> s\<close>. Pure consequence of the
+  @{const last}/filter structure of @{const m_parent}.
+\<close>
+
+lemma m_parent_ge_candidate_zero:
+  assumes s_lt: "s < i"
+      and e_lt: "elem A s 0 < elem A i 0"
+  shows "\<exists>p. m_parent A 0 i = Some p \<and> s \<le> p"
+proof -
+  let ?P = "\<lambda>j. elem A j 0 < elem A i 0"
+  have s_mem: "s \<in> set (filter ?P [0..<i])"
+    using s_lt e_lt by (simp add: set_filter)
+  have ne: "filter ?P [0..<i] \<noteq> []"
+    using s_mem by (metis empty_iff empty_set)
+  have mp_eq: "m_parent A 0 i = Some (last (filter ?P [0..<i]))"
+    using ne by (simp add: Let_def)
+  have "s \<le> last (filter ?P [0..<i])"
+    by (rule last_filter_upt_ge_member[OF s_mem])
+  thus ?thesis using mp_eq by blast
+qed
+
+lemma m_parent_ge_candidate_Suc:
+  assumes s_lt: "s < i"
+      and e_lt: "elem A s (Suc r') < elem A i (Suc r')"
+      and anc: "m_ancestor A r' i s"
+  shows "\<exists>p. m_parent A (Suc r') i = Some p \<and> s \<le> p"
+proof -
+  let ?P = "\<lambda>j. elem A j (Suc r') < elem A i (Suc r') \<and> m_ancestor A r' i j"
+  have s_mem: "s \<in> set (filter ?P [0..<i])"
+    using s_lt e_lt anc by (simp add: set_filter)
+  have ne: "filter ?P [0..<i] \<noteq> []"
+    using s_mem by (metis empty_iff empty_set)
+  have mp_eq: "m_parent A (Suc r') i = Some (last (filter ?P [0..<i]))"
+    using ne by (simp add: Let_def)
+  have "s \<le> last (filter ?P [0..<i])"
+    by (rule last_filter_upt_ge_member[OF s_mem])
+  thus ?thesis using mp_eq by blast
+qed
+
+text \<open>
+  Isolated geometric input (the lone remaining BMS standard-form fact
+  behind the (ii) crux): in a stripped BMS \<open>A\<close>, the bad root \<open>s\<close> is
+  strictly dominated in EVERY row \<open>r \<le> t\<close> by every interior \<open>B\<^sub>0\<close>
+  column \<open>s + j\<close>. Strip-correctly verified across 261 BMSs in
+  \<open>verify/probe_Qt_elem.py\<close> (0 violations). This is the single
+  remaining \<open>sorry\<close>: it must be argued from Bashicu standard form
+  directly (\<open>BMS.induct\<close> structure-preservation is refuted; cf.
+  \<open>verify/verify_Ak_structural_conjectures.py\<close>).
+\<close>
+
+lemma bms_b0_col_elem_lt:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and r_le: "r \<le> t"
+      and j_pos: "0 < j"
+      and j_lt: "j < l1 A"
+  shows "elem A s r < elem A (s + j) r"
+  sorry
+
+text \<open>
+  Strengthened (ii) crux, ranging over every level \<open>r \<le> t\<close>: the bad
+  root \<open>s\<close> is a level-\<open>r\<close> m-ancestor of every interior \<open>B\<^sub>0\<close>
+  column \<open>s + j\<close>. Proved by induction on \<open>r\<close> (outer) and on the
+  column offset (inner, strong): at level \<open>r = Suc r'\<close>, the level-\<open>r'\<close>
+  ancestry (outer IH) together with the row-\<open>r\<close> domination
+  @{thm bms_b0_col_elem_lt} makes \<open>s\<close> a level-\<open>r\<close> parent-candidate of
+  \<open>s + j\<close>, so the level-\<open>r\<close> m-parent \<open>p\<close> of \<open>s + j\<close> satisfies
+  \<open>s \<le> p < s + j\<close>; the inner induction walks the parent chain down to
+  \<open>s\<close>. Strip-correctly verified (261 BMSs, 0 violations) in
+  \<open>verify/probe_Qt_allr.py\<close>.
+\<close>
+
+lemma bms_b0_col_r_ancestor_all:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and r_le: "r \<le> t"
+  shows "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A r (s + j) s"
+  using r_le
+proof (induct r)
+  case 0
+  show ?case
+  proof (intro allI impI)
+    fix j assume j_pos: "0 < j" and j_lt: "j < l1 A"
+    \<comment> \<open>Inner strong induction on the column offset \<open>j\<close>.\<close>
+    show "m_ancestor A 0 (s + j) s"
+      using j_pos j_lt
+    proof (induct j rule: less_induct)
+      case (less j)
+      note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+      have e_lt: "elem A s 0 < elem A (s + j) 0"
+        by (rule bms_b0_col_elem_lt[OF A_BMS A_ne b0 mp le0 j_pos j_lt])
+      have s_lt: "s < s + j" using j_pos by simp
+      obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
+        using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
+      have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+      show "m_ancestor A 0 (s + j) s"
+      proof (cases "p = s")
+        case True
+        thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+      next
+        case False
+        \<comment> \<open>\<open>s < p < s + j\<close>: write \<open>p = s + j'\<close>, \<open>0 < j' < j\<close>, apply inner IH.\<close>
+        from False s_le_p have s_lt_p: "s < p" by simp
+        obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+        have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+        have j'_lt_j: "j' < j" using p_lt p_eq by simp
+        have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+        have anc_p_s: "m_ancestor A 0 (s + j') s"
+          using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+        hence anc_p_s': "m_ancestor A 0 p s" using p_eq by simp
+        show ?thesis
+          using m_anc_via_parent_some[OF mp_p] anc_p_s' by blast
+      qed
+    qed
+  qed
+next
+  case (Suc r')
+  have r'_le: "r' \<le> t" using Suc.prems by simp
+  note IH_r = Suc.hyps[OF r'_le]
+  show ?case
+  proof (intro allI impI)
+    fix j assume j_pos: "0 < j" and j_lt: "j < l1 A"
+    show "m_ancestor A (Suc r') (s + j) s"
+      using j_pos j_lt
+    proof (induct j rule: less_induct)
+      case (less j)
+      note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+      have e_lt: "elem A s (Suc r') < elem A (s + j) (Suc r')"
+        by (rule bms_b0_col_elem_lt[OF A_BMS A_ne b0 mp Suc.prems j_pos j_lt])
+      have s_lt: "s < s + j" using j_pos by simp
+      have anc_r': "m_ancestor A r' (s + j) s"
+        using IH_r j_pos j_lt by blast
+      obtain p where mp_p: "m_parent A (Suc r') (s + j) = Some p" and s_le_p: "s \<le> p"
+        using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
+      have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+      show "m_ancestor A (Suc r') (s + j) s"
+      proof (cases "p = s")
+        case True
+        thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+      next
+        case False
+        from False s_le_p have s_lt_p: "s < p" by simp
+        obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+        have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+        have j'_lt_j: "j' < j" using p_lt p_eq by simp
+        have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+        have anc_p_s: "m_ancestor A (Suc r') (s + j') s"
+          using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+        hence anc_p_s': "m_ancestor A (Suc r') p s" using p_eq by simp
+        show ?thesis
+          using m_anc_via_parent_some[OF mp_p] anc_p_s' by blast
+      qed
+    qed
+  qed
+qed
+
 lemma bms_b0_col_t_ancestor:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -5303,7 +5496,8 @@ lemma bms_b0_col_t_ancestor:
       and j_pos: "0 < j"
       and j_lt: "j < l1 A"
   shows "m_ancestor A t (s + j) s"
-  sorry
+  using bms_b0_col_r_ancestor_all[OF A_BMS A_ne b0 mp le_refl] j_pos j_lt
+  by blast
 
 lemma bms_m_parent_outside_B0_case_B_pureA:
   fixes A :: array
