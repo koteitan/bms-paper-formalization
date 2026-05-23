@@ -5275,80 +5275,35 @@ text \<open>
 \<close>
 
 text \<open>
-  Step-local BMS standard-form fact (the single irreducible structural
-  ingredient): once an \<open>r\<close>-chain (level \<open>r < t\<close>) of a \<open>B\<^sub>0\<close> column has
-  reached a position strictly inside \<open>B\<^sub>0\<close> (i.e. \<open>m_parent A r p = Some q\<close>
-  with \<open>s < q\<close>), the NEXT \<open>r\<close>-parent step does not fall out of \<open>B\<^sub>0\<close>: it
-  exists and lands at a position \<open>\<ge> s\<close>. Equivalently, an \<open>r\<close>-chain inside
-  \<open>B\<^sub>0\<close> never skips below \<open>s\<close> (it lands exactly on \<open>s\<close> or stays above).
+  Core Bashicu-standard-form geometry of \<open>B\<^sub>0\<close> (the single remaining (ii)
+  structural ingredient): the bad root \<open>s = b0_start A\<close> is a level-\<open>t\<close>
+  m-ancestor of EVERY \<open>B\<^sub>0\<close> column \<open>s+j\<close> (\<open>0 < j < l1\<close>), where
+  \<open>t = max_parent_level A > 0\<close>. Hunter's Lemma 2.1 gives this for the last
+  column \<open>C\<close> via \<open>s = m_parent A t C\<close>; here it is extended to every interior
+  \<open>B\<^sub>0\<close> column. Strip-correctly verified (261 BMSs, 0 violations) in
+  \<open>verify/probe_Qt_caseB_vacuous.py\<close>.
 
-  This is the only place the genuine Bashicu-standard-form geometry of
-  \<open>B\<^sub>0\<close> enters: \<open>B\<^sub>0\<close> starts at the \<open>m\<^sub>0\<close>-parent \<open>s\<close> of \<open>C\<close>, and for
-  every level \<open>r < m\<^sub>0 = t\<close> the parent of an internal \<open>B\<^sub>0\<close> column cannot
-  jump past \<open>s\<close>. Empirically verified across 665 BMSs (0 violations) in
-  \<open>verify/verify_b0_chain_step_stays.py\<close>.
+  Consequence (used below): by @{thm m_ancestor_mono} this lowers to every
+  level \<open>r \<le> t\<close>, so for \<open>r < t\<close> every \<open>B\<^sub>0\<close> column ascends. Hence Hunter's
+  case B at \<open>Suc k' < t\<close> (a \<open>B\<^sub>0\<close> column that does NOT ascend) is VACUOUS.
 
-  PROOF PENDING: a direct \<open>m_parent\<close> candidate-filter / lex analysis on the
-  Bashicu standard form (\<open>BMS.induct\<close> structure-preservation was refuted,
-  cf. \<open>verify/verify_Ak_structural_conjectures.py\<close>, so the eventual proof
-  must argue from the standard-form candidate geometry directly). Isolating
-  this single step as a named lemma localizes the remaining \<open>sorry\<close>.
+  PROOF PENDING: \<open>BMS.induct\<close> structure-preservation is refuted (\<open>s\<close>, \<open>t\<close>,
+  \<open>l1\<close> do not propagate through expansion, cf.
+  \<open>verify/verify_Ak_structural_conjectures.py\<close>), so this must be argued
+  from the standard-form candidate geometry directly. This single lemma is
+  now the lone (ii) crux.
 \<close>
 
-lemma bms_b0_chain_step_stays:
+lemma bms_b0_col_t_ancestor:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and b0: "b0_start A = Some s"
       and mp: "max_parent_level A = Some t"
-      and r_lt_t: "r < t"
-      and mp_p: "m_parent A r p = Some q"
-      and q_gt_s: "s < q"
-  shows "\<exists>q2. m_parent A r q = Some q2 \<and> s \<le> q2"
+      and t_pos: "0 < t"
+      and j_pos: "0 < j"
+      and j_lt: "j < l1 A"
+  shows "m_ancestor A t (s + j) s"
   sorry
-
-text \<open>
-  Chains-to-\<open>s\<close> (the recursion enabler, derived from
-  @{thm bms_b0_chain_step_stays} by strong induction on the column index):
-  for any level \<open>r < t\<close> and any \<open>B\<^sub>0\<close>-internal column \<open>p\<close>, if the
-  \<open>r\<close>-parent of \<open>p\<close> exists and lies at or above \<open>s\<close>, then the \<open>r\<close>-chain
-  of \<open>p\<close> reaches \<open>s\<close>. Empirically verified (665 BMSs, 0 violations) in
-  \<open>verify/verify_b0_col_chains_to_s.py\<close>.
-\<close>
-
-lemma bms_b0_col_chains_to_s:
-  fixes A :: array
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-      and r_lt_t: "r < t"
-      and mp_p: "m_parent A r p = Some q"
-      and q_ge_s: "s \<le> q"
-  shows "m_ancestor A r p s"
-  using mp_p q_ge_s
-proof (induct p arbitrary: q rule: less_induct)
-  case (less p)
-  note IH = less.hyps
-  note mp_p' = less.prems(1)
-  note q_ge_s' = less.prems(2)
-  have q_lt_p: "q < p" by (rule m_parent_lt[OF mp_p'])
-  have anc_iff: "m_ancestor A r p s \<longleftrightarrow> q = s \<or> m_ancestor A r q s"
-    using m_anc_via_parent_some[OF mp_p'] .
-  show ?case
-  proof (cases "q = s")
-    case True
-    thus ?thesis using anc_iff by simp
-  next
-    case False
-    hence q_gt_s: "s < q" using q_ge_s' by simp
-    \<comment> \<open>Step-local fact: the next \<open>r\<close>-parent of \<open>q\<close> exists and is \<open>\<ge> s\<close>.\<close>
-    obtain q2 where mp_q: "m_parent A r q = Some q2" and q2_ge_s: "s \<le> q2"
-      using bms_b0_chain_step_stays[OF A_BMS A_ne b0 mp r_lt_t mp_p' q_gt_s] by blast
-    \<comment> \<open>Induction hypothesis at the smaller column \<open>q < p\<close>.\<close>
-    have anc_q_s: "m_ancestor A r q s"
-      using IH[OF q_lt_p mp_q q2_ge_s] .
-    show ?thesis using anc_iff anc_q_s by simp
-  qed
-qed
 
 lemma bms_m_parent_outside_B0_case_B_pureA:
   fixes A :: array
@@ -5363,88 +5318,22 @@ lemma bms_m_parent_outside_B0_case_B_pureA:
             elem A (s + x) (Suc k') < elem A (s + j) (Suc k')
           \<and> m_ancestor A k' (s + j) (s + x)] = []"
 proof -
-  \<comment> \<open>From \<open>\<not> ascends\<close> (with \<open>Suc k' < t\<close>, \<open>j > 0\<close> so \<open>s+j \<noteq> s\<close>) extract
-      the chain-level negation: \<open>(s+j)\<close> has no \<open>(Suc k')\<close>-chain to \<open>s\<close>.\<close>
-  have sj_ne_s: "s + j \<noteq> s" using j_pos by simp
-  have not_anc_to_s: "\<not> m_ancestor A (Suc k') (s + j) s"
-  proof
-    assume H: "m_ancestor A (Suc k') (s + j) s"
-    have nsa: "non_strict_ancestor A (Suc k') (s + j) s"
-      using H unfolding non_strict_ancestor_def by simp
-    have "ascends A j (Suc k')"
-      using b0 mp Sk_lt_t nsa unfolding ascends_def by simp
-    thus False using not_asc_j by simp
-  qed
-  let ?P = "\<lambda>x. elem A (s + x) (Suc k') < elem A (s + j) (Suc k')
-                \<and> m_ancestor A k' (s + j) (s + x)"
-  \<comment> \<open>Suppose, for contradiction, the filter is non-empty.\<close>
-  show "[x \<leftarrow> [0..<j]. ?P x] = []"
-  proof (rule ccontr)
-    assume ne: "[x \<leftarrow> [0..<j]. ?P x] \<noteq> []"
-    \<comment> \<open>Pick a witness \<open>x\<^sub>0\<close>: a \<open>(Suc k')\<close>-parent candidate of \<open>(s+j)\<close>
-        sitting in \<open>[s, s+j)\<close>.\<close>
-    have nonempty_ex: "\<exists>x \<in> set [0..<j]. ?P x"
-    proof (rule ccontr)
-      assume "\<not> (\<exists>x \<in> set [0..<j]. ?P x)"
-      hence "\<forall>x \<in> set [0..<j]. \<not> ?P x" by blast
-      hence "[x \<leftarrow> [0..<j]. ?P x] = []" using filter_empty_conv by blast
-      thus False using ne by simp
-    qed
-    then obtain x0 where x0_in_upt: "x0 \<in> set [0..<j]" and Px0: "?P x0"
-      by blast
-    have x0_lt_j: "x0 < j" using x0_in_upt by simp
-    have elem_lt: "elem A (s + x0) (Suc k') < elem A (s + j) (Suc k')"
-      using Px0 by blast
-    have anc_k': "m_ancestor A k' (s + j) (s + x0)" using Px0 by blast
-    \<comment> \<open>So \<open>s+x0\<close> is a candidate for \<open>m_parent A (Suc k') (s+j)\<close>.\<close>
-    let ?Q = "\<lambda>p. elem A p (Suc k') < elem A (s + j) (Suc k')
-                  \<and> m_ancestor A k' (s + j) p"
-    have sx0_cand: "?Q (s + x0)" using elem_lt anc_k' by blast
-    have sx0_in_cands: "(s + x0) \<in> set (filter ?Q [0..<(s + j)])"
-    proof -
-      have "s + x0 \<in> set [0..<(s + j)]" using x0_lt_j by simp
-      thus ?thesis using sx0_cand by (simp only: set_filter) blast
-    qed
-    have cands_ne: "filter ?Q [0..<(s + j)] \<noteq> []"
-      using sx0_in_cands by (metis empty_iff list.set(1))
-    \<comment> \<open>Hence \<open>m_parent A (Suc k') (s+j) = Some q\<^sub>1\<close> with \<open>q\<^sub>1 = last cands\<close>.\<close>
-    have mp_eq: "m_parent A (Suc k') (s + j)
-               = (if filter ?Q [0..<(s + j)] = [] then None
-                  else Some (last (filter ?Q [0..<(s + j)])))"
-      by (simp add: Let_def)
-    define q1 where "q1 \<equiv> last (filter ?Q [0..<(s + j)])"
-    have mp_sj: "m_parent A (Suc k') (s + j) = Some q1"
-      using mp_eq cands_ne q1_def by simp
-    have q1_eq: "q1 = last (filter ?Q [0..<(s + j)])" using q1_def by simp
-    \<comment> \<open>\<open>q\<^sub>1 \<ge> s + x0 \<ge> s\<close> by maximality (\<open>last\<close> of a sorted candidate list).\<close>
-    have q1_ge_sx0: "s + x0 \<le> q1"
-    proof -
-      have sorted_cands: "sorted (filter ?Q [0..<(s + j)])"
-        by (rule sorted_wrt_filter[OF sorted_upt])
-      have last_eq: "last (filter ?Q [0..<(s + j)])
-                   = (filter ?Q [0..<(s + j)]) ! (length (filter ?Q [0..<(s + j)]) - 1)"
-        using cands_ne by (simp add: last_conv_nth)
-      obtain idx where idx_lt: "idx < length (filter ?Q [0..<(s + j)])"
-                   and idx_eq: "(filter ?Q [0..<(s + j)]) ! idx = s + x0"
-        using sx0_in_cands unfolding in_set_conv_nth by blast
-      have len_pos: "0 < length (filter ?Q [0..<(s + j)])" using cands_ne by simp
-      have idx_le: "idx \<le> length (filter ?Q [0..<(s + j)]) - 1" using idx_lt by linarith
-      have last_lt: "length (filter ?Q [0..<(s + j)]) - 1
-                   < length (filter ?Q [0..<(s + j)])" using len_pos by simp
-      have "(filter ?Q [0..<(s + j)]) ! idx
-          \<le> (filter ?Q [0..<(s + j)]) ! (length (filter ?Q [0..<(s + j)]) - 1)"
-        using sorted_cands idx_le last_lt by (simp add: sorted_iff_nth_mono)
-      thus ?thesis using idx_eq last_eq q1_eq by simp
-    qed
-    have q1_ge_s: "s \<le> q1" using q1_ge_sx0 by simp
-    \<comment> \<open>Chains-to-\<open>s\<close>: \<open>m_parent A (Suc k') (s+j) = Some q\<^sub>1\<close> with \<open>q\<^sub>1 \<ge> s\<close>
-        forces a \<open>(Suc k')\<close>-chain from \<open>(s+j)\<close> down to \<open>s\<close>.\<close>
-    have anc_sj_s: "m_ancestor A (Suc k') (s + j) s"
-      by (rule bms_b0_col_chains_to_s
-                 [OF A_BMS A_ne b0 mp Sk_lt_t mp_sj q1_ge_s])
-    \<comment> \<open>Contradiction with \<open>\<not> ascends\<close>.\<close>
-    show False using anc_sj_s not_anc_to_s by simp
-  qed
+  \<comment> \<open>Case B (\<open>Suc k' < t\<close>, \<open>j\<close> not ascending) is VACUOUS. By
+      @{thm bms_b0_col_t_ancestor}, \<open>s\<close> is a level-\<open>t\<close> m-ancestor of \<open>s+j\<close>;
+      by @{thm m_ancestor_mono} (\<open>Suc k' \<le> t\<close>) it is a level-\<open>(Suc k')\<close>
+      m-ancestor too, i.e. \<open>j\<close> ascends at \<open>Suc k'\<close> --- contradicting
+      \<open>not_asc_j\<close>. The conclusion then follows ex falso.\<close>
+  have t_pos: "0 < t" using Sk_lt_t by simp
+  have anc_t: "m_ancestor A t (s + j) s"
+    by (rule bms_b0_col_t_ancestor[OF A_BMS A_ne b0 mp t_pos j_pos j_lt])
+  have le: "Suc k' \<le> t" using Sk_lt_t by simp
+  have "m_ancestor A (Suc k') (s + j) s"
+    by (rule m_ancestor_mono[OF le anc_t])
+  hence "non_strict_ancestor A (Suc k') (s + j) s"
+    by (simp add: non_strict_ancestor_def)
+  hence "ascends A j (Suc k')"
+    using b0 mp Sk_lt_t by (simp add: ascends_def)
+  thus ?thesis using not_asc_j by simp
 qed
 
 text \<open>

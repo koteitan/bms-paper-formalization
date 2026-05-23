@@ -109,8 +109,8 @@ graph LR
       - ✅ `bms_max_elem_above_q1` — maximality 補題: m_parent A (Suc k) (s+j) = Some q_1 のとき q_1<p<s+j かつ p が s+j の k-祖先なら elem A p (Suc k) ≥ elem A (s+j) (Suc k)
       - ✅ case B inline (lemma_2_5_ii_clause_step_v2 内) — Round 2 "S-empty" path で proof-free 化: `bms_S_empty_case_B_at_block_0` (?S empty 構造補題、 経験的に真) + `elem_AEn_lt_block_implies_block_zero_when_j_not_asc` (片方向 elem 不等式) + `m_parent_AEn_idx_B_outside_block_at_Suc_k_via_S_empty` (not_asc_chain 不要版) の組合せで両側 False を導出; 経験的に refuted な `not_asc_chain` を全面回避
       - ✅ `bms_S_empty_case_B_at_block_0` — case-B 構造補題 (?S at block 0 = []); pure-A reduction (Lemma A + elem 不変) で完全証明、 核を `bms_m_parent_outside_B0_case_B_pureA` に移動
-      - ✅ `bms_m_parent_outside_B0_case_B_pureA` — m_parent A (Suc k') (s+j) が None or < s; `bms_b0_col_chains_to_s` 経由で完全証明、 核を `bms_b0_chain_step_stays` に移動
-      - 🤖 🚨 `bms_b0_chain_step_stays` — (ii) 最深核: level-r (r<t) で B_0 内 chain が一歩で s を飛び越えない (665 BMS 経験真)
+      - ✅ `bms_m_parent_outside_B0_case_B_pureA` — Suc k'<t の case B は **vacuous**(Q_t + mono ⟹ ascends で矛盾)。 chain_step/chains_to_s を削除し Q_t ex-falso で証明
+      - 🚨 `bms_b0_col_t_ancestor` (Q_t) — **(ii) の唯一の残 crux**: s は B_0 全列 s+j (0<j<l1) の level-t 祖先 `m_ancestor A t (s+j) s` (261 BMS strip-correct 0 viol)。 mono で全 r<t に降り case B vacuous を与える。 BMS.induct refuted、 標準形 candidate geometry の直接証明が要
       - ✅ `elem_AEn_lt_block_implies_block_zero_when_j_not_asc` — Round 2 片方向不等式 lemma: ¬ ascends A j ⟹ block-c の elem 不等式が block-0 の elem 不等式を imply (delta ≥ 0 を活用)
       - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_via_S_empty` — Round 2 m_parent outside lemma: not_asc_chain なし版、 S_empty + 片方向不等式で B_c 内 candidate を弾く
       - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)
