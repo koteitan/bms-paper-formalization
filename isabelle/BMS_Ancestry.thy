@@ -1421,19 +1421,261 @@ next
 qed
 
 text \<open>
-  Refined (*) core (Batch 2D + focused probe, 2026-05-20): in any
-  \<open>A \<in> BMS\<close> with \<open>t = max_parent_level > 0\<close>, the row-0 values of
-  \<open>B\<^sub>0\<close> strictly increase along consecutive columns. Empirically:
-  \<open>verify/verify_b0_row0_consecutive.py\<close> (437 BMS, 0 violations) — in
-  fact \<open>elem A (s+j) 0 = elem A s 0 + j\<close> exactly (B_0 row-0 = consecutive
-  integers). This SHARPENS the old opaque \<open>bms_b0_col_row0_ancestor\<close>
-  sorry: the ancestry now follows by a consecutive level-0 m-parent
-  chain (proved below). Structural BMS-construction proof of this
-  consecutive-increase is the SINGLE remaining crux of Lemma 2.5
-  (it subsumes (ii) S-empty + (iv) block-n cores).
+  REMOVED (2026-05-23): \<open>bms_b0_row0_consecutive_increasing\<close>
+  (\<open>B\<^sub>0\<close> row-0 strictly increases along consecutive columns,
+  \<open>elem A (s+j-1) 0 < elem A (s+j) 0\<close>). Empirically REFUTED once
+  expansions are strip-corrected (plateau, e.g. \<open>[2,3,3,3]\<close>); it
+  rested on the false \<open>bms_consec_guarded\<close>. The genuine fact is the
+  weaker strict-min \<open>bms_b0_row0_strict_min\<close> below, which is enough
+  for the ancestry. This dead lemma was unreferenced after the
+  ancestry rewire and is deleted.
 \<close>
 
-lemma bms_b0_row0_consecutive_increasing:
+text \<open>
+  SOUND replacement for the refuted consecutive-increase route
+  (2026-05-23). The old chain
+    \<open>bms_b0_col_row0_ancestor\<close> \<leftarrow> \<open>bms_b0_row0_consecutive_increasing\<close>
+    \<leftarrow> \<open>bms_consec_guarded\<close>
+  rested on \<open>maxparent_zero_preserved\<close> (linchpin) and
+  \<open>bms_b0_row0_consecutive_increasing\<close> (consec), BOTH empirically
+  REFUTED once expansions are strip-corrected (\<open>B\<^sub>0\<close> row-0 can plateau,
+  e.g. \<open>[2,3,3,3]\<close>, so it is NOT strictly consecutive). The genuine
+  fact is weaker and TRUE (\<open>verify/verify_ii_target_stripped.py\<close>,
+  261 stripped BMS, 0 violations): \<open>s = b0_start\<close> is the STRICT row-0
+  minimum of \<open>B\<^sub>0\<close>. Ancestry then follows by a pure list/m-parent
+  argument with NO consecutiveness: the level-0 m-parent of any
+  \<open>B\<^sub>0\<close> column \<open>c > s\<close> stays \<open>\<ge> s\<close> (because \<open>s\<close> is always a
+  candidate, being strictly smaller), and the strictly-decreasing,
+  \<open>\<ge> s\<close>-bounded chain must hit \<open>s\<close> exactly.
+\<close>
+
+lemma sorted_filter_le:
+  "sorted xs \<Longrightarrow> sorted (filter P xs)"
+  by (induct xs) auto
+
+lemma sorted_mem_le_last:
+  "sorted xs \<Longrightarrow> x \<in> set xs \<Longrightarrow> x \<le> last xs"
+proof (induct xs)
+  case Nil thus ?case by simp
+next
+  case (Cons a xs)
+  show ?case
+  proof (cases "xs = []")
+    case True thus ?thesis using Cons.prems(2) by simp
+  next
+    case False
+    have srt: "sorted xs" using Cons.prems(1) by simp
+    have leq: "last (a # xs) = last xs" using False by simp
+    from Cons.prems(2) have "x = a \<or> x \<in> set xs" by simp
+    thus ?thesis
+    proof
+      assume "x = a"
+      moreover have "a \<le> last xs"
+        using Cons.prems(1) last_in_set[OF False] by auto
+      ultimately show ?thesis using leq by simp
+    next
+      assume "x \<in> set xs"
+      thus ?thesis using Cons.hyps[OF srt] leq by simp
+    qed
+  qed
+qed
+
+text \<open>
+  Level-0 m-parent anchored above \<open>s\<close>: if \<open>s < i\<close> and \<open>s\<close>'s
+  row-0 is strictly below \<open>i\<close>'s, then \<open>i\<close> has a level-0 m-parent
+  \<open>p\<close> with \<open>s \<le> p < i\<close>. (\<open>s\<close> qualifies as a candidate, and the
+  m-parent is the LAST = maximal candidate, hence \<open>\<ge> s\<close>.)
+\<close>
+lemma m_parent_zero_ge_anchor:
+  assumes s_lt: "s < i" and lt: "elem A s 0 < elem A i 0"
+  obtains p where "m_parent A 0 i = Some p" and "s \<le> p" and "p < i"
+proof -
+  let ?cands = "filter (\<lambda>j. elem A j 0 < elem A i 0) [0..<i]"
+  have s_mem: "s \<in> set ?cands" using s_lt lt by simp
+  hence ne: "?cands \<noteq> []" by (cases ?cands) auto
+  have mp: "m_parent A 0 i = Some (last ?cands)" using ne by (simp add: Let_def)
+  have lt_i: "last ?cands < i" using m_parent_lt[OF mp] .
+  have srt: "sorted ?cands" using sorted_filter_le[OF sorted_upt] .
+  have ge: "s \<le> last ?cands" using sorted_mem_le_last[OF srt s_mem] .
+  show ?thesis using that[OF mp ge lt_i] .
+qed
+
+text \<open>
+  Pure list/m-parent fact: if \<open>s\<close>'s row-0 is strictly below every
+  column in \<open>(s, i]\<close>, then \<open>s\<close> is a level-0 m-ancestor of \<open>i\<close>.
+  No BMS structure, no consecutiveness — just the anchored, strictly
+  decreasing m-parent chain bounded below by \<open>s\<close>.
+\<close>
+lemma m_anc_zero_strict_min:
+  assumes i_gt: "s < i"
+      and hyp: "\<forall>c. s < c \<and> c \<le> i \<longrightarrow> elem A s 0 < elem A c 0"
+  shows "m_ancestor A 0 i s"
+  using i_gt hyp
+proof (induct i rule: less_induct)
+  case (less i)
+  note i_gt' = less.prems(1) and hyp' = less.prems(2)
+  have lt_i: "elem A s 0 < elem A i 0" using hyp' i_gt' by blast
+  obtain p where mp: "m_parent A 0 i = Some p" and p_ge: "s \<le> p" and p_lt: "p < i"
+    using m_parent_zero_ge_anchor[OF i_gt' lt_i] by blast
+  show ?case
+  proof (cases "p = s")
+    case True
+    thus ?thesis using m_anc_via_parent_some[OF mp] by simp
+  next
+    case False
+    hence s_lt_p: "s < p" using p_ge by simp
+    have hyp_p: "\<forall>c. s < c \<and> c \<le> p \<longrightarrow> elem A s 0 < elem A c 0"
+      using hyp' p_lt by auto
+    have IH: "m_ancestor A 0 p s"
+      using less.hyps[OF p_lt s_lt_p hyp_p] .
+    show ?thesis using m_anc_via_parent_some[OF mp] IH by simp
+  qed
+qed
+
+text \<open>
+  Any level-0 m-parent candidate of \<open>i\<close> is \<open>\<le>\<close> the actual
+  m-parent (which is the LAST = maximal candidate).
+\<close>
+lemma m_parent_zero_candidate_le:
+  assumes mp: "m_parent A 0 i = Some p"
+      and c_lt: "c < i" and c_cand: "elem A c 0 < elem A i 0"
+  shows "c \<le> p"
+proof -
+  let ?cands = "filter (\<lambda>j. elem A j 0 < elem A i 0) [0..<i]"
+  have c_mem: "c \<in> set ?cands" using c_lt c_cand by simp
+  hence ne: "?cands \<noteq> []" by (cases ?cands) auto
+  have p_eq: "p = last ?cands"
+    using mp ne by (simp add: Let_def)
+  have srt: "sorted ?cands" using sorted_filter_le[OF sorted_upt] .
+  show "c \<le> p" using sorted_mem_le_last[OF srt c_mem] p_eq by simp
+qed
+
+text \<open>
+  Converse of @{thm m_anc_zero_strict_min} (Hunter's row-0 ancestry
+  equivalence, \<open>\<Longrightarrow>\<close> direction): if \<open>s\<close> is a level-0 m-ancestor
+  of \<open>i\<close>, then \<open>s\<close>'s row-0 is strictly below every column strictly
+  between \<open>s\<close> and \<open>i\<close>. Pure list/m-parent fact (no BMS structure):
+  if some \<open>c \<in> (s, i)\<close> had \<open>elem A c 0 \<le> elem A s 0\<close>, the
+  strictly-decreasing m-parent chain from \<open>i\<close> down to \<open>s\<close> could not
+  cross below \<open>c\<close> without contradicting that the m-parent is the
+  maximal candidate.
+\<close>
+lemma m_anc_zero_imp_strict_min:
+  assumes anc: "m_ancestor A 0 i s"
+  shows "\<forall>c. s < c \<and> c < i \<longrightarrow> elem A s 0 < elem A c 0"
+  using anc
+proof (induct i rule: less_induct)
+  case (less i)
+  obtain p where mp: "m_parent A 0 i = Some p"
+             and case_p: "p = s \<or> m_ancestor A 0 p s"
+    using less.prems by (cases "m_parent A 0 i") auto
+  have p_lt_i: "p < i" using m_parent_lt[OF mp] .
+  have ep_lt: "elem A p 0 < elem A i 0" using m_parent_elem_lt[OF mp] .
+  have es_lt_i: "elem A s 0 < elem A i 0"
+    by (rule m_ancestor_elem_lt[OF less.prems])
+  show ?case
+  proof (intro allI impI)
+    fix c assume H: "s < c \<and> c < i"
+    hence c_lo: "s < c" and c_hi: "c < i" by auto
+    show "elem A s 0 < elem A c 0"
+    proof (cases "c \<le> p")
+      case True
+      show ?thesis
+      proof (cases "c = p")
+        case True
+        have "s < p" using \<open>c = p\<close> c_lo by simp
+        hence "p \<noteq> s" by simp
+        hence ancp: "m_ancestor A 0 p s" using case_p by simp
+        show ?thesis using m_ancestor_elem_lt[OF ancp] \<open>c = p\<close> by simp
+      next
+        case False
+        hence c_lt_p: "c < p" using True by simp
+        have "s < p" using c_lo c_lt_p by simp
+        hence "p \<noteq> s" by simp
+        hence ancp: "m_ancestor A 0 p s" using case_p by simp
+        have "\<forall>c'. s < c' \<and> c' < p \<longrightarrow> elem A s 0 < elem A c' 0"
+          using less.hyps[OF p_lt_i ancp] .
+        thus ?thesis using c_lo c_lt_p by blast
+      qed
+    next
+      case False
+      hence p_lt_c: "p < c" by simp
+      have not_cand: "\<not> elem A c 0 < elem A i 0"
+      proof
+        assume "elem A c 0 < elem A i 0"
+        hence "c \<le> p" using m_parent_zero_candidate_le[OF mp c_hi] by simp
+        thus False using p_lt_c by simp
+      qed
+      hence "elem A i 0 \<le> elem A c 0" by simp
+      thus ?thesis using es_lt_i by simp
+    qed
+  qed
+qed
+
+text \<open>
+  Hunter's row-0 ascension is a prefix-closed property: if column
+  \<open>j\<close> ascends at row 0 (\<open>t > 0\<close>), then so does every column
+  \<open>x \<le> j\<close>. (\<open>j\<close> ascends \<open>\<Longleftrightarrow>\<close> \<open>s\<close> is the strict row-0
+  minimum over \<open>(s, s+j]\<close>, which restricts to \<open>(s, s+x]\<close> for
+  \<open>x \<le> j\<close>, giving \<open>x\<close> ascends via @{thm m_anc_zero_strict_min}.)
+  This is the LOCAL form of "all ascend" that the row-0 block-shift
+  helpers actually require — it follows from a SINGLE column ascending,
+  with NO global \<open>(STRICT)\<close>/all-ascend assumption.
+\<close>
+lemma ascends_row0_prefix:
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and asc_j: "ascends A j 0"
+      and x_le_j: "x \<le> j"
+  shows "ascends A x 0"
+proof (cases "x = 0")
+  case True
+  have "non_strict_ancestor A 0 (s + x) s"
+    using True by (simp add: non_strict_ancestor_def)
+  thus ?thesis using b0 mp t_pos by (simp add: ascends_def)
+next
+  case False
+  hence x_pos: "0 < x" by simp
+  hence j_pos: "0 < j" using x_le_j by simp
+  have nsa_j: "non_strict_ancestor A 0 (s + j) s"
+    using asc_j b0 mp t_pos by (simp add: ascends_def)
+  have anc_j: "m_ancestor A 0 (s + j) s"
+    using nsa_j j_pos by (simp add: non_strict_ancestor_def)
+  have strict_below: "\<forall>c. s < c \<and> c < s + j \<longrightarrow> elem A s 0 < elem A c 0"
+    using m_anc_zero_imp_strict_min[OF anc_j] .
+  have strict_at_j: "elem A s 0 < elem A (s + j) 0"
+    using m_ancestor_elem_lt[OF anc_j] .
+  have hyp_x: "\<forall>c. s < c \<and> c \<le> s + x \<longrightarrow> elem A s 0 < elem A c 0"
+  proof (intro allI impI)
+    fix c assume "s < c \<and> c \<le> s + x"
+    hence c_lo: "s < c" and c_hi: "c \<le> s + x" by auto
+    have c_le_sj: "c \<le> s + j" using c_hi x_le_j by simp
+    show "elem A s 0 < elem A c 0"
+    proof (cases "c = s + j")
+      case True thus ?thesis using strict_at_j by simp
+    next
+      case False
+      hence "c < s + j" using c_le_sj by simp
+      thus ?thesis using strict_below c_lo by blast
+    qed
+  qed
+  have sx_gt: "s < s + x" using x_pos by simp
+  have anc_x: "m_ancestor A 0 (s + x) s"
+    using m_anc_zero_strict_min[OF sx_gt hyp_x] .
+  have "non_strict_ancestor A 0 (s + x) s"
+    using anc_x by (simp add: non_strict_ancestor_def)
+  thus ?thesis using b0 mp t_pos by (simp add: ascends_def)
+qed
+
+text \<open>
+  The genuine (and TRUE) remaining crux of Lemma 2.5 (ii): in any
+  \<open>A \<in> BMS\<close> with \<open>t = max_parent_level > 0\<close>, \<open>s = b0_start\<close> has
+  the STRICT row-0 minimum among all \<open>B\<^sub>0\<close> columns. This replaces the
+  refuted consecutive-increase conjecture. Needs a structural BMS
+  induction (still open: @{term sorry}).
+\<close>
+lemma bms_b0_row0_strict_min:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and b0: "b0_start A = Some s"
@@ -1441,19 +1683,10 @@ lemma bms_b0_row0_consecutive_increasing:
       and t_pos: "0 < t"
       and j_lt: "j < arr_len (B0_block A)"
       and j_pos: "0 < j"
-  shows "elem A (s + j - 1) 0 < elem A (s + j) 0"
-proof -
-  have consec: "\<forall>j. j \<le> l1 A \<longrightarrow> elem A (s + j) 0 = elem A s 0 + j"
-    using bms_consec_guarded[OF A_BMS] b0 mp t_pos by (simp split: option.splits)
-  have j_le: "j \<le> l1 A" using j_lt unfolding l1_def by simp
-  have j1_le: "j - 1 \<le> l1 A" using j_le by simp
-  have ej: "elem A (s + j) 0 = elem A s 0 + j" using consec j_le by simp
-  have ej1: "elem A (s + (j - 1)) 0 = elem A s 0 + (j - 1)" using consec j1_le by simp
-  have idx: "s + (j - 1) = s + j - 1" using j_pos by simp
-  show ?thesis using ej ej1 idx j_pos by simp
-qed
+  shows "elem A s 0 < elem A (s + j) 0"
+  sorry
 
-lemma bms_b0_col_row0_ancestor: \<comment> \<open>ancestry core of (*), now proved from consecutive-increase\<close>
+lemma bms_b0_col_row0_ancestor: \<comment> \<open>ancestry core of (*), now from strict row-0 min (no consec)\<close>
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and b0: "b0_start A = Some s"
@@ -1462,32 +1695,21 @@ lemma bms_b0_col_row0_ancestor: \<comment> \<open>ancestry core of (*), now prov
       and j_lt: "j < arr_len (B0_block A)"
       and j_pos: "0 < j"
   shows "m_ancestor A 0 (s + j) s"
-  using j_lt j_pos
-proof (induct j rule: less_induct)
-  case (less j)
-  note j_lt' = less.prems(1) and j_pos' = less.prems(2)
-  have lt: "elem A (s + j - 1) 0 < elem A (s + j) 0"
-    by (rule bms_b0_row0_consecutive_increasing[OF A_BMS A_ne b0 mp t_pos j_lt' j_pos'])
-  have sj_pos: "0 < s + j" using j_pos' by simp
-  have sj_pred: "(s + j) - 1 = s + j - 1" by simp
-  have mp_eq: "m_parent A 0 (s + j) = Some (s + j - 1)"
-    using m_parent_zero_pred[OF sj_pos] lt sj_pred by simp
-  show "m_ancestor A 0 (s + j) s"
-  proof (cases "j = 1")
-    case True
-    have "s + j - 1 = s" using True by simp
-    thus ?thesis using m_anc_via_parent_some[OF mp_eq] by simp
-  next
-    case False
-    hence j_gt1: "1 < j" using j_pos' by simp
-    have j1_lt_j: "j - 1 < j" using j_pos' by simp
-    have j1_pos: "0 < j - 1" using j_gt1 by simp
-    have j1_ltl1: "j - 1 < arr_len (B0_block A)" using j_lt' by linarith
-    have IH: "m_ancestor A 0 (s + (j - 1)) s"
-      using less.hyps[OF j1_lt_j j1_ltl1 j1_pos] .
-    have IH': "m_ancestor A 0 (s + j - 1) s" using IH j_pos' by simp
-    show ?thesis using m_anc_via_parent_some[OF mp_eq] IH' by simp
+proof -
+  have sj_gt: "s < s + j" using j_pos by simp
+  have hyp: "\<forall>c. s < c \<and> c \<le> s + j \<longrightarrow> elem A s 0 < elem A c 0"
+  proof (intro allI impI)
+    fix c assume H: "s < c \<and> c \<le> s + j"
+    hence c_lo: "s < c" and c_hi: "c \<le> s + j" by auto
+    define j' where "j' = c - s"
+    have c_eq: "c = s + j'" using c_lo j'_def by simp
+    have j'_pos: "0 < j'" using c_lo j'_def by simp
+    have j'_lt: "j' < arr_len (B0_block A)" using c_hi c_eq j_lt by linarith
+    have "elem A s 0 < elem A (s + j') 0"
+      by (rule bms_b0_row0_strict_min[OF A_BMS A_ne b0 mp t_pos j'_lt j'_pos])
+    thus "elem A s 0 < elem A c 0" using c_eq by simp
   qed
+  show ?thesis using m_anc_zero_strict_min[OF sj_gt hyp] .
 qed
 
 text \<open>
