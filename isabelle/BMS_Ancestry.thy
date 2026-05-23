@@ -5734,7 +5734,17 @@ next
     next
       case False
       \<comment> \<open>Bumped region (\<open>q \<ge> l0 A\<close>): the remaining structural kernel.
-          Subsumes R1 / R2 of the (ii) crux.\<close>
+          Subsumes R1 (\<open>l1 A \<ge> 2\<close>) / R2 (\<open>l1 A = 1\<close>) of the (ii) crux.
+          Structure (\<open>verify/probe_unified_bumped.py\<close>, genuine BMS seeds,
+          17144 \<open>(t,q,p,c)\<close> tuples, 0 conclusion violations): the
+          \<open>t\<close>-parent \<open>p\<close> of a bumped \<open>q\<close> lands in \<open>G'\<close> (31%), the same
+          block as \<open>q\<close> (28%), or an earlier block (41%) -- NEVER a later
+          block; \<open>c\<close> may be in \<open>G'\<close> (26%) or bumped (74%). MUST be proved
+          WITHOUT clause (ii)/(iv) (they depend on \<open>bms_b0_col_elem_lt\<close>,
+          hence on this lemma -- circular); the admissible inputs are the
+          IH (UNIFIED for \<open>A\<close>), the \<open>G'\<close>/\<open>B\<^sub>0\<close> elem-structure lemmas
+          (\<open>elem_orig_eq_AEn_shared_below_l1\<close>, \<open>m_anc_orig_eq_AEn_shared_B0\<close>),
+          and the bump structure (\<open>delta\<close>, \<open>ascends\<close>, \<open>bump_col\<close>).\<close>
       show "m_ancestor (A[n]) t c p"
         sorry
     qed
