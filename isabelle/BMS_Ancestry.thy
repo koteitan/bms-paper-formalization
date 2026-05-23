@@ -5318,35 +5318,37 @@ qed
 lemma elem_orig_eq_AEn_G:
   fixes A :: array and n :: nat
   assumes A_ne: "A \<noteq> []"
-      and p_lt: "p < l0 A"
+      and p_lt: "p < l0 A + l1 A"
       and k_lt: "k < keep_of (G_block A @ Bs_concat A n)"
   shows "elem A p k = elem (A[n]) p k"
 proof -
-  have eAEn: "elem (A[n]) p k = elem (G_block A) p k"
-    by (rule elem_expansion_G_lt_keep[OF A_ne p_lt k_lt])
-  have p_lt_len: "p < length (G_block A)" using p_lt by (simp add: l0_def)
-  have gnth: "G_block A ! p = A ! p"
+  \<comment> \<open>The first \<open>l0 A + l1 A\<close> columns of \<open>A[n]\<close> (the \<open>G\<close> prefix and
+      the UNBUMPED \<open>B\<^sub>0\<close> copy) equal \<open>butlast A\<close> verbatim, so \<open>elem\<close>
+      agrees with \<open>A\<close> on all rows surviving the strip (\<open>k < keep\<close>).\<close>
+  let ?P = "G_block A @ Bs_concat A n"
+  have An_eq: "A[n] = strip_zero_rows ?P" using A_ne by (simp add: expansion_def)
+  have lenP: "arr_len ?P = l0 A + Suc n * l1 A"
+    by (simp add: l0_def l1_def length_Bs_concat)
+  have p_lt_pre: "p < arr_len ?P"
   proof -
-    have "G_block A ! p = (G_block A @ Bs_concat A n) ! p"
-      using p_lt_len by (simp add: nth_append)
-    also have "\<dots> = A ! p"
-    proof -
-      have "p < length (G_block A) + length (B0_block A)" using p_lt_len by linarith
-      thus "(G_block A @ Bs_concat A n) ! p = A ! p"
-        using prestrip_nth_eq_orig[OF A_ne] by blast
-    qed
-    finally show ?thesis .
+    have "l1 A \<le> Suc n * l1 A" by simp
+    thus ?thesis using p_lt lenP by linarith
   qed
-  have "elem (G_block A) p k = elem A p k"
-    using gnth unfolding elem_def by simp
-  thus ?thesis using eAEn by simp
+  have P_ne: "?P \<noteq> []" using p_lt_pre by auto
+  have b: "p < length (G_block A) + length (B0_block A)"
+    using p_lt by (simp add: l0_def l1_def)
+  have nth_eq: "?P ! p = A ! p" using prestrip_nth_eq_orig[OF A_ne b] .
+  have "elem (A[n]) p k = elem ?P p k"
+    using An_eq elem_strip_lt_keep[OF P_ne p_lt_pre k_lt] by simp
+  also have "\<dots> = elem A p k" using nth_eq unfolding elem_def by simp
+  finally show ?thesis by simp
 qed
 
 lemma m_anc_orig_eq_AEn_G:
   fixes A :: array and n :: nat
   assumes A_ne: "A \<noteq> []"
       and k_lt: "k < keep_of (G_block A @ Bs_concat A n)"
-      and p_lt: "p < l0 A"
+      and p_lt: "p < l0 A + l1 A"
   shows "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
   using k_lt p_lt
 proof (induct k arbitrary: p q rule: less_induct)
@@ -5355,9 +5357,9 @@ proof (induct k arbitrary: p q rule: less_induct)
   note k_lt' = less.prems(1)
   note p_lt' = less.prems(2)
   have mp_match:
-    "\<And>p'. p' < l0 A \<Longrightarrow> m_parent A k p' = m_parent (A[n]) k p'"
+    "\<And>p'. p' < l0 A + l1 A \<Longrightarrow> m_parent A k p' = m_parent (A[n]) k p'"
   proof -
-    fix p' assume p'_lt: "p' < l0 A"
+    fix p' assume p'_lt: "p' < l0 A + l1 A"
     show "m_parent A k p' = m_parent (A[n]) k p'"
     proof (cases k)
       case 0
@@ -5366,7 +5368,7 @@ proof (induct k arbitrary: p q rule: less_induct)
       proof (rule filter_cong[OF refl])
         fix j assume "j \<in> set [0..<p']"
         hence j_lt_p': "j < p'" by simp
-        have j_lt_l0: "j < l0 A" using j_lt_p' p'_lt by linarith
+        have j_lt_l0: "j < l0 A + l1 A" using j_lt_p' p'_lt by linarith
         have ej: "elem A j 0 = elem (A[n]) j 0"
           using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt'] \<open>k = 0\<close> by simp
         have ep: "elem A p' 0 = elem (A[n]) p' 0"
@@ -5387,7 +5389,7 @@ proof (induct k arbitrary: p q rule: less_induct)
       proof (rule filter_cong[OF refl])
         fix j assume "j \<in> set [0..<p']"
         hence j_lt_p': "j < p'" by simp
-        have j_lt_l0: "j < l0 A" using j_lt_p' p'_lt by linarith
+        have j_lt_l0: "j < l0 A + l1 A" using j_lt_p' p'_lt by linarith
         have ej: "elem A j (Suc k') = elem (A[n]) j (Suc k')"
           using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt'] \<open>k = Suc k'\<close> by simp
         have ep: "elem A p' (Suc k') = elem (A[n]) p' (Suc k')"
@@ -5420,7 +5422,7 @@ proof (induct k arbitrary: p q rule: less_induct)
       case (Some r)
       have mp_AEn_some: "m_parent (A[n]) k p = Some r" using Some mp_p by simp
       have r_lt: "r < p" using Some by (rule m_parent_lt)
-      have r_lt_l0: "r < l0 A" using r_lt p_lt'' by linarith
+      have r_lt_l0: "r < l0 A + l1 A" using r_lt p_lt'' by linarith
       have iff_A: "m_ancestor A k p q \<longleftrightarrow> r = q \<or> m_ancestor A k r q"
         using m_anc_via_parent_some[OF Some] .
       have iff_AEn: "m_ancestor (A[n]) k p q \<longleftrightarrow> r = q \<or> m_ancestor (A[n]) k r q"
@@ -5436,7 +5438,7 @@ lemma m_parent_orig_eq_AEn_G:
   fixes A :: array and n :: nat
   assumes A_ne: "A \<noteq> []"
       and k_lt: "k < keep_of (G_block A @ Bs_concat A n)"
-      and p_lt: "p < l0 A"
+      and p_lt: "p < l0 A + l1 A"
   shows "m_parent A k p = m_parent (A[n]) k p"
 proof (cases k)
   case 0
@@ -5445,7 +5447,7 @@ proof (cases k)
   proof (rule filter_cong[OF refl])
     fix j assume "j \<in> set [0..<p]"
     hence j_lt_p: "j < p" by simp
-    have j_lt_l0: "j < l0 A" using j_lt_p p_lt by linarith
+    have j_lt_l0: "j < l0 A + l1 A" using j_lt_p p_lt by linarith
     have ej: "elem A j 0 = elem (A[n]) j 0"
       using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt] \<open>k = 0\<close> by simp
     have ep: "elem A p 0 = elem (A[n]) p 0"
@@ -5465,7 +5467,7 @@ next
   proof (rule filter_cong[OF refl])
     fix j assume "j \<in> set [0..<p]"
     hence j_lt_p: "j < p" by simp
-    have j_lt_l0: "j < l0 A" using j_lt_p p_lt by linarith
+    have j_lt_l0: "j < l0 A + l1 A" using j_lt_p p_lt by linarith
     have ej: "elem A j (Suc k') = elem (A[n]) j (Suc k')"
       using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt] \<open>k = Suc k'\<close> by simp
     have ep: "elem A p (Suc k') = elem (A[n]) p (Suc k')"
@@ -5773,33 +5775,105 @@ next
       qed
       have t_keep: "t < keep_of ?P" using t_lt ht_An by simp
       have t_hA: "t < height A" using t_lt ht_An by simp
+      have q_reg: "q < l0 A + l1 A" using q_l0 by linarith
       have mpA: "m_parent A t q = Some p"
-        using m_parent_orig_eq_AEn_G[OF A_ne t_keep q_l0] mp by simp
+        using m_parent_orig_eq_AEn_G[OF A_ne t_keep q_reg] mp by simp
       have l0_le: "l0 A \<le> length A"
         unfolding l0_def G_block_def
         by (auto split: option.splits)
       have q_len: "q < length A" using q_l0 l0_le by linarith
-      have c_l0: "c < l0 A" using cq q_l0 by linarith
+      have c_reg: "c < l0 A + l1 A" using cq q_l0 by linarith
       have anc_A: "m_ancestor A t c p"
         using IH t_hA q_len mpA pc cq by blast
       show "m_ancestor (A[n]) t c p"
-        using m_anc_orig_eq_AEn_G[OF A_ne t_keep c_l0] anc_A by blast
+        using m_anc_orig_eq_AEn_G[OF A_ne t_keep c_reg] anc_A by blast
     next
       case False
-      \<comment> \<open>Bumped region (\<open>q \<ge> l0 A\<close>): the remaining structural kernel.
-          Subsumes R1 (\<open>l1 A \<ge> 2\<close>) / R2 (\<open>l1 A = 1\<close>) of the (ii) crux.
-          Structure (\<open>verify/probe_unified_bumped.py\<close>, genuine BMS seeds,
-          17144 \<open>(t,q,p,c)\<close> tuples, 0 conclusion violations): the
-          \<open>t\<close>-parent \<open>p\<close> of a bumped \<open>q\<close> lands in \<open>G'\<close> (31%), the same
-          block as \<open>q\<close> (28%), or an earlier block (41%) -- NEVER a later
-          block; \<open>c\<close> may be in \<open>G'\<close> (26%) or bumped (74%). MUST be proved
-          WITHOUT clause (ii)/(iv) (they depend on \<open>bms_b0_col_elem_lt\<close>,
-          hence on this lemma -- circular); the admissible inputs are the
-          IH (UNIFIED for \<open>A\<close>), the \<open>G'\<close>/\<open>B\<^sub>0\<close> elem-structure lemmas
-          (\<open>elem_orig_eq_AEn_shared_below_l1\<close>, \<open>m_anc_orig_eq_AEn_shared_B0\<close>),
-          and the bump structure (\<open>delta\<close>, \<open>ascends\<close>, \<open>bump_col\<close>).\<close>
+      hence q_ge_l0: "l0 A \<le> q" by simp
       show "m_ancestor (A[n]) t c p"
-        sorry
+      proof (cases "q < l0 A + l1 A")
+        case True
+        note q_b0 = True
+        \<comment> \<open>The unbumped \<open>B\<^sub>0\<close> block (\<open>l0 \<le> q < l0 + l1\<close>): the
+            \<open>G + B\<^sub>0\<close> prefix of \<open>A[n]\<close> equals \<open>butlast A\<close> verbatim, so the
+            claim transfers from the predecessor exactly as in the G-prefix
+            case (using the now-widened \<open>G'\<close>/\<open>B\<^sub>0\<close> transfer lemmas).\<close>
+        have A_ne: "A \<noteq> []"
+        proof (rule ccontr)
+          assume "\<not> A \<noteq> []"
+          hence "l0 A + l1 A = 0"
+            by (simp add: l0_def l1_def G_block_def B0_block_def
+                          b0_start_def max_parent_level_def)
+          thus False using q_b0 by simp
+        qed
+        let ?P = "G_block A @ Bs_concat A n"
+        have An_eq: "A[n] = strip_zero_rows ?P" using A_ne by (simp add: expansion_def)
+        have An_ne: "A[n] \<noteq> []" using q_lt by auto
+        have P_ne: "?P \<noteq> []"
+        proof -
+          have "length (A[n]) = length ?P"
+            using An_eq length_strip_zero_rows by metis
+          thus ?thesis using An_ne by auto
+        qed
+        have b0pos: "0 < l0 A + l1 A" using q_b0 q_ge_l0 by linarith
+        have hdP_len: "length (hd ?P) = height A"
+        proof -
+          have b: "(0::nat) < length (G_block A) + length (B0_block A)"
+            using b0pos by (simp add: l0_def l1_def)
+          have "hd ?P = ?P ! 0" using P_ne by (simp add: hd_conv_nth)
+          also have "?P ! 0 = A ! 0" using prestrip_nth_eq_orig[OF A_ne b] .
+          finally have "hd ?P = A ! 0" .
+          thus ?thesis using A_ne by (simp add: hd_conv_nth)
+        qed
+        have ht_An: "height (A[n]) = min (keep_of ?P) (height A)"
+        proof -
+          have sm: "A[n] = map (\<lambda>c. take (keep_of ?P) c) ?P"
+            using An_eq strip_zero_rows_eq_map_take[OF P_ne] by simp
+          have "hd (A[n]) = hd (map (\<lambda>c. take (keep_of ?P) c) ?P)"
+            using sm by simp
+          also have "\<dots> = take (keep_of ?P) (hd ?P)"
+            using hd_map[OF P_ne] by simp
+          finally have "hd (A[n]) = take (keep_of ?P) (hd ?P)" .
+          hence "height (A[n]) = length (take (keep_of ?P) (hd ?P))"
+            using An_ne by simp
+          also have "\<dots> = min (keep_of ?P) (length (hd ?P))" by simp
+          also have "\<dots> = min (keep_of ?P) (height A)" using hdP_len by simp
+          finally show ?thesis .
+        qed
+        have t_keep: "t < keep_of ?P" using t_lt ht_An by simp
+        have t_hA: "t < height A" using t_lt ht_An by simp
+        have mpA: "m_parent A t q = Some p"
+          using m_parent_orig_eq_AEn_G[OF A_ne t_keep q_b0] mp by simp
+        have l01_eq: "l0 A + l1 A = length A - 1"
+        proof -
+          have "l0 A + l1 A = length (G_block A @ B0_block A)"
+            by (simp add: l0_def l1_def)
+          also have "\<dots> = length (butlast A)"
+            using G_block_B0_block[OF A_ne] by simp
+          finally show ?thesis using A_ne by simp
+        qed
+        have q_len: "q < length A" using q_b0 l01_eq A_ne by (cases A) auto
+        have c_reg: "c < l0 A + l1 A" using cq q_b0 by linarith
+        have anc_A: "m_ancestor A t c p"
+          using IH t_hA q_len mpA pc cq by blast
+        show "m_ancestor (A[n]) t c p"
+          using m_anc_orig_eq_AEn_G[OF A_ne t_keep c_reg] anc_A by blast
+      next
+        case False
+        \<comment> \<open>Actually-bumped region (\<open>q \<ge> l0 A + l1 A\<close>, blocks
+            \<open>B\<^sub>1..B\<^sub>n\<close>): the remaining structural kernel.
+            Structure (\<open>verify/probe_unified_bumped.py\<close>, genuine BMS seeds,
+            17144 \<open>(t,q,p,c)\<close> tuples, 0 conclusion violations): the
+            \<open>t\<close>-parent \<open>p\<close> of a bumped \<open>q\<close> lands in \<open>G'\<close> (31%), the same
+            block as \<open>q\<close> (28%), or an earlier block (41%) -- NEVER a later
+            block; \<open>c\<close> may be in \<open>G'\<close> (26%) or bumped (74%). MUST be proved
+            WITHOUT clause (ii)/(iv) (they depend on \<open>bms_b0_col_elem_lt\<close>,
+            hence on this lemma -- circular); the admissible inputs are the
+            IH (UNIFIED for \<open>A\<close>), the \<open>G'\<close>/\<open>B\<^sub>0\<close> elem-structure lemmas
+            and the bump structure (\<open>delta\<close>, \<open>ascends\<close>, \<open>bump_col\<close>).\<close>
+        show "m_ancestor (A[n]) t c p"
+          sorry
+      qed
     qed
   qed
 qed
