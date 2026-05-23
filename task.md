@@ -89,13 +89,10 @@ graph LR
       - 🚨 5 main lemmas (∀k. (i)(ii)(iii)(iv)(v)) の AND 構築
     - 🚨 **Stage 1: ∀k. (ii)@k** `lemma_2_5_ii_main_v2` (k-induction wrapper、 provides **IH(ii)**)
       - ✅ step `lemma_2_5_ii_clause_step_v2` (入力: **IH(ii)** = ∀k'<k. (ii)@k') — body sorry-free、 全て 3 named lemma 経由
-      - ✅ `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0、 経験的に真 (verify/verify_clause_ii_at_zero_when_t_pos.py: 8 seed + 328 BFS BMS、 違反 0)、 (H) と case A helper の 2 sub-helper で wrap
-        - ✅ `bms_all_b0_ascend_row0_when_t_pos` — (H): t>0 ⟹ ∀j<l1. ascends A j 0; (*) + less_induct + m_parent_row0_b0_when_row0_lt helper で証明完了
-        - ✅ `m_parent_row0_b0_when_row0_lt` — BMS-free helper: elem A s 0 < elem A (s+j) 0 + j>0 から m_parent A 0 (s+j) ∈ Some p with p ∈ [s, s+j-1] を導出
-        - ✅ `bms_b0_row0_gt_s` — (*): t>0 ⟹ elem A s 0 < elem A (s+j) 0; BMS.induct 戦略 (構造保存) は refuted、 lex clex 経由に転換 (`bms_b0_row0_strict_from_clex`)、 BMS_Ancestry 側は sorry-free 化、 核を BMS_Lex に移動
-        - ✅ `bms_b0_col_row0_ancestor` (BMS_Ancestry) — **(ii) の真の target**: s が B_0 全列の level-0 共通祖先 `m_ancestor A 0 (s+j) s` (261 t>0 BMS strip 込み 0 viol)。 **2026-05-23 健全 rewire**: 偽の consec 経由を廃し、 唯一の真 crux `bms_b0_row0_strict_min` (= (*) = (STRICT)) + 純粋 list 補題で証明。 build green
-          - ✅ `m_anc_zero_strict_min` / `m_parent_zero_ge_anchor` / `sorted_mem_le_last` / `sorted_filter_le` — BMS-free 補題 (sorry なし): s が B_0 狭義最小なら m_parent は常に ≥ s に留まり、 厳密減少チェインが必ず s に到達 (plateau でも可)。 consecutive 不要
-          - 🚨 `bms_b0_row0_strict_min` (= (*) = (STRICT) `elem A s 0 < elem A (s+j) 0`) — **(ii)/(*) 全体の唯一の残 sorry**。 真 (261/0 strip 込み)。 BMS-induct 構造保存戦略は refuted、 lex/elem 両側ともここに収束 (`bms_b0_row0_strict_from_clex` も同 row0_strict を要求)。 構造的 BMS 証明が真の open 問題
+      - ✅ `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0、 **2026-05-23 Hunter 流 per-column 場合分けに再構成** ([[follow-hunter-paper]]): `ascends A j 0` で case-split。 STRICT/all-ascend 依存を完全除去 (`bms_b0_row0_strict_min`/`bms_all_b0_ascend_row0_when_t_pos`/`bms_b0_col_row0_ancestor`/`bms_b0_col_clex_strict_row0`/`bms_b0_row0_gt_s` を削除)
+        - ✅ **case A** (`ascends A j 0`) — `ascends_row0_prefix` (j ascend ⟹ ∀x≤j ascend) で local all-asc を出し、 bounded helper `m_anc_zero_idx_B_in_block_shift_when_t_pos_prefix_asc` (+ within/outside `_prefix_asc` 版) に渡す。 **sorry なし完全証明**
+          - ✅ BMS-free 純粋補題: `m_anc_zero_strict_min` / `m_anc_zero_imp_strict_min` (s が (s,i] 狭義最小 ⟺ m_ancestor A 0 i s) / `m_parent_zero_ge_anchor` / `m_parent_zero_candidate_le` / `ascends_row0_prefix` / `sorted_mem_le_last` / `sorted_filter_le`
+        - 🚨 **case B** (`¬ ascends A j 0`) — 実 BMS では非発生 (全列 ascend、 261/0 strip 込み) だが Hunter は abstract に処理。 残 sorry 2つ: `m_anc_zero_idx_B_in_block_shift_when_j_not_asc` ((ii)用)、 `m_parent_AEn_zero_idx_B_within_block_when_j_not_asc` ((iv)用)。 鍵: 非 ascend 列の m_parent も非 ascend (推移律、 さもなくば s が祖先 → ascend 矛盾) ⟹ row-0 が block 不変。 A[n]↔A ascension bridge 補題 (t=0 machinery の局所化) が要
         - ✅ `bms_row0_eq_chainlen0` (BMS_Ancestry) — global 不変量 elem A i 0 = level-0 chain 長 (**真**、 4865 BMS strip 済 0 viol、 strip 不変)。 BMS.induct: seed ✅、 expand G+B_0 ✅、 bumped t_A=0 (None/within-block ✅、 S-empty は `gmin` 核 🚨)、 bumped t_A>0 🛑 (`chainlen0_bumped_tiling` 結線、 **偽の consec 仮説に依存** (line 2655 `bms_consec_guarded`) → tiling を strict-min ベースで作り直し要)
           - 🤖🚨 `gmin` (chainlen0 t=0 S-empty) — agent が `b0min` (t=0 で B_0 row-0 全体最小) に縮小。 chainlen0 は真なので有効な残核 (worktree agent-aececef)
         - 🛑 **2026-05-23 訂正: 下記 consec/linchpin 系は偽と判明 (strip 漏れ検証の偽陰性、 [[strip-before-bms-verify]])**:
