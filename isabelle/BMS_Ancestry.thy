@@ -358,6 +358,40 @@ proof -
 qed
 
 text \<open>
+  Bump cancellation (Hunter dichotomy case A atom). When two columns
+  \<open>x, x'\<close> of \<open>B\<^sub>0\<close> both ascend at row \<open>k\<close>, their copies in block
+  \<open>c\<^sub>0\<close> are both bumped by the SAME \<open>c\<^sub>0 \<cdot> delta A k\<close>, so their
+  level-\<open>k\<close> order is identical to their order in \<open>B\<^sub>0\<close> (block 0).
+  Pure consequence of @{thm elem_AEn_idx_B_value}.
+\<close>
+
+lemma elem_AEn_block_lt_iff_B0_when_ascends:
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and c0_le: "c\<^sub>0 \<le> n"
+      and x_lt: "x < l1 A" and x'_lt: "x' < l1 A"
+      and k_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and kx: "k < length (A ! (s + x))" and kx': "k < length (A ! (s + x'))"
+      and asc_x: "ascends A x k" and asc_x': "ascends A x' k"
+  shows "(elem (A[n]) (idx_B_in_expansion A c\<^sub>0 x) k
+            < elem (A[n]) (idx_B_in_expansion A c\<^sub>0 x') k)
+       = (elem (A[n]) (idx_B_in_expansion A 0 x) k
+            < elem (A[n]) (idx_B_in_expansion A 0 x') k)"
+proof -
+  have cx: "elem (A[n]) (idx_B_in_expansion A c\<^sub>0 x) k
+          = (A ! (s + x)) ! k + c\<^sub>0 * delta A k"
+    using elem_AEn_idx_B_value[OF A_ne b0 c0_le x_lt k_keep kx] asc_x by simp
+  have cx': "elem (A[n]) (idx_B_in_expansion A c\<^sub>0 x') k
+           = (A ! (s + x')) ! k + c\<^sub>0 * delta A k"
+    using elem_AEn_idx_B_value[OF A_ne b0 c0_le x'_lt k_keep kx'] asc_x' by simp
+  have z0x: "elem (A[n]) (idx_B_in_expansion A 0 x) k = (A ! (s + x)) ! k"
+    using elem_AEn_idx_B_value[OF A_ne b0 le0 x_lt k_keep kx] by simp
+  have z0x': "elem (A[n]) (idx_B_in_expansion A 0 x') k = (A ! (s + x')) ! k"
+    using elem_AEn_idx_B_value[OF A_ne b0 le0 x'_lt k_keep kx'] by simp
+  show ?thesis using cx cx' z0x z0x' by simp
+qed
+
+text \<open>
   Block-shift difference: shifting the block index by one adds a single
   \<open>delta A k\<close> at ascending rows, zero otherwise. Direct corollary of
   @{thm elem_AEn_idx_B_value}.
