@@ -1585,6 +1585,30 @@ proof -
 qed
 
 text \<open>
+  Level-\<open>Suc m\<close> analog: any candidate of the \<open>(Suc m)\<close>-m-parent of
+  \<open>i\<close> (a column \<open>c < i\<close> with smaller row-\<open>Suc m\<close> value AND a lower-level
+  \<open>m\<close>-ancestry link to \<open>i\<close>) is \<open>\<le>\<close> the actual parent (the maximal
+  candidate).  Mirrors @{thm m_parent_zero_candidate_le}.
+\<close>
+lemma m_parent_Suc_candidate_le:
+  assumes mp: "m_parent A (Suc m) i = Some p"
+      and c_lt: "c < i"
+      and c_cand1: "elem A c (Suc m) < elem A i (Suc m)"
+      and c_cand2: "m_ancestor A m i c"
+  shows "c \<le> p"
+proof -
+  let ?P = "\<lambda>j. elem A j (Suc m) < elem A i (Suc m) \<and> m_ancestor A m i j"
+  have c_mem: "c \<in> set (filter ?P [0..<i])"
+    using c_lt c_cand1 c_cand2 by (simp add: set_filter)
+  have ne: "filter ?P [0..<i] \<noteq> []"
+    using c_mem by (metis empty_iff empty_set)
+  have p_eq: "p = last (filter ?P [0..<i])"
+    using mp ne by (simp add: Let_def)
+  have srt: "sorted (filter ?P [0..<i])" using sorted_filter_le[OF sorted_upt] .
+  show "c \<le> p" using sorted_mem_le_last[OF srt c_mem] p_eq by simp
+qed
+
+text \<open>
   Converse of @{thm m_anc_zero_strict_min} (Hunter's row-0 ancestry
   equivalence, \<open>\<Longrightarrow>\<close> direction): if \<open>s\<close> is a level-0 m-ancestor
   of \<open>i\<close>, then \<open>s\<close>'s row-0 is strictly below every column strictly
@@ -5850,6 +5874,25 @@ text \<open>
 \<close>
 
 text \<open>
+  WARNING (2026-05-24): the statement below as written (quantifying over
+  ALL \<open>t < height A\<close>) is FALSE.  Counterexample (genuine BMS, reachable
+  from seed \<open>(0,0,0,0,0)(1,1,1,1,1)\<close>):
+  \<open>E = (0,0)(1,1)(2,0)(1,1)(2,0)\<close>, \<open>t = 1\<close>, \<open>q = 3\<close>,
+  \<open>p = m_parent E 1 3 = 0\<close>, \<open>c = 2\<close>: \<open>m_parent E 1 2 = None\<close> so
+  \<open>m_ancestor E 1 2 0\<close> is FALSE, yet the statement claims it.  Here
+  \<open>max_parent_level E = Some 0\<close>, so \<open>t = 1 > max_parent_level\<close>.
+
+  The CORRECT hypothesis (verify/probe_unified_correct_hyp.py, ~6419 BMS,
+  0 violations under it) is \<open>t \<le> max_parent_level A\<close>.  All counterexamples
+  have \<open>t > max_parent_level A\<close>.  \<open>bms_b0_col_elem_lt\<close> only ever uses
+  \<open>t = max_parent_level A\<close>, so the restricted form suffices downstream.
+  Under \<open>t \<le> max_parent_level A\<close> the Case-A/Case-B split below is valid:
+  Case B is vacuous and \<open>sm\<close> holds (verify/probe_sm_caseB at \<open>t \<le> mpl\<close>,
+  0 violations).  TODO: add the \<open>t \<le> max_parent_level A\<close> hypothesis and
+  restructure (the transfer cases need care: \<open>max_parent_level\<close> is NOT
+  monotone under \<open>A[0]\<close>, e.g. \<open>(0,0)(1,1)(2,0)\<close> has mpl 0 but its
+  \<open>[0]\<close>-expansion \<open>(0,0)(1,1)\<close> has mpl 1).
+
   UNIFIED t-parent ancestor lemma (the clean unifying crux). For \<open>A \<in> BMS\<close>,
   if \<open>p\<close> is the level-\<open>t\<close> parent of column \<open>q\<close>, then \<open>p\<close> is a
   level-\<open>t\<close> m-ancestor of EVERY column strictly between \<open>p\<close> and \<open>q\<close>.
@@ -6102,9 +6145,39 @@ next
               proved from the bump structure WITHOUT clause (ii)/(iv).
               [VERIFIED-OK] probe=verify/probe_unified_bumped.py (genuine BMS
               seeds, 17144 (t,q,p,c) tuples, 0 conclusion violations).\<close>
+          have ep_lt_q: "elem (A[n]) p (Suc t') < elem (A[n]) q (Suc t')"
+            using m_parent_elem_lt[OF mp[unfolded Suc]] .
           have sm: "\<forall>x. p < x \<and> x \<le> c
                       \<longrightarrow> elem (A[n]) p (Suc t') < elem (A[n]) x (Suc t')"
-            sorry
+          proof (intro allI impI)
+            fix x assume hx: "p < x \<and> x \<le> c"
+            hence px: "p < x" and xc: "x \<le> c" by auto
+            have x_lt_q: "x < q" using xc cq by simp
+            show "elem (A[n]) p (Suc t') < elem (A[n]) x (Suc t')"
+            proof (cases "m_ancestor (A[n]) t' q x")
+              case True
+              \<comment> \<open>Case A: \<open>x\<close> is a \<open>t'\<close>-ancestor of \<open>q\<close>, so by maximality
+                  of the \<open>(Suc t')\<close>-parent \<open>p\<close>, \<open>x\<close> cannot have a smaller
+                  row-\<open>(Suc t')\<close> value than \<open>q\<close>; hence
+                  \<open>elem p < elem q \<le> elem x\<close>.\<close>
+              have "\<not> elem (A[n]) x (Suc t') < elem (A[n]) q (Suc t')"
+              proof
+                assume axc: "elem (A[n]) x (Suc t') < elem (A[n]) q (Suc t')"
+                have "x \<le> p"
+                  using m_parent_Suc_candidate_le[OF mp[unfolded Suc] x_lt_q axc True] .
+                thus False using px by simp
+              qed
+              thus ?thesis using ep_lt_q by simp
+            next
+              case False
+              \<comment> \<open>Case B (the remaining bump kernel): \<open>x\<close> is a \<open>t'\<close>-descendant
+                  of \<open>p\<close> (\<open>anc_lo\<close>) but NOT a \<open>t'\<close>-ancestor of \<open>q\<close>.  Needs
+                  the bump structure (\<open>delta\<close>/\<open>ascends\<close>); clause (ii)/(iv)
+                  forbidden (circular).  [VERIFIED-OK]
+                  probe=verify/probe_unified_bumped.py.\<close>
+              show ?thesis sorry
+            qed
+          qed
           show ?thesis
             using m_anc_suc_strict_min[OF pc sm anc_lo] Suc by simp
         qed
