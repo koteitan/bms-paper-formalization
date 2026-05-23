@@ -138,4 +138,67 @@ lemma lemma_2_5_iv_and_v:
   unfolding lemma_2_5_at_def lemma_2_5_iv_clause_def lemma_2_5_v_clause_def
   by blast
 
+
+section \<open>Prose claims from Hunter's Lemma 2.5 proof (page 5), formalized\<close>
+
+text \<open>
+  These are statements Hunter makes in WORDS inside the proof of
+  Lemma 2.5; we record them as formal lemmas so the Hunter layer also
+  pins down the reasoning, not just the displayed clauses.
+\<close>
+
+text \<open>
+  ``The \<open>k\<close>-th element of the \<open>j\<close>-th column in \<open>B\<^sub>0\<close> ascends iff the
+  first column in \<open>B\<^sub>0\<close> is a \<open>k\<close>-ancestor of the \<open>j\<close>-th column''
+  (Hunter, p.5).  This is exactly the meaning of @{const ascends} once
+  the level bound \<open>m < m\<^sub>0\<close> is in force.
+\<close>
+
+lemma hunter_ascends_iff_first_b0_ancestor:
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and m_lt: "m < m\<^sub>0"
+  shows "ascends A j m \<longleftrightarrow> non_strict_ancestor A m (idx_B_in_expansion A 0 j) s"
+proof -
+  have l0_eq: "idx_B_in_expansion A 0 j = s + j"
+  proof -
+    have "l0 A = s"
+    proof -
+      have A_ne: "A \<noteq> []" using b0 unfolding b0_start_def max_parent_level_def
+        by (auto split: if_splits)
+      have "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+      hence "s \<le> arr_len A" using A_ne by (cases A) auto
+      thus ?thesis using b0 unfolding l0_def G_block_def by simp
+    qed
+    thus ?thesis unfolding idx_B_in_expansion_def by simp
+  qed
+  show ?thesis
+    using b0 mp m_lt l0_eq unfolding ascends_def by simp
+qed
+
+text \<open>
+  Special case \<open>j = 0\<close>: ``the first column in \<open>B\<^sub>0\<close> is its own
+  non-strict \<open>k\<close>-ancestor'', hence its \<open>k\<close>-th element ascends for
+  EVERY level \<open>k < m\<^sub>0\<close> (Hunter, p.5).
+\<close>
+
+lemma hunter_first_b0_col_ascends:
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+  shows "ascends A 0 m \<longleftrightarrow> m < m\<^sub>0"
+  using b0 mp unfolding ascends_def non_strict_ancestor_def by simp
+
+text \<open>
+  ``For all \<open>k' < k\<close>, \<open>k'\<close>-ancestry is a total order on the columns
+  [that are common \<open>k'\<close>-ancestors]'' (Hunter, p.5): any two \<open>m\<close>-ancestors
+  of a common column are comparable.  (Re-export of the proven totality
+  fact; this is the property Hunter relies on throughout the (ii)/(iv)
+  arguments.)
+\<close>
+
+lemma hunter_m_ancestry_total_on_ancestors:
+  assumes "m_ancestor A m i j" and "m_ancestor A m i k"
+  shows "j = k \<or> m_ancestor A m j k \<or> m_ancestor A m k j"
+  using m_ancestor_chain_linear assms by blast
+
 end
