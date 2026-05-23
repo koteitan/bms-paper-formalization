@@ -5402,19 +5402,38 @@ text \<open>
   whenever \<open>r = t'\<close> -- both bumps vanish and the IH closes it.]
 
   (R2) \<open>l1' = 1\<close> (63/261; \<open>A'\<close> has NO interior \<open>B\<^sub>0\<close> column, IH
-  vacuous). Here \<open>s - l0' < 0\<close>: the bad root \<open>s\<close> lands INSIDE \<open>G'\<close>
-  (or at \<open>s'\<close>), NOT at a bumped-block boundary, so the (R1) block
-  decomposition does not apply; the interior columns \<open>s + j\<close> mix \<open>G'\<close>
-  columns with bumped single-column blocks. The inequality still holds
-  (618/618) and even at \<open>r = t\<close> (243/243), but the governing argument
-  is a separate \<open>G'\<close>-region geometry fact, currently unidentified.
+  vacuous). Here \<open>s < l0'\<close> always (\<open>s - l0' \<in> {-1,-2,-3,-5,-7}\<close>,
+  132/132): the bad root \<open>s\<close> lands strictly INSIDE \<open>G'\<close>, NOT at a
+  bumped-block boundary, so the (R1) block decomposition does not apply;
+  the interior columns \<open>s + j\<close> mix \<open>G'\<close>-tail columns
+  (\<open>s < c < l0'\<close>) with bumped single-column blocks (\<open>c \<ge> l0'\<close>).
 
-  OBSTACLE: closing this requires a NEW lemma pinning \<open>b0_start (A'[n])\<close>
-  to \<open>A'\<close> -- itself an unproven structural crux that splits into the two
-  geometrically-distinct regimes above (and is what
-  \<open>verify/verify_Ak_structural_conjectures.py\<close> showed does NOT
-  propagate as naive structure-preservation). An honest \<open>sorry\<close> is
-  left until that location lemma is established.
+  R2 IS NOW FULLY CHARACTERIZED (no longer "unidentified"). Strip-correct,
+  yaBMS-backed: \<open>verify/probe_R2_badroot_rule.py\<close> (132/132) and
+  \<open>verify/probe_R2_reduce.py\<close> (0 viol). R2 reduces to three facts:
+
+  (H4) \<open>m_ancestor A' t l0' s\<close> -- the bad root \<open>s\<close> of \<open>A = A'[n]\<close>
+  is, IN \<open>A'\<close>, a level-\<open>t\<close> m-ancestor of \<open>l0'\<close> (\<open>= s' = b0_start A'\<close>;
+  recall \<open>l1' = 1\<close>). The genuine NEW location fact: the expansion's bad
+  root re-enters \<open>G'\<close> and is a \<open>t\<close>-ancestor of the predecessor's bad
+  root (132/132; here \<open>t = t'\<close> in 123/132, \<open>t > t'\<close> in 9/132,
+  \<open>t < t'\<close> never).
+
+  (R2a) the STRONGER \<open>m_ancestor A' t c s\<close> for EVERY \<open>s < c \<le> l0'\<close>
+  (564/564) -- \<open>s\<close> is a \<open>t\<close>-ancestor in \<open>A'\<close> of every column up to
+  \<open>l0'\<close>. Extends H4 across the segment via the same m-parent-chain inner
+  induction as \<open>bms_b0_col_r_ancestor_all\<close>. Yields, by
+  @{thm m_ancestor_mono} + @{thm m_ancestor_elem_lt},
+  \<open>elem A' s r < elem A' c r\<close> for \<open>r \<le> t\<close> (1578/1578), covering the
+  \<open>G'\<close>-tail interior columns (where \<open>elem A = elem A'\<close>).
+
+  (R2b) for bumped-block interior columns \<open>c \<ge> l0'\<close>,
+  \<open>elem A c r \<ge> elem A' l0' r\<close> (672/672; bumping is non-negative).
+  Combined with \<open>elem A s r = elem A' s r < elem A' l0' r\<close> (from R2a at
+  \<open>c = l0'\<close>) this gives \<open>elem A s r < elem A c r\<close>.
+
+  So the lone remaining structural crux is H4 (and its segment-extension
+  R2a). An honest \<open>sorry\<close> is left until H4 is established in Isabelle.
 \<close>
 
 lemma bms_b0_col_elem_lt:
