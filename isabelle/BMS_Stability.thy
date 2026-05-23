@@ -19,7 +19,7 @@
 *)
 
 theory BMS_Stability
-  imports BMS_Ancestry
+  imports BMS_Hunter
 begin
 
 section \<open>Abstract ordinal layer\<close>

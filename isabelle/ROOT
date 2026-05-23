@@ -11,5 +11,6 @@ session BMS = HOL +
     BMS_Defs
     BMS_Lex
     BMS_Ancestry
+    BMS_Hunter
     BMS_Stability
     BMS_WellOrdered
