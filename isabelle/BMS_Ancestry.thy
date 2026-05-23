@@ -5372,9 +5372,49 @@ text \<open>
   strictly dominated in EVERY row \<open>r \<le> t\<close> by every interior \<open>B\<^sub>0\<close>
   column \<open>s + j\<close>. Strip-correctly verified across 261 BMSs in
   \<open>verify/probe_Qt_elem.py\<close> (0 violations). This is the single
-  remaining \<open>sorry\<close>: it must be argued from Bashicu standard form
-  directly (\<open>BMS.induct\<close> structure-preservation is refuted; cf.
-  \<open>verify/verify_Ak_structural_conjectures.py\<close>).
+  remaining \<open>sorry\<close>.
+
+  DERIVATION-STRUCTURE ANALYSIS (strip-correct, 261 BMS, 0 viol;
+  \<open>verify/probe_bad_root_in_expansion.py\<close>, \<open>probe_l1_vs_blocks.py\<close>,
+  \<open>probe_reduce_to_Aprime.py\<close>, \<open>probe_notasc_branch.py\<close>,
+  \<open>probe_l1prime1.py\<close>, \<open>probe_t_relation.py\<close>). Write \<open>A = A'[n]\<close>
+  (the non-seed step of \<open>BMS.induct\<close>; seed is vacuous, \<open>l1 = 1\<close>),
+  with \<open>s'=b0_start A'\<close>, \<open>t'=max_parent_level A'\<close>, \<open>l0'\<close>, \<open>l1'\<close>,
+  \<open>delta' r = delta A' r\<close>. Two disjoint regimes:
+
+  (R1) \<open>l1' \<ge> 2\<close> (198/261). Then \<open>s = l0' + c\<^sub>0 \<cdot> l1'\<close> for some
+  \<open>1 \<le> c\<^sub>0 \<le> n\<close> (the START of block \<open>B\<^bsub>c\<^sub>0\<^esub>\<close>),
+  \<open>t = t'\<close>, and \<open>l1 A = (n - c\<^sub>0 + 1)\<cdot>l1' - 1\<close> (exact, 198/198).
+  Every interior global column \<open>s + j\<close> decomposes as
+  \<open>l0' + c\<cdot>l1' + x\<close> with \<open>c \<ge> c\<^sub>0\<close>, \<open>0 \<le> x < l1'\<close>, and the
+  PROVEN closed forms (@{thm elem_AEn_idx_B_value}) give, for \<open>r \<le> t\<close>,
+  \<open>elem A (s+j) r = elem A' (s'+x) r + (if ascends A' x r then c\<cdot>delta' r else 0)\<close>
+  and \<open>elem A s r = elem A' s' r + c\<^sub>0 \<cdot> delta' r\<close>
+  (\<open>x = 0\<close> case; \<open>ascends A' 0 r\<close> i.e. \<open>r < t'\<close> -- note \<open>x = 0\<close>
+  never recurs as an interior column, 0/261). The inequality then follows
+  from (a) \<open>0 < delta' r\<close> for \<open>r \<le> t'\<close> (@{thm delta_pos_of_lt_m0},
+  456/456) and (b) the GENERAL FACT \<open>elem A' s' r < elem A' (s'+x) r\<close>
+  for interior \<open>x\<close> of \<open>A'\<close> -- which is THIS LEMMA for \<open>A'\<close> (the IH;
+  630/630, 0 viol). [ascending branch reduces directly to the IH; the
+  not-ascending branch (252/279 where the naive \<open>+c\<^sub>0 delta'\<close>
+  bound fails) is nonetheless covered by the General Fact, since there
+  \<open>elem A (s+j) r = elem A' (s'+x) r\<close> and \<open>elem A s r = elem A' s' r\<close>
+  whenever \<open>r = t'\<close> -- both bumps vanish and the IH closes it.]
+
+  (R2) \<open>l1' = 1\<close> (63/261; \<open>A'\<close> has NO interior \<open>B\<^sub>0\<close> column, IH
+  vacuous). Here \<open>s - l0' < 0\<close>: the bad root \<open>s\<close> lands INSIDE \<open>G'\<close>
+  (or at \<open>s'\<close>), NOT at a bumped-block boundary, so the (R1) block
+  decomposition does not apply; the interior columns \<open>s + j\<close> mix \<open>G'\<close>
+  columns with bumped single-column blocks. The inequality still holds
+  (618/618) and even at \<open>r = t\<close> (243/243), but the governing argument
+  is a separate \<open>G'\<close>-region geometry fact, currently unidentified.
+
+  OBSTACLE: closing this requires a NEW lemma pinning \<open>b0_start (A'[n])\<close>
+  to \<open>A'\<close> -- itself an unproven structural crux that splits into the two
+  geometrically-distinct regimes above (and is what
+  \<open>verify/verify_Ak_structural_conjectures.py\<close> showed does NOT
+  propagate as naive structure-preservation). An honest \<open>sorry\<close> is
+  left until that location lemma is established.
 \<close>
 
 lemma bms_b0_col_elem_lt:
