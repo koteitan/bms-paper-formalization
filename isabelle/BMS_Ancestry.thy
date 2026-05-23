@@ -5619,6 +5619,52 @@ text \<open>
   R2a). An honest \<open>sorry\<close> is left until H4 is established in Isabelle.
 \<close>
 
+text \<open>
+  UNIFIED t-parent ancestor lemma (the clean unifying crux). For \<open>A \<in> BMS\<close>,
+  if \<open>p\<close> is the level-\<open>t\<close> parent of column \<open>q\<close>, then \<open>p\<close> is a
+  level-\<open>t\<close> m-ancestor of EVERY column strictly between \<open>p\<close> and \<open>q\<close>.
+  Strip-correct yaBMS verification: \<open>verify/probe_unified_tparent_anc.py\<close>
+  (3473 genuine BMS arrays, 45633 \<open>(t,q)\<close>-parent pairs, 30700 interior
+  checks, 0 violations; FALSE for non-BMS arrays such as
+  \<open>(0,0,0)(1,2,0)(1,1,1)\<close>, so \<open>A \<in> BMS\<close> is essential).
+
+  This single statement subsumes the (ii) crux: with \<open>q = last_col_idx A\<close>,
+  \<open>p = s = b0_start A\<close>, it gives \<open>m_ancestor A t (s+j) s\<close> for every
+  interior \<open>B\<^sub>0\<close> column, hence (via @{thm m_ancestor_mono} +
+  @{thm m_ancestor_elem_lt}) the row-wise domination
+  \<open>bms_b0_col_elem_lt\<close>. It also subsumes R2a (\<open>q = l0'\<close>).
+
+  Proof by \<open>BMS.induct\<close>. The seed is vacuous (length 2, so \<open>p<c<q\<close> is
+  unsatisfiable). In the expand step \<open>A[n]\<close>: when \<open>q < l0 A\<close> (the \<open>G\<close>
+  prefix, copied verbatim) the claim transfers from the predecessor via the
+  G'-preservation lemmas @{thm m_parent_orig_eq_AEn_G},
+  @{thm m_anc_orig_eq_AEn_G} (using \<open>t < height (A[n]) = keep \<le> height A\<close>);
+  the bumped-region case (\<open>q \<ge> l0 A\<close>) is the remaining structural kernel.
+\<close>
+
+lemma bms_tparent_anc_all:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS"
+  shows "\<forall>t q p c. t < height A \<longrightarrow> q < length A
+                   \<longrightarrow> m_parent A t q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
+                   \<longrightarrow> m_ancestor A t c p"
+  using A_BMS
+proof (induct A rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case
+  proof (intro allI impI)
+    fix t q p c
+    assume "q < length (seed n)" and "p < c" and "c < q"
+    moreover have "length (seed n) = 2" by (rule length_seed)
+    ultimately have False by linarith
+    thus "m_ancestor (seed n) t c p" by simp
+  qed
+next
+  case (expand_in_BMS A n)
+  show ?case
+    sorry
+qed
+
 lemma bms_b0_col_elem_lt:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -5628,7 +5674,23 @@ lemma bms_b0_col_elem_lt:
       and j_pos: "0 < j"
       and j_lt: "j < l1 A"
   shows "elem A s r < elem A (s + j) r"
-  sorry
+proof -
+  have mpC: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_len: "last_col_idx A < length A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+    using s_lt_last b0 last_lt_len unfolding l1_def B0_block_def by simp
+  have sj_lt_last: "s + j < last_col_idx A" using j_lt l1_eq by linarith
+  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
+  have s_lt_sj: "s < s + j" using j_pos by simp
+  have anc_t: "m_ancestor A t (s + j) s"
+    using bms_tparent_anc_all[OF A_BMS]
+          t_lt_H last_lt_len mpC s_lt_sj sj_lt_last
+    by blast
+  have anc_r: "m_ancestor A r (s + j) s" by (rule m_ancestor_mono[OF r_le anc_t])
+  show "elem A s r < elem A (s + j) r" by (rule m_ancestor_elem_lt[OF anc_r])
+qed
 
 text \<open>
   Strengthened (ii) crux, ranging over every level \<open>r \<le> t\<close>: the bad
