@@ -116,7 +116,10 @@ graph LR
       - ✅ M1 G' 保存 `elem_orig_eq_AEn_G`/`m_anc_orig_eq_AEn_G`/`m_parent_orig_eq_AEn_G` — p<l0 A で全 level k<keep で elem/m_anc/m_parent が A と A[n] 一致 (純 G' は逐語コピー)
       - ✅ `bms_tparent_anc_all` bumped case の **B_0 block 部分** (`l0≤q<l0+l1`) — A[n] 先頭 l0+l1 列 = butlast A の verbatim コピーなので、 M1 を G+B_0 領域 (`p<l0+l1`) に一般化し IH へ transfer (G-prefix と同型)
       - ✅ `bms_tparent_anc_all` 実 bump 領域の **t=0 slice** — `m_parent_zero_anc_between` (任意配列で成立する level-0 NSV/Cartesian-tree 性質、 BMS 不要・非循環) で消化。 `m_parent_zero_candidate_le`+`m_anc_zero_strict_min` から組立
-      - 🚨 `bms_tparent_anc_all` 実 bump 領域の **t=Suc t' slice** (`q≥l0+l1`、 B_1..B_n) — **(ii) の唯一の残壁**。 t-parent p は G'(31%)/同 block(28%)/前 block(41%) に落ちる、 後 block 不可 (17144 tuple 0 viol)。 clause(ii)/(iv) は elem_lt 経由で循環するので使用不可。 候補条件が低位 m_ancestor 連言なので NSV 論法が直に効かない。 検討中の筋: UNIFIED を t 外側 + BMS 内側の二重帰納に再編し、 同一配列 A[n] の level t' UNIFIED を IH として使う
+      - ✅ **二重帰納 re-structure** — `bms_tparent_anc_all` を outer `BMS.induct` + inner `induct t (nat_less_induct)` に再編。 inner t-IH (`tIH`) が同一配列 A[n] の level t' UNIFIED(parent 版)を供給、 outer IH が predecessor A を供給
+      - ✅ **汎用 helper 2本** — `m_anc_suc_strict_min` (level Suc r' 版 strict-min anchor、 BMS 不要) と `anc_all_from_parent_all` (parent 版 → ancestor 版、 chain walk)
+      - ✅ **t=Suc t' slice の sm 還元** — Suc t' ケースを配線: `anc_q`(p が q の t'-祖先) + `anc_lo`(p が (p,c] 全列の t'-祖先、 `anc_all_from_parent_all`+tIH で無料) を組み、 `m_anc_suc_strict_min` で goal を **単一の純粋 elem 不等式 `sm`** に還元
+      - 🚨 `sm` カーネル (`∀x∈(p,c]. elem(A[n]) p (Suc t') < elem(A[n]) x (Suc t')`) — **(ii) の唯一の残壁**。 m_parent 最右性で Case A (m_ancestor t' q x 真 → elem x ≥ elem q > elem p) は片付く見込み。 Case B (¬m_ancestor t' q x、 x は p の t'-子孫だが q の t'-祖先でない) が bump 構造を要する真のカーネル。 clause(ii)/(iv) 非経由 (循環回避)
       - ✅ `elem_AEn_lt_block_implies_block_zero_when_j_not_asc` — Round 2 片方向不等式 lemma: ¬ ascends A j ⟹ block-c の elem 不等式が block-0 の elem 不等式を imply (delta ≥ 0 を活用)
       - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_via_S_empty` — Round 2 m_parent outside lemma: not_asc_chain なし版、 S_empty + 片方向不等式で B_c 内 candidate を弾く
       - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)

@@ -5896,12 +5896,31 @@ next
                       \<longrightarrow> m_ancestor A t c p"
     using expand_in_BMS.hyps(2) .
   show ?case
-  proof (intro allI impI)
-    fix t q p c
-    assume t_lt: "t < height (A[n])" and q_lt: "q < length (A[n])"
-       and mp: "m_parent (A[n]) t q = Some p" and pc: "p < c" and cq: "c < q"
-    show "m_ancestor (A[n]) t c p"
-    proof (cases "q < l0 A")
+  proof -
+    \<comment> \<open>Inner strong induction on the level \<open>t\<close> (nested inside the
+        outer \<open>BMS.induct\<close>).  The level-IH \<open>tIH\<close> supplies the UNIFIED
+        parent-property at the LOWER level \<open>t'\<close> for the SAME array
+        \<open>A[n]\<close>, which the bumped \<open>t = Suc t'\<close> case feeds (via
+        @{thm anc_all_from_parent_all}) to obtain the lower-level
+        ancestry side-condition \<open>anc_lo\<close> of @{thm m_anc_suc_strict_min}.
+        The outer \<open>BMS.induct\<close> IH (\<open>IH\<close>) gives the predecessor \<open>A\<close> at
+        the SAME level.\<close>
+    have key: "\<forall>q p c. t < height (A[n]) \<longrightarrow> q < length (A[n])
+                 \<longrightarrow> m_parent (A[n]) t q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
+                 \<longrightarrow> m_ancestor (A[n]) t c p" for t
+    proof (induct t rule: nat_less_induct)
+      case (1 t)
+      have tIH: "\<forall>t'<t. \<forall>q p c. t' < height (A[n]) \<longrightarrow> q < length (A[n])
+                   \<longrightarrow> m_parent (A[n]) t' q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
+                   \<longrightarrow> m_ancestor (A[n]) t' c p"
+        using "1.hyps" by blast
+      show ?case
+      proof (intro allI impI)
+        fix q p c
+        assume t_lt: "t < height (A[n])" and q_lt: "q < length (A[n])"
+           and mp: "m_parent (A[n]) t q = Some p" and pc: "p < c" and cq: "c < q"
+        show "m_ancestor (A[n]) t c p"
+        proof (cases "q < l0 A")
       case True
       note q_l0 = True
       \<comment> \<open>G-prefix case: transfer the claim from the predecessor \<open>A\<close>
@@ -6054,15 +6073,46 @@ next
             unfolding 0 .
         next
           case (Suc t')
-          \<comment> \<open>[VERIFIED-OK] probe=verify/probe_unified_bumped.py
-              (genuine BMS seeds, 17144 (t,q,p,c) tuples, 0 conclusion
-              violations).  [CONJECTURE-unproved] sole remaining (ii)
-              crux (now only the \<open>t = Suc t'\<close> slice); must avoid clause
-              (ii)/(iv) (circular via bms_b0_col_elem_lt).\<close>
-          show ?thesis sorry
+          have t'_lt_t: "t' < t" using Suc by simp
+          have t'_lt_H: "t' < height (A[n])" using t_lt Suc by simp
+          \<comment> \<open>\<open>par_t'\<close>: the UNIFIED parent-property at the LOWER level
+              \<open>t'\<close> for \<open>A[n]\<close> itself, supplied by the level-IH \<open>tIH\<close>.\<close>
+          have par_t': "\<And>q' p' c'. q' < length (A[n])
+                          \<Longrightarrow> m_parent (A[n]) t' q' = Some p'
+                          \<Longrightarrow> p' < c' \<Longrightarrow> c' < q'
+                          \<Longrightarrow> m_ancestor (A[n]) t' c' p'"
+            using tIH t'_lt_t t'_lt_H by blast
+          \<comment> \<open>\<open>p\<close> is the \<open>t'\<close>-ancestor of \<open>q\<close> (candidate condition of the
+              \<open>(Suc t')\<close>-parent \<open>p\<close>).\<close>
+          have anc_q: "m_ancestor (A[n]) t' q p"
+            using m_parent_Suc_implies_m_ancestor[OF mp[unfolded Suc]] .
+          \<comment> \<open>\<open>anc_lo\<close>: \<open>p\<close> is a \<open>t'\<close>-ancestor of every column in \<open>(p, c]\<close>,
+              from the ancestor-version of UNIFIED at level \<open>t'\<close>.\<close>
+          have anc_lo: "\<forall>x. p < x \<and> x \<le> c \<longrightarrow> m_ancestor (A[n]) t' x p"
+          proof (intro allI impI)
+            fix x assume "p < x \<and> x \<le> c"
+            hence px: "p < x" and xc: "x \<le> c" by auto
+            have x_lt_q: "x < q" using xc cq by simp
+            show "m_ancestor (A[n]) t' x p"
+              by (rule anc_all_from_parent_all[OF par_t' anc_q q_lt px x_lt_q])
+          qed
+          \<comment> \<open>\<open>sm\<close>: \<open>p\<close> is the strict row-\<open>(Suc t')\<close> minimum over \<open>(p, c]\<close>.
+              THE remaining (ii) kernel: a pure row-\<open>(Suc t')\<close> inequality
+              (equivalent to the goal via @{thm m_ancestor_elem_lt}), to be
+              proved from the bump structure WITHOUT clause (ii)/(iv).
+              [VERIFIED-OK] probe=verify/probe_unified_bumped.py (genuine BMS
+              seeds, 17144 (t,q,p,c) tuples, 0 conclusion violations).\<close>
+          have sm: "\<forall>x. p < x \<and> x \<le> c
+                      \<longrightarrow> elem (A[n]) p (Suc t') < elem (A[n]) x (Suc t')"
+            sorry
+          show ?thesis
+            using m_anc_suc_strict_min[OF pc sm anc_lo] Suc by simp
         qed
       qed
     qed
+      qed
+    qed
+    show ?case using key by blast
   qed
 qed
 
