@@ -5262,6 +5262,59 @@ text \<open>
   level \<open>t = max_parent_level (A[n])\<close> may exceed \<open>m\<^sub>0 = max_parent_level A\<close>.
 \<close>
 
+lemma m_parent_orig_eq_AEn_shared_B0:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some m\<^sub>0"
+      and k_lt: "k < m\<^sub>0"
+      and n_pos: "0 < n"
+      and p_lt: "p < idx_B_in_expansion A 0 (l1 A)"
+  shows "m_parent A k p = m_parent (A[n]) k p"
+proof (cases k)
+  case 0
+  have "[j \<leftarrow> [0..<p]. elem A j 0 < elem A p 0]
+      = [j \<leftarrow> [0..<p]. elem (A[n]) j 0 < elem (A[n]) p 0]"
+  proof (rule filter_cong[OF refl])
+    fix j assume "j \<in> set [0..<p]"
+    hence j_lt_p: "j < p" by simp
+    have j_lt_idx: "j < idx_B_in_expansion A 0 (l1 A)" using j_lt_p p_lt by linarith
+    have ej: "elem A j 0 = elem (A[n]) j 0"
+      using elem_orig_eq_AEn_shared_below_l1[OF A_BMS A_ne b0 mp n_pos j_lt_idx k_lt]
+            \<open>k = 0\<close> by simp
+    have ep: "elem A p 0 = elem (A[n]) p 0"
+      using elem_orig_eq_AEn_shared_below_l1[OF A_BMS A_ne b0 mp n_pos p_lt k_lt]
+            \<open>k = 0\<close> by simp
+    show "elem A j 0 < elem A p 0 \<longleftrightarrow> elem (A[n]) j 0 < elem (A[n]) p 0"
+      using ej ep by simp
+  qed
+  thus ?thesis using \<open>k = 0\<close> by (simp add: Let_def)
+next
+  case (Suc k')
+  have k'_lt: "k' < m\<^sub>0" using \<open>k = Suc k'\<close> k_lt by linarith
+  have "[j \<leftarrow> [0..<p]. elem A j (Suc k') < elem A p (Suc k') \<and> m_ancestor A k' p j]
+      = [j \<leftarrow> [0..<p]. elem (A[n]) j (Suc k') < elem (A[n]) p (Suc k')
+                          \<and> m_ancestor (A[n]) k' p j]"
+  proof (rule filter_cong[OF refl])
+    fix j assume "j \<in> set [0..<p]"
+    hence j_lt_p: "j < p" by simp
+    have j_lt_idx: "j < idx_B_in_expansion A 0 (l1 A)" using j_lt_p p_lt by linarith
+    have ej: "elem A j (Suc k') = elem (A[n]) j (Suc k')"
+      using elem_orig_eq_AEn_shared_below_l1[OF A_BMS A_ne b0 mp n_pos j_lt_idx k_lt]
+            \<open>k = Suc k'\<close> by simp
+    have ep: "elem A p (Suc k') = elem (A[n]) p (Suc k')"
+      using elem_orig_eq_AEn_shared_below_l1[OF A_BMS A_ne b0 mp n_pos p_lt k_lt]
+            \<open>k = Suc k'\<close> by simp
+    have manc: "m_ancestor A k' p j \<longleftrightarrow> m_ancestor (A[n]) k' p j"
+      using m_anc_orig_eq_AEn_shared_B0[OF A_BMS A_ne b0 mp k'_lt n_pos p_lt] by blast
+    show "(elem A j (Suc k') < elem A p (Suc k') \<and> m_ancestor A k' p j)
+        \<longleftrightarrow> (elem (A[n]) j (Suc k') < elem (A[n]) p (Suc k')
+             \<and> m_ancestor (A[n]) k' p j)"
+      using ej ep manc by simp
+  qed
+  thus ?thesis using \<open>k = Suc k'\<close> by (simp add: Let_def)
+qed
+
 lemma elem_orig_eq_AEn_G:
   fixes A :: array and n :: nat
   assumes A_ne: "A \<noteq> []"
