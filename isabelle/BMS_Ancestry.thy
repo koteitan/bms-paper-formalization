@@ -1647,6 +1647,39 @@ proof (induct i rule: less_induct)
 qed
 
 text \<open>
+  Level-0 instance of the UNIFIED \<open>t\<close>-parent--ancestor property
+  (\<open>bms_tparent_anc_all\<close>), holding for EVERY array (no BMS structure):
+  if \<open>p\<close> is the level-0 m-parent of \<open>q\<close> and \<open>p < c < q\<close>, then \<open>p\<close>
+  is a level-0 m-ancestor of \<open>c\<close>.  This is the standard
+  nearest-smaller-value (Cartesian-tree) fact: \<open>p\<close> is the maximal
+  level-0 candidate below \<open>q\<close>, so every column in \<open>(p, q)\<close> has row-0
+  value \<open>\<ge> elem q 0 > elem p 0\<close>, and @{thm m_anc_zero_strict_min}
+  then anchors the strictly-decreasing m-parent chain from \<open>c\<close> down to
+  \<open>p\<close>.  It discharges the \<open>t = 0\<close> slice of the bumped region directly.
+\<close>
+lemma m_parent_zero_anc_between:
+  assumes mp: "m_parent B 0 q = Some p" and pc: "p < c" and cq: "c < q"
+  shows "m_ancestor B 0 c p"
+proof -
+  have ep_lt_q: "elem B p 0 < elem B q 0" using m_parent_elem_lt[OF mp] .
+  have between_ge: "\<forall>x. p < x \<and> x \<le> c \<longrightarrow> elem B p 0 < elem B x 0"
+  proof (intro allI impI)
+    fix x assume H: "p < x \<and> x \<le> c"
+    hence px: "p < x" and xc: "x \<le> c" by auto
+    have x_lt_q: "x < q" using xc cq by simp
+    have "elem B q 0 \<le> elem B x 0"
+    proof (rule ccontr)
+      assume "\<not> elem B q 0 \<le> elem B x 0"
+      hence "elem B x 0 < elem B q 0" by simp
+      hence "x \<le> p" using m_parent_zero_candidate_le[OF mp x_lt_q] by simp
+      thus False using px by simp
+    qed
+    thus "elem B p 0 < elem B x 0" using ep_lt_q by simp
+  qed
+  show ?thesis by (rule m_anc_zero_strict_min[OF pc between_ge])
+qed
+
+text \<open>
   Hunter's row-0 ascension is a prefix-closed property: if column
   \<open>j\<close> ascends at row 0 (\<open>t > 0\<close>), then so does every column
   \<open>x \<le> j\<close>. (\<open>j\<close> ascends \<open>\<Longleftrightarrow>\<close> \<open>s\<close> is the strict row-0
@@ -5906,7 +5939,20 @@ next
             IH (UNIFIED for \<open>A\<close>), the \<open>G'\<close>/\<open>B\<^sub>0\<close> elem-structure lemmas
             and the bump structure (\<open>delta\<close>, \<open>ascends\<close>, \<open>bump_col\<close>).\<close>
         show "m_ancestor (A[n]) t c p"
-          sorry
+        proof (cases t)
+          case 0
+          \<comment> \<open>\<open>t = 0\<close> slice: the level-0 NSV fact, true for every array.\<close>
+          show ?thesis using m_parent_zero_anc_between[OF mp[unfolded 0] pc cq]
+            unfolding 0 .
+        next
+          case (Suc t')
+          \<comment> \<open>[VERIFIED-OK] probe=verify/probe_unified_bumped.py
+              (genuine BMS seeds, 17144 (t,q,p,c) tuples, 0 conclusion
+              violations).  [CONJECTURE-unproved] sole remaining (ii)
+              crux (now only the \<open>t = Suc t'\<close> slice); must avoid clause
+              (ii)/(iv) (circular via bms_b0_col_elem_lt).\<close>
+          show ?thesis sorry
+        qed
       qed
     qed
   qed
