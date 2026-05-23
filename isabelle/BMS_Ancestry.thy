@@ -5664,6 +5664,114 @@ proof -
 qed
 
 text \<open>
+  Level-\<open>Suc r'\<close> analog of @{thm m_anc_zero_strict_min}: a strict-min
+  anchor lemma for the \<open>(Suc r')\<close>-ancestor relation.  If \<open>p\<close> is the
+  strict row-\<open>Suc r'\<close> minimum over \<open>(p, c]\<close> (\<open>sm\<close>) AND \<open>p\<close> is a
+  lower-level \<open>r'\<close>-ancestor of every column in \<open>(p, c]\<close> (\<open>anc_lo\<close>),
+  then \<open>p\<close> is a \<open>(Suc r')\<close>-ancestor of \<open>c\<close>.  Pure list/m-parent fact
+  (no BMS structure): the \<open>(Suc r')\<close>-parent chain from \<open>c\<close> is anchored
+  at \<open>p\<close> because at each step \<open>p\<close> remains a candidate (\<open>sm\<close> gives the
+  value inequality, \<open>anc_lo\<close> gives the \<open>r'\<close>-ancestry side condition),
+  and the parent is the maximal candidate.  The \<open>anc_lo\<close> hypothesis is
+  exactly what the lower-level UNIFIED instance supplies; \<open>sm\<close> is the
+  remaining row-\<open>Suc r'\<close> content.
+\<close>
+lemma m_anc_suc_strict_min:
+  assumes pc: "p < c"
+      and sm: "\<forall>x. p < x \<and> x \<le> c \<longrightarrow> elem A p (Suc r') < elem A x (Suc r')"
+      and anc_lo: "\<forall>x. p < x \<and> x \<le> c \<longrightarrow> m_ancestor A r' x p"
+  shows "m_ancestor A (Suc r') c p"
+  using pc sm anc_lo
+proof (induct c rule: less_induct)
+  case (less c)
+  have pc': "p < c" by (rule less.prems(1))
+  have sm': "\<forall>x. p < x \<and> x \<le> c \<longrightarrow> elem A p (Suc r') < elem A x (Suc r')"
+    by (rule less.prems(2))
+  have anc_lo': "\<forall>x. p < x \<and> x \<le> c \<longrightarrow> m_ancestor A r' x p"
+    by (rule less.prems(3))
+  have ep_lt_c: "elem A p (Suc r') < elem A c (Suc r')" using sm' pc' by auto
+  have anc_c: "m_ancestor A r' c p" using anc_lo' pc' by auto
+  obtain pp where mp: "m_parent A (Suc r') c = Some pp" and p_le: "p \<le> pp"
+    using m_parent_ge_candidate_Suc[OF pc' ep_lt_c anc_c] by blast
+  have pp_lt_c: "pp < c" using m_parent_lt[OF mp] .
+  show ?case
+  proof (cases "pp = p")
+    case True
+    thus ?thesis using m_anc_via_parent_some[OF mp] by simp
+  next
+    case False
+    hence p_lt_pp: "p < pp" using p_le by simp
+    have sm_pp: "\<forall>x. p < x \<and> x \<le> pp \<longrightarrow> elem A p (Suc r') < elem A x (Suc r')"
+      using sm' pp_lt_c by auto
+    have anc_pp: "\<forall>x. p < x \<and> x \<le> pp \<longrightarrow> m_ancestor A r' x p"
+      using anc_lo' pp_lt_c by auto
+    have IH: "m_ancestor A (Suc r') pp p"
+      using less.hyps[OF pp_lt_c p_lt_pp sm_pp anc_pp] .
+    show ?thesis using m_anc_via_parent_some[OF mp] IH by simp
+  qed
+qed
+
+text \<open>
+  Ancestor-version of the UNIFIED \<open>t\<close>-parent property: given the
+  parent-version (every \<open>t\<close>-parent is a \<open>t\<close>-ancestor of all columns
+  strictly below it and its child) as a local hypothesis \<open>par\<close> at a
+  fixed level \<open>t\<close>, any \<open>t\<close>-ANCESTOR \<open>p\<close> of \<open>q\<close> is likewise a
+  \<open>t\<close>-ancestor of every column in \<open>(p, q)\<close>.  Proved by walking the
+  \<open>t\<close>-parent chain from \<open>q\<close> down to \<open>p\<close> (induction on \<open>q\<close>) and
+  applying \<open>par\<close> on each chain segment.  This is the form the
+  level-\<open>Suc t'\<close> step consumes (it supplies the \<open>anc_lo\<close> hypothesis of
+  @{thm m_anc_suc_strict_min} from the lower-level UNIFIED instance).
+\<close>
+lemma anc_all_from_parent_all:
+  assumes par: "\<And>q' p' c'. q' < length A \<Longrightarrow> m_parent A t q' = Some p'
+                  \<Longrightarrow> p' < c' \<Longrightarrow> c' < q' \<Longrightarrow> m_ancestor A t c' p'"
+      and anc: "m_ancestor A t q p"
+      and q_lt: "q < length A"
+      and pc: "p < c" and cq: "c < q"
+  shows "m_ancestor A t c p"
+  using anc q_lt pc cq
+proof (induct q rule: less_induct)
+  case (less q)
+  note anc' = less.prems(1) and q_lt' = less.prems(2)
+       and pc' = less.prems(3) and cq' = less.prems(4)
+  from anc' obtain p1 where mp1: "m_parent A t q = Some p1"
+    by (cases "m_parent A t q") (auto dest: m_anc_via_parent_none)
+  have casep1: "p1 = p \<or> m_ancestor A t p1 p"
+    using anc' m_anc_via_parent_some[OF mp1, of p] by blast
+  have p1_lt_q: "p1 < q" using m_parent_lt[OF mp1] .
+  have p1_lt_len: "p1 < length A" using p1_lt_q q_lt' by simp
+  show ?case
+  proof (cases "c = p1")
+    case True
+    have "p1 \<noteq> p" using True pc' by auto
+    hence "m_ancestor A t p1 p" using casep1 by simp
+    thus ?thesis using True by simp
+  next
+    case False
+    show ?thesis
+    proof (cases "p1 < c")
+      case True
+      have anc_c_p1: "m_ancestor A t c p1" using par[OF q_lt' mp1 True cq'] .
+      show ?thesis
+      proof (cases "p1 = p")
+        case True thus ?thesis using anc_c_p1 by simp
+      next
+        case False
+        hence "m_ancestor A t p1 p" using casep1 by simp
+        thus ?thesis using m_ancestor_trans[OF anc_c_p1] by blast
+      qed
+    next
+      case False
+      hence c_lt_p1: "c < p1" using \<open>c \<noteq> p1\<close> by simp
+      have "p1 \<noteq> p" using c_lt_p1 pc' by auto
+      hence anc_p1_p: "m_ancestor A t p1 p" using casep1 by simp
+      show ?thesis
+        using less.hyps[OF p1_lt_q anc_p1_p p1_lt_len pc' c_lt_p1] .
+    qed
+  qed
+qed
+
+text \<open>
   Isolated geometric input (the lone remaining BMS standard-form fact
   behind the (ii) crux): in a stripped BMS \<open>A\<close>, the bad root \<open>s\<close> is
   strictly dominated in EVERY row \<open>r \<le> t\<close> by every interior \<open>B\<^sub>0\<close>
