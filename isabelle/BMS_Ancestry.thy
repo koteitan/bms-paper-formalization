@@ -5253,6 +5253,181 @@ proof (induct k arbitrary: p q rule: less_induct)
 qed
 
 text \<open>
+  G'-region versions of the shared-equality lemmas, valid at EVERY level
+  \<open>k < keep\<close> (not just \<open>k < m\<^sub>0\<close>): in the pure \<open>G\<close>-prefix
+  (\<open>p < l0 A\<close>) the columns of \<open>A[n]\<close> are copied VERBATIM from \<open>A\<close>
+  (no bumping), so \<open>elem\<close>/\<open>m_parent\<close>/\<open>m_ancestor\<close> agree for all rows
+  surviving the strip (\<open>k < keep\<close>). These power the R2 location lemma
+  (\<open>verify/probe_R2_H4_mechanism.py\<close> M1, 696/696), where the relevant
+  level \<open>t = max_parent_level (A[n])\<close> may exceed \<open>m\<^sub>0 = max_parent_level A\<close>.
+\<close>
+
+lemma elem_orig_eq_AEn_G:
+  fixes A :: array and n :: nat
+  assumes A_ne: "A \<noteq> []"
+      and p_lt: "p < l0 A"
+      and k_lt: "k < keep_of (G_block A @ Bs_concat A n)"
+  shows "elem A p k = elem (A[n]) p k"
+proof -
+  have eAEn: "elem (A[n]) p k = elem (G_block A) p k"
+    by (rule elem_expansion_G_lt_keep[OF A_ne p_lt k_lt])
+  have p_lt_len: "p < length (G_block A)" using p_lt by (simp add: l0_def)
+  have gnth: "G_block A ! p = A ! p"
+  proof -
+    have "G_block A ! p = (G_block A @ Bs_concat A n) ! p"
+      using p_lt_len by (simp add: nth_append)
+    also have "\<dots> = A ! p"
+    proof -
+      have "p < length (G_block A) + length (B0_block A)" using p_lt_len by linarith
+      thus "(G_block A @ Bs_concat A n) ! p = A ! p"
+        using prestrip_nth_eq_orig[OF A_ne] by blast
+    qed
+    finally show ?thesis .
+  qed
+  have "elem (G_block A) p k = elem A p k"
+    using gnth unfolding elem_def by simp
+  thus ?thesis using eAEn by simp
+qed
+
+lemma m_anc_orig_eq_AEn_G:
+  fixes A :: array and n :: nat
+  assumes A_ne: "A \<noteq> []"
+      and k_lt: "k < keep_of (G_block A @ Bs_concat A n)"
+      and p_lt: "p < l0 A"
+  shows "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
+  using k_lt p_lt
+proof (induct k arbitrary: p q rule: less_induct)
+  case (less k)
+  note IH_k = less.hyps
+  note k_lt' = less.prems(1)
+  note p_lt' = less.prems(2)
+  have mp_match:
+    "\<And>p'. p' < l0 A \<Longrightarrow> m_parent A k p' = m_parent (A[n]) k p'"
+  proof -
+    fix p' assume p'_lt: "p' < l0 A"
+    show "m_parent A k p' = m_parent (A[n]) k p'"
+    proof (cases k)
+      case 0
+      have cands_eq: "[j \<leftarrow> [0..<p']. elem A j 0 < elem A p' 0]
+                    = [j \<leftarrow> [0..<p']. elem (A[n]) j 0 < elem (A[n]) p' 0]"
+      proof (rule filter_cong[OF refl])
+        fix j assume "j \<in> set [0..<p']"
+        hence j_lt_p': "j < p'" by simp
+        have j_lt_l0: "j < l0 A" using j_lt_p' p'_lt by linarith
+        have ej: "elem A j 0 = elem (A[n]) j 0"
+          using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt'] \<open>k = 0\<close> by simp
+        have ep: "elem A p' 0 = elem (A[n]) p' 0"
+          using elem_orig_eq_AEn_G[OF A_ne p'_lt k_lt'] \<open>k = 0\<close> by simp
+        show "elem A j 0 < elem A p' 0 \<longleftrightarrow> elem (A[n]) j 0 < elem (A[n]) p' 0"
+          using ej ep by simp
+      qed
+      thus ?thesis using \<open>k = 0\<close> by (simp add: Let_def)
+    next
+      case (Suc k')
+      have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
+      have k'_lt_keep: "k' < keep_of (G_block A @ Bs_concat A n)"
+        using k'_lt k_lt' by linarith
+      have cands_eq: "[j \<leftarrow> [0..<p']. elem A j (Suc k') < elem A p' (Suc k')
+                                       \<and> m_ancestor A k' p' j]
+                    = [j \<leftarrow> [0..<p']. elem (A[n]) j (Suc k') < elem (A[n]) p' (Suc k')
+                                       \<and> m_ancestor (A[n]) k' p' j]"
+      proof (rule filter_cong[OF refl])
+        fix j assume "j \<in> set [0..<p']"
+        hence j_lt_p': "j < p'" by simp
+        have j_lt_l0: "j < l0 A" using j_lt_p' p'_lt by linarith
+        have ej: "elem A j (Suc k') = elem (A[n]) j (Suc k')"
+          using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt'] \<open>k = Suc k'\<close> by simp
+        have ep: "elem A p' (Suc k') = elem (A[n]) p' (Suc k')"
+          using elem_orig_eq_AEn_G[OF A_ne p'_lt k_lt'] \<open>k = Suc k'\<close> by simp
+        have manc: "m_ancestor A k' p' j \<longleftrightarrow> m_ancestor (A[n]) k' p' j"
+          using IH_k[OF k'_lt k'_lt_keep p'_lt] by blast
+        show "(elem A j (Suc k') < elem A p' (Suc k') \<and> m_ancestor A k' p' j)
+            \<longleftrightarrow> (elem (A[n]) j (Suc k') < elem (A[n]) p' (Suc k')
+                 \<and> m_ancestor (A[n]) k' p' j)"
+          using ej ep manc by simp
+      qed
+      thus ?thesis using \<open>k = Suc k'\<close> by (simp add: Let_def)
+    qed
+  qed
+  show ?case using p_lt'
+  proof (induct p arbitrary: q rule: less_induct)
+    case (less p)
+    note IH_p = less.hyps
+    note p_lt'' = less.prems
+    have mp_p: "m_parent A k p = m_parent (A[n]) k p"
+      using mp_match[OF p_lt''] .
+    show "m_ancestor A k p q \<longleftrightarrow> m_ancestor (A[n]) k p q"
+    proof (cases "m_parent A k p")
+      case None
+      have mp_AEn_none: "m_parent (A[n]) k p = None" using None mp_p by simp
+      show ?thesis
+        using m_anc_via_parent_none[OF None] m_anc_via_parent_none[OF mp_AEn_none]
+        by simp
+    next
+      case (Some r)
+      have mp_AEn_some: "m_parent (A[n]) k p = Some r" using Some mp_p by simp
+      have r_lt: "r < p" using Some by (rule m_parent_lt)
+      have r_lt_l0: "r < l0 A" using r_lt p_lt'' by linarith
+      have iff_A: "m_ancestor A k p q \<longleftrightarrow> r = q \<or> m_ancestor A k r q"
+        using m_anc_via_parent_some[OF Some] .
+      have iff_AEn: "m_ancestor (A[n]) k p q \<longleftrightarrow> r = q \<or> m_ancestor (A[n]) k r q"
+        using m_anc_via_parent_some[OF mp_AEn_some] .
+      have rec: "m_ancestor A k r q \<longleftrightarrow> m_ancestor (A[n]) k r q"
+        using IH_p[OF r_lt r_lt_l0] .
+      show ?thesis using iff_A iff_AEn rec by blast
+    qed
+  qed
+qed
+
+lemma m_parent_orig_eq_AEn_G:
+  fixes A :: array and n :: nat
+  assumes A_ne: "A \<noteq> []"
+      and k_lt: "k < keep_of (G_block A @ Bs_concat A n)"
+      and p_lt: "p < l0 A"
+  shows "m_parent A k p = m_parent (A[n]) k p"
+proof (cases k)
+  case 0
+  have cands_eq: "[j \<leftarrow> [0..<p]. elem A j 0 < elem A p 0]
+                = [j \<leftarrow> [0..<p]. elem (A[n]) j 0 < elem (A[n]) p 0]"
+  proof (rule filter_cong[OF refl])
+    fix j assume "j \<in> set [0..<p]"
+    hence j_lt_p: "j < p" by simp
+    have j_lt_l0: "j < l0 A" using j_lt_p p_lt by linarith
+    have ej: "elem A j 0 = elem (A[n]) j 0"
+      using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt] \<open>k = 0\<close> by simp
+    have ep: "elem A p 0 = elem (A[n]) p 0"
+      using elem_orig_eq_AEn_G[OF A_ne p_lt k_lt] \<open>k = 0\<close> by simp
+    show "elem A j 0 < elem A p 0 \<longleftrightarrow> elem (A[n]) j 0 < elem (A[n]) p 0"
+      using ej ep by simp
+  qed
+  thus ?thesis using \<open>k = 0\<close> by (simp add: Let_def)
+next
+  case (Suc k')
+  have k'_lt_keep: "k' < keep_of (G_block A @ Bs_concat A n)"
+    using \<open>k = Suc k'\<close> k_lt by linarith
+  have cands_eq: "[j \<leftarrow> [0..<p]. elem A j (Suc k') < elem A p (Suc k')
+                                  \<and> m_ancestor A k' p j]
+                = [j \<leftarrow> [0..<p]. elem (A[n]) j (Suc k') < elem (A[n]) p (Suc k')
+                                  \<and> m_ancestor (A[n]) k' p j]"
+  proof (rule filter_cong[OF refl])
+    fix j assume "j \<in> set [0..<p]"
+    hence j_lt_p: "j < p" by simp
+    have j_lt_l0: "j < l0 A" using j_lt_p p_lt by linarith
+    have ej: "elem A j (Suc k') = elem (A[n]) j (Suc k')"
+      using elem_orig_eq_AEn_G[OF A_ne j_lt_l0 k_lt] \<open>k = Suc k'\<close> by simp
+    have ep: "elem A p (Suc k') = elem (A[n]) p (Suc k')"
+      using elem_orig_eq_AEn_G[OF A_ne p_lt k_lt] \<open>k = Suc k'\<close> by simp
+    have manc: "m_ancestor A k' p j \<longleftrightarrow> m_ancestor (A[n]) k' p j"
+      using m_anc_orig_eq_AEn_G[OF A_ne k'_lt_keep p_lt] by blast
+    show "(elem A j (Suc k') < elem A p (Suc k') \<and> m_ancestor A k' p j)
+        \<longleftrightarrow> (elem (A[n]) j (Suc k') < elem (A[n]) p (Suc k')
+             \<and> m_ancestor (A[n]) k' p j)"
+      using ej ep manc by simp
+  qed
+  thus ?thesis using \<open>k = Suc k'\<close> by (simp add: Let_def)
+qed
+
+text \<open>
   Pure-\<open>A\<close> structural core of the case-B \<open>S = []\<close> claim.
 
   When the \<open>j\<close>-th \<open>B\<^sub>0\<close> column does NOT ascend at \<open>Suc k'\<close>
