@@ -5661,8 +5661,84 @@ proof (induct A rule: BMS.induct)
   qed
 next
   case (expand_in_BMS A n)
+  have IH: "\<forall>t q p c. t < height A \<longrightarrow> q < length A
+                      \<longrightarrow> m_parent A t q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
+                      \<longrightarrow> m_ancestor A t c p"
+    using expand_in_BMS.hyps(2) .
   show ?case
-    sorry
+  proof (intro allI impI)
+    fix t q p c
+    assume t_lt: "t < height (A[n])" and q_lt: "q < length (A[n])"
+       and mp: "m_parent (A[n]) t q = Some p" and pc: "p < c" and cq: "c < q"
+    show "m_ancestor (A[n]) t c p"
+    proof (cases "q < l0 A")
+      case True
+      note q_l0 = True
+      \<comment> \<open>G-prefix case: transfer the claim from the predecessor \<open>A\<close>
+          via the G'-preservation lemmas. The bumped region never enters.\<close>
+      have l0_pos: "0 < l0 A" using q_l0 by linarith
+      have A_ne: "A \<noteq> []"
+      proof (rule ccontr)
+        assume "\<not> A \<noteq> []"
+        hence "l0 A = 0"
+          by (simp add: l0_def G_block_def b0_start_def max_parent_level_def)
+        thus False using l0_pos by simp
+      qed
+      let ?P = "G_block A @ Bs_concat A n"
+      have An_eq: "A[n] = strip_zero_rows ?P" using A_ne by (simp add: expansion_def)
+      have An_ne: "A[n] \<noteq> []" using q_lt by auto
+      have P_ne: "?P \<noteq> []"
+      proof -
+        have "length (A[n]) = length ?P"
+          using An_eq length_strip_zero_rows by metis
+        thus ?thesis using An_ne by auto
+      qed
+      have Gne: "G_block A \<noteq> []" using l0_pos unfolding l0_def by auto
+      have hdP_len: "length (hd ?P) = height A"
+      proof -
+        have b: "(0::nat) < length (G_block A) + length (B0_block A)"
+          using Gne by (cases "G_block A") auto
+        have "hd ?P = ?P ! 0" using P_ne by (simp add: hd_conv_nth)
+        also have "?P ! 0 = A ! 0" using prestrip_nth_eq_orig[OF A_ne b] .
+        finally have "hd ?P = A ! 0" .
+        thus ?thesis using A_ne by (simp add: hd_conv_nth)
+      qed
+      have ht_An: "height (A[n]) = min (keep_of ?P) (height A)"
+      proof -
+        have sm: "A[n] = map (\<lambda>c. take (keep_of ?P) c) ?P"
+          using An_eq strip_zero_rows_eq_map_take[OF P_ne] by simp
+        have "hd (A[n]) = hd (map (\<lambda>c. take (keep_of ?P) c) ?P)"
+          using sm by simp
+        also have "\<dots> = take (keep_of ?P) (hd ?P)"
+          using hd_map[OF P_ne] by simp
+        finally have "hd (A[n]) = take (keep_of ?P) (hd ?P)" .
+        hence "height (A[n]) = length (take (keep_of ?P) (hd ?P))"
+          using An_ne by simp
+        also have "\<dots> = min (keep_of ?P) (length (hd ?P))" by simp
+        also have "\<dots> = min (keep_of ?P) (height A)" using hdP_len by simp
+        finally show ?thesis .
+      qed
+      have t_keep: "t < keep_of ?P" using t_lt ht_An by simp
+      have t_hA: "t < height A" using t_lt ht_An by simp
+      have mpA: "m_parent A t q = Some p"
+        using m_parent_orig_eq_AEn_G[OF A_ne t_keep q_l0] mp by simp
+      have l0_le: "l0 A \<le> length A"
+        unfolding l0_def G_block_def
+        by (auto split: option.splits)
+      have q_len: "q < length A" using q_l0 l0_le by linarith
+      have c_l0: "c < l0 A" using cq q_l0 by linarith
+      have anc_A: "m_ancestor A t c p"
+        using IH t_hA q_len mpA pc cq by blast
+      show "m_ancestor (A[n]) t c p"
+        using m_anc_orig_eq_AEn_G[OF A_ne t_keep c_l0] anc_A by blast
+    next
+      case False
+      \<comment> \<open>Bumped region (\<open>q \<ge> l0 A\<close>): the remaining structural kernel.
+          Subsumes R1 / R2 of the (ii) crux.\<close>
+      show "m_ancestor (A[n]) t c p"
+        sorry
+    qed
+  qed
 qed
 
 lemma bms_b0_col_elem_lt:
