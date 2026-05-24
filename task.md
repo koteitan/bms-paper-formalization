@@ -72,12 +72,11 @@
   - ✅ clause_iv_intermediate_B_t_impossible_when_G_parent_exists
   - ✅ idx_B_earlier_block_lt_block_n
   - ✅ clause_iv_intermediate_B_t_impossible_at_zero
-  - ✅ clause_iv_intermediate_B_t_impossible_chain_through_Bn_first
+  - 🚨 clause_iv_intermediate_B_t_impossible_chain_through_Bn_first
   - ✅ clause_iv_intermediate_B_t_impossible_chain_breaks
   - ✅ idx_B_n_zero_gateway_for_earlier_block_ancestor
   - ✅ idx_B_n_zero_gateway_aux
   - 🚨 m_parent_block_n_stays_until_zero
-  - 🚨 idx_B_n_zero_no_intermediate_B_t_ancestor
   - 🚨 clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G
 
 - 🚨 Stage 3: ∀k.(iii)@k — lemma_2_5_iii_main

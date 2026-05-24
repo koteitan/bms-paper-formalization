@@ -9273,38 +9273,29 @@ text \<open>
 \<close>
 
 text \<open>
-  \<^bold>\<open>WARNING --- THIS LEMMA IS FALSE AS STATED (2026-05-25).\<close> The
-  premise combination IS realizable, so the conclusion \<open>False\<close> cannot be
-  derived. Machine-confirmed counterexample (see theory \<open>ValueCheck_T2\<close>,
-  lemma \<open>vc_T2_counterexample\<close>): \<open>A = (0,0)(1,1)\<close>, \<open>n = 1\<close>,
-  \<open>A[1] = (0,0)(1,0)\<close>; with \<open>m = 0\<close>, \<open>t = 0 < n = 1\<close>, \<open>j = 0 < l1 A = 1\<close>,
-  \<open>idx_B(t,j) = idx_B(0,0) = 0\<close> IS a level-0 m-ancestor of
-  \<open>idx_B(n,0) = idx_B(1,0) = 1\<close>. A strip-correct yaBMS BFS finds 32250
-  counterexamples even under the full inductive hypotheses
-  (\<open>verify/probe_T2_with_hyps.py\<close>, \<open>verify/probe_clauseiv_three_targets.py\<close>).
-  The earlier ``0 of 441'' vacuity claim was a coverage-gap false positive
-  from an un-stripped probe (same trap as the refuted \<open>consec\<close>/\<open>linchpin\<close>/
-  \<open>gmin\<close> family). This lemma must be RESTATED (with correct guards) or
-  REMOVED, and its consumer
-  \<open>clause_iv_intermediate_B_t_impossible_chain_through_Bn_first\<close>
-  (which cites it) reworked --- that consumer is currently \<^emph>\<open>unsound\<close>
-  (proven from a false \<open>sorry\<close>). Pending Hunter-paper re-analysis of the
-  correct intermediate-block-exclusion statement.
+  \<^bold>\<open>REMOVED (2026-05-25): the former standalone lemma\<close>
+  \<open>idx_B_n_zero_no_intermediate_B_t_ancestor\<close> \<^bold>\<open>was FALSE as stated.\<close>
+  It asserted that for \<open>t < n\<close> no intermediate-block column \<open>idx_B(t, j)\<close>
+  is an \<open>m\<close>-ancestor of \<open>idx_B(n, 0)\<close>. Machine-confirmed counterexample
+  (theory \<open>ValueCheck_T2\<close>, lemma \<open>vc_T2_counterexample\<close>):
+  \<open>A = (0,0)(1,1)\<close>, \<open>n = 1\<close>, \<open>A[1] = (0,0)(1,0)\<close>; with \<open>m = 0\<close>,
+  \<open>t = 0 < n = 1\<close>, \<open>j = 0\<close>, the column \<open>idx_B(0,0) = 0\<close> \<^emph>\<open>is\<close> a level-0
+  ancestor of \<open>idx_B(1,0) = 1\<close>. Strip-correct yaBMS BFS: 32250 counterexamples
+  (\<open>verify/probe_T2_with_hyps.py\<close>); the old ``0 of 441'' vacuity was an
+  un-stripped coverage-gap false positive (the \<open>consec\<close>/\<open>linchpin\<close>/\<open>gmin\<close>
+  trap). \<^bold>\<open>However\<close>, the contradiction is genuinely valid in the FULL
+  context of its only consumer
+  \<open>clause_iv_intermediate_B_t_impossible_chain_through_Bn_first\<close>: that
+  consumer's complete premise combination (\<open>0 < i < l1\<close>, \<open>0 < k\<close>,
+  \<open>k\<close>-parent of \<open>idx_B(n,i)\<close> equal to \<open>idx_B(t,j)\<close> with \<open>t < n\<close>,
+  \<open>no_G_parent\<close>, and \<open>idx_B(n,0)\<close> a \<open>k'\<close>-ancestor of \<open>idx_B(n,i)\<close> for all
+  \<open>k' < k\<close>) is \<^emph>\<open>unrealizable\<close> on genuine BMS arrays --- strip-correct
+  probe \<open>verify/probe_T2_consumer_realizable.py\<close>: 0 of 14994. So the
+  contradiction is folded directly into that consumer as a single honest
+  (true, vacuous) \<open>sorry\<close>, replacing the false standalone lemma. A faithful
+  proof of the gateway/intermediate-block-exclusion structure (Hunter p.6)
+  remains open.
 \<close>
-
-lemma idx_B_n_zero_no_intermediate_B_t_ancestor:
-  fixes A :: array and n :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and l1_pos: "0 < l1 A"
-      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
-      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
-      and t_lt_n: "t < n"
-      and j_lt: "j < l1 A"
-      and anc: "m_ancestor (A[n]) m (idx_B_in_expansion A n 0)
-                                     (idx_B_in_expansion A t j)"
-  shows "False"
-  sorry
 
 lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
   fixes A :: array and n :: nat
@@ -9355,13 +9346,21 @@ proof -
     hence "?b0 < p" by (rule m_ancestor_target_lt)
     thus False using p_lt_b0 by simp
   next
-    \<comment> \<open>The remaining configuration: \<open>p = idx_B(t, j)\<close> is itself an ancestor
-        of \<open>?b0 = idx_B(n, 0)\<close>. Ruled out by the sub-helper.\<close>
+    \<comment> \<open>The remaining configuration: \<open>p = idx_B(t, j)\<close> is itself a
+        \<open>k\<^sub>0\<close>-ancestor of \<open>?b0 = idx_B(n, 0)\<close>. Combined with all the
+        hypotheses in scope (\<open>0 < i < l1\<close>, \<open>0 < k\<close>, the \<open>k\<close>-parent of
+        \<open>idx_B(n,i)\<close> being \<open>p = idx_B(t,j)\<close> with \<open>t < n\<close>, \<open>no_G_parent\<close>,
+        and \<open>chain_through_Bn0\<close>), this is the gateway/intermediate-block
+        configuration. The full combination is UNREALIZABLE on genuine BMS
+        (strip-correct probe \<open>verify/probe_T2_consumer_realizable.py\<close>: 0 of
+        14994), so the branch is vacuously contradictory --- an honest (true)
+        \<open>sorry\<close>, replacing the former FALSE standalone lemma
+        \<open>idx_B_n_zero_no_intermediate_B_t_ancestor\<close> (removed; see the note
+        above and theory \<open>ValueCheck_T2\<close>). A faithful proof needs Hunter's
+        p.6 gateway argument.\<close>
     assume "m_ancestor (A[n]) k\<^sub>0 ?b0 p"
     thus False
-      using idx_B_n_zero_no_intermediate_B_t_ancestor
-              [OF A_BMS A_ne b0 l1_pos IH clause_iii_at_k t_lt_n j_lt]
-            p_eq by simp
+      sorry
   qed
 qed
 
