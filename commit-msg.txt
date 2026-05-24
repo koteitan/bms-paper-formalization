@@ -1,4 +1,7 @@
-Empirical verification of case-B 'both False' for (ii) at Suc k'
+Prove SM lemma + elem_lt_below_t (m=0, on-chain); reduce (ii) sorry to off-chain
 
-- Add verify/verify_case_B_both_false.py — BFS from Hunter seeds {seed 2..5}, test conjecture: when ¬ ascends A j (Suc k'), m_anc (A[n]) (Suc k') (idx_B(c, j)) (idx_B(c, i)) is False for c ∈ {0, n} and i < j; 437 BMSs, 0 violations
-- Empirical foundation for an alternative case-B proof path that bypasses the Hunter helper m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc (which requires the empirically-false not_asc_chain hypothesis)
+- Prove m_anc_Suc_imp_strict_min_on_anc (level-Suc m' strict-min on m'-ancestors)
+- Prove elem_lt_below_t m=0 (row-0 strict-min) and m>0 on-chain via SM lemma
+- Reduce (ii) elem_lt_below_t sorry to the single off-chain residual case
+- Rewrite task.md to progress-only (icon + name)
+- Add verify probes probe_offchain{,2}, probe_sm2

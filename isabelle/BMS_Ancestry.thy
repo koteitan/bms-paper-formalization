@@ -7724,6 +7724,82 @@ proof (induct j arbitrary: i rule: less_induct)
 qed
 
 
+text \<open>Level-\<open>Suc m'\<close> analogue of @{thm m_anc_zero_imp_strict_min}, restricted
+  to the \<open>m'\<close>-ancestors of \<open>i\<close>: if \<open>s\<close> is a \<open>(Suc m')\<close>-ancestor of \<open>i\<close>,
+  then \<open>s\<close> strictly dominates, at level \<open>Suc m'\<close>, every \<open>m'\<close>-ancestor \<open>c\<close>
+  of \<open>i\<close> with \<open>s < c < i\<close>.  (At level 0 every column is a candidate, so
+  @{thm m_anc_zero_imp_strict_min} dominates the whole interval; at level
+  \<open>Suc m'\<close> only the \<open>m'\<close>-ancestors are candidates, hence the restriction.)
+  Proved by induction on \<open>i\<close>: with \<open>p\<close> the \<open>(Suc m')\<close>-parent of \<open>i\<close>, a
+  candidate \<open>c\<close> is either \<open>= p\<close> (then \<open>s\<close> is a \<open>(Suc m')\<close>-ancestor of \<open>p\<close>),
+  or \<open>c < p\<close> (totality of \<open>m'\<close>-ancestry of \<open>i\<close> makes \<open>c\<close> an \<open>m'\<close>-ancestor
+  of \<open>p\<close>; recurse), or \<open>p < c\<close> (then \<open>c\<close> is not a candidate, since \<open>p\<close> is
+  the last one, so \<open>elem i \<le> elem c\<close>).  Verified: \<open>verify/probe_mgt0_handle.py\<close>
+  (262 instances, 0 violations).\<close>
+
+lemma m_anc_Suc_imp_strict_min_on_anc:
+  fixes A :: array
+  assumes anc_s: "m_ancestor A (Suc m') i s"
+  shows "\<forall>c. s < c \<and> c < i \<and> m_ancestor A m' i c
+              \<longrightarrow> elem A s (Suc m') < elem A c (Suc m')"
+  using anc_s
+proof (induct i rule: less_induct)
+  case (less i)
+  obtain p where mp: "m_parent A (Suc m') i = Some p"
+             and case_p: "p = s \<or> m_ancestor A (Suc m') p s"
+    using less.prems by (cases "m_parent A (Suc m') i") auto
+  have p_lt_i: "p < i" using m_parent_lt[OF mp] .
+  have anc_m'_ip: "m_ancestor A m' i p" using m_parent_Suc_implies_m_ancestor[OF mp] .
+  have es_lt_i: "elem A s (Suc m') < elem A i (Suc m')"
+    by (rule m_ancestor_elem_lt[OF less.prems])
+  let ?Pc = "\<lambda>c'. elem A c' (Suc m') < elem A i (Suc m') \<and> m_ancestor A m' i c'"
+  have p_eq: "p = last (filter ?Pc [0..<i])"
+    using mp by (simp add: Let_def split: if_splits)
+  show ?case
+  proof (intro allI impI)
+    fix c assume H: "s < c \<and> c < i \<and> m_ancestor A m' i c"
+    hence s_lt_c: "s < c" and c_lt_i: "c < i" and anc_m'_ic: "m_ancestor A m' i c" by auto
+    consider (lt) "c < p" | (eq) "c = p" | (gt) "p < c" by linarith
+    thus "elem A s (Suc m') < elem A c (Suc m')"
+    proof cases
+      case eq
+      have "s \<noteq> p" using s_lt_c eq by simp
+      hence "m_ancestor A (Suc m') p s" using case_p by simp
+      hence "elem A s (Suc m') < elem A p (Suc m')" by (rule m_ancestor_elem_lt)
+      thus ?thesis using eq by simp
+    next
+      case lt
+      have comp: "c = p \<or> m_ancestor A m' c p \<or> m_ancestor A m' p c"
+        using m_ancestor_chain_linear anc_m'_ic anc_m'_ip by blast
+      have not_cp: "\<not> m_ancestor A m' c p"
+      proof
+        assume "m_ancestor A m' c p"
+        hence "p < c" by (rule m_ancestor_target_lt)
+        thus False using lt by simp
+      qed
+      have anc_m'_pc: "m_ancestor A m' p c" using comp not_cp lt by auto
+      have "s \<noteq> p" using lt s_lt_c by simp
+      hence anc_Sm'_ps: "m_ancestor A (Suc m') p s" using case_p by simp
+      have IH_p: "\<forall>c'. s < c' \<and> c' < p \<and> m_ancestor A m' p c'
+                       \<longrightarrow> elem A s (Suc m') < elem A c' (Suc m')"
+        using less.hyps[OF p_lt_i anc_Sm'_ps] .
+      show ?thesis using IH_p s_lt_c lt anc_m'_pc by blast
+    next
+      case gt
+      have not_cand: "\<not> ?Pc c"
+      proof
+        assume "?Pc c"
+        hence "c \<in> set (filter ?Pc [0..<i])" using c_lt_i by simp
+        hence "c \<le> last (filter ?Pc [0..<i])" by (rule last_filter_upt_ge_member)
+        thus False using gt p_eq by simp
+      qed
+      have "\<not> (elem A c (Suc m') < elem A i (Suc m'))"
+        using not_cand anc_m'_ic by simp
+      thus ?thesis using es_lt_i by simp
+    qed
+  qed
+qed
+
 text \<open>Strict-below-\<open>m\<^sub>0\<close> domination of the bad root \<open>s\<close> over every
   interior \<open>B\<^sub>0\<close> column.  This is the \<open>m < t\<close> (STRICT) restriction of the
   former \<open>bms_b0_col_elem_lt\<close>.  The unrestricted \<open>m \<le> t\<close> version is
@@ -7773,15 +7849,45 @@ proof (cases m)
   thus ?thesis using 0 by simp
 next
   case (Suc m')
-  \<comment> \<open>Levels \<open>0 < m < t\<close>: Hunter's bad-root domination ABOVE row 0.  This is
-      the genuine open foundational gap.  At level \<open>Suc m'\<close> the
-      \<open>m\<close>-ancestor / elem-\<open><\<close> equivalence is circular (row 0 escapes it via
-      the empty ancestor side-condition of the level-0 \<open>m\<close>-parent); Hunter
-      weaves the domination into the simultaneous (i)--(v) \<open>k\<close>-induction
-      rather than proving it standalone.  Empirically true
-      (\<open>verify/probe_vacuity_refute.py\<close>: 500+ BMSs with \<open>t \<ge> 2\<close>, BFS +
-      targeted, 0 violations).  This is the single remaining (ii) \<open>sorry\<close>.\<close>
-  show ?thesis sorry
+  \<comment> \<open>Levels \<open>0 < m < t\<close>.  The bad root \<open>s\<close> is the \<open>t\<close>-parent of \<open>C\<close>, hence a
+      \<open>(t-1)\<close>-ancestor and (monotone, \<open>Suc m' \<le> t-1\<close>) a \<open>(Suc m')\<close>-ancestor
+      of \<open>C\<close>.  For an interior column \<open>s + j\<close> that is also an \<open>m'\<close>-ancestor of
+      \<open>C\<close>, @{thm m_anc_Suc_imp_strict_min_on_anc} gives the domination directly.
+      The residual gap is the OFF-CHAIN interior columns (not \<open>m'\<close>-ancestors of
+      \<open>C\<close>): there the \<open>m\<close>-ancestor / elem-\<open><\<close> equivalence is circular and Hunter
+      weaves it into the simultaneous (i)--(v) \<open>k\<close>-induction.  Empirically the
+      whole statement is true (\<open>verify/probe_vacuity_refute.py\<close>: 500+ BMSs,
+      \<open>t \<ge> 2\<close>, 0 violations); off-chain columns are rare
+      (\<open>verify/probe_mgt0_handle.py\<close>: P_a 262/1).\<close>
+  have m_lt': "Suc m' < t" using m_lt Suc by simp
+  obtain t'' where t_eq2: "t = Suc t''" using m_lt' by (cases t) auto
+  have mpC: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  have anc_t'': "m_ancestor A t'' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mpC[unfolded t_eq2]] .
+  have Sm'_le: "Suc m' \<le> t''" using m_lt' t_eq2 by simp
+  have endpoint: "m_ancestor A (Suc m') (last_col_idx A) s"
+    using m_ancestor_mono[OF Sm'_le anc_t''] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+    using s_lt_last b0 last_lt_arr unfolding l1_def B0_block_def by simp
+  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq by linarith
+  have s_lt_sj: "s < s + j" using j_pos by simp
+  show ?thesis
+  proof (cases "m_ancestor A m' (last_col_idx A) (s + j)")
+    case True
+    \<comment> \<open>\<open>s + j\<close> is an \<open>m'\<close>-ancestor of \<open>C\<close>: dominated by \<open>s\<close> at level
+        \<open>Suc m'\<close> via @{thm m_anc_Suc_imp_strict_min_on_anc}.\<close>
+    have "elem A s (Suc m') < elem A (s + j) (Suc m')"
+      using m_anc_Suc_imp_strict_min_on_anc[OF endpoint] s_lt_sj sj_lt_C True by blast
+    thus ?thesis using Suc by simp
+  next
+    case False
+    \<comment> \<open>Off-chain interior column (NOT an \<open>m'\<close>-ancestor of \<open>C\<close>): residual open
+        gap, needs the simultaneous (i)--(v) induction.\<close>
+    show ?thesis sorry
+  qed
 qed
 
 text \<open>Below \<open>m\<^sub>0\<close>, the bad root \<open>s\<close> is a level-\<open>m\<close> m-ancestor of every
