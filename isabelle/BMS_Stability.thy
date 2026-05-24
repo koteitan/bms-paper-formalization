@@ -95,7 +95,8 @@ axiomatization where
        \<forall>\<gamma> \<in> X. \<forall>\<delta> \<in> Y. \<gamma> <\<^sub>o \<alpha> \<and> (\<alpha> = \<delta> \<or> \<alpha> <\<^sub>o \<delta>) \<and> \<delta> <\<^sub>o \<beta> \<rbrakk>
      \<Longrightarrow> \<exists>Y' f. finite Y'
               \<and> bij_betw f Y Y'
-              \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0) \<and> (f \<delta>\<^sub>0) <\<^sub>o \<alpha>)
+              \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. (f \<delta>\<^sub>0) <\<^sub>o \<alpha>)
+              \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0))
               \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<forall>k.
                     stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f \<delta>\<^sub>0))
               \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y.

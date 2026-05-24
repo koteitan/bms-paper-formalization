@@ -464,20 +464,22 @@ lemma lemma_2_6_reflect_package:
           \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f \<delta>\<^sub>0) <\<^sub>o (f \<delta>\<^sub>1))
           \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<forall>k.
                 stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f \<delta>\<^sub>0) (f \<delta>\<^sub>1))
-          \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0) \<and> (f \<delta>\<^sub>0) <\<^sub>o \<alpha>)
+          \<and> (\<forall>\<delta>\<^sub>0 \<in> Y. (f \<delta>\<^sub>0) <\<^sub>o \<alpha>)
+          \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0))
           \<and> (\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<forall>k.
                 stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f \<delta>\<^sub>0))"
 proof -
   obtain Y' f where
         bij: "bij_betw f Y Y'"
-    and lt\<alpha>: "\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0) \<and> (f \<delta>\<^sub>0) <\<^sub>o \<alpha>"
+    and ltU: "\<forall>\<delta>\<^sub>0 \<in> Y. (f \<delta>\<^sub>0) <\<^sub>o \<alpha>"
+    and lt\<gamma>: "\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<gamma> <\<^sub>o (f \<delta>\<^sub>0)"
     and stabX: "\<forall>\<gamma> \<in> X. \<forall>\<delta>\<^sub>0 \<in> Y. \<forall>k.
                   stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f \<delta>\<^sub>0)"
     and mono: "\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f \<delta>\<^sub>0) <\<^sub>o (f \<delta>\<^sub>1)"
     and stabY: "\<forall>\<delta>\<^sub>0 \<in> Y. \<forall>\<delta>\<^sub>1 \<in> Y. \<forall>k.
                   stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f \<delta>\<^sub>0) (f \<delta>\<^sub>1)"
     using lemma_2_6[OF \<alpha>_in \<beta>_in \<omega>_lt stab X_fin Y_fin bound] by blast
-  show ?thesis using bij mono stabY lt\<alpha> stabX by blast
+  show ?thesis using bij mono stabY ltU lt\<gamma> stabX by blast
 qed
 
 text \<open>
@@ -518,6 +520,7 @@ lemma refl_exists_from_sigma_align:
             \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1))
       \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
             stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1))
+      \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
       \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
             \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
       \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
@@ -536,23 +539,24 @@ proof -
                  \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1)"
     and stabY: "\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
                   stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1)"
-    and lt\<alpha>: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
-                \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<alpha>"
+    and ltU\<alpha>: "\<forall>\<delta>\<^sub>0 \<in> Y_set. (f_refl \<delta>\<^sub>0) <\<^sub>o \<alpha>"
+    and lt\<gamma>: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0)"
     and stabX: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
                   stable_lt k \<gamma> \<delta>\<^sub>0 \<longrightarrow> stable_lt k \<gamma> (f_refl \<delta>\<^sub>0)"
     using lemma_2_6_reflect_package[OF \<alpha>_in \<beta>p_in \<omega>_lt stab X_fin Y_fin bound]
     by blast
-  \<comment> \<open>The fourth conjunct: \<open>f_refl \<delta>\<^sub>0 <\<^sub>o \<alpha> <\<^sub>o \<beta>\<close> by transitivity.\<close>
+  \<comment> \<open>X-independent upper bound: \<open>f_refl \<delta>\<^sub>0 <\<^sub>o \<alpha> <\<^sub>o \<beta>\<close> by transitivity.\<close>
+  have ltU\<beta>: "\<forall>\<delta>\<^sub>0 \<in> Y_set. (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
+  proof (intro ballI)
+    fix \<delta>\<^sub>0 assume \<delta>Y: "\<delta>\<^sub>0 \<in> Y_set"
+    have "(f_refl \<delta>\<^sub>0) <\<^sub>o \<alpha>" using ltU\<alpha> \<delta>Y by blast
+    thus "(f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>" using \<alpha>_lt_\<beta> ord_lt_trans by blast
+  qed
+  \<comment> \<open>The X-gated conjunct: lower bound from \<open>lt\<gamma>\<close>, upper from \<open>ltU\<beta>\<close>.\<close>
   have lt\<beta>: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
                 \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
-  proof (intro ballI)
-    fix \<gamma> \<delta>\<^sub>0 assume \<gamma>X: "\<gamma> \<in> X_set" and \<delta>Y: "\<delta>\<^sub>0 \<in> Y_set"
-    have "\<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<alpha>"
-      using lt\<alpha> \<gamma>X \<delta>Y by blast
-    thus "\<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
-      using \<alpha>_lt_\<beta> ord_lt_trans by blast
-  qed
-  show ?thesis using bij mono stabY lt\<beta> stabX by blast
+    using lt\<gamma> ltU\<beta> by blast
+  show ?thesis using bij mono stabY ltU\<beta> lt\<beta> stabX by blast
 qed
 
 lemma stable_rep_extend_strict:
@@ -657,6 +661,7 @@ next
               \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1))
         \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
               stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1))
+        \<and> (\<forall>\<delta>\<^sub>0 \<in> Y_set. (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
         \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
               \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>)
         \<and> (\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
@@ -685,6 +690,7 @@ next
                           \<delta>\<^sub>0 <\<^sub>o \<delta>\<^sub>1 \<longrightarrow> (f_refl \<delta>\<^sub>0) <\<^sub>o (f_refl \<delta>\<^sub>1)"
       and f_refl_stab: "\<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>\<delta>\<^sub>1 \<in> Y_set. \<forall>k.
                           stable_lt k \<delta>\<^sub>0 \<delta>\<^sub>1 \<longrightarrow> stable_lt k (f_refl \<delta>\<^sub>0) (f_refl \<delta>\<^sub>1)"
+      and f_refl_lt_\<beta>_uncond: "\<forall>\<delta>\<^sub>0 \<in> Y_set. (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
       and f_refl_lt_\<beta>: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set.
                           \<gamma> <\<^sub>o (f_refl \<delta>\<^sub>0) \<and> (f_refl \<delta>\<^sub>0) <\<^sub>o \<beta>"
       and f_refl_stab_X: "\<forall>\<gamma> \<in> X_set. \<forall>\<delta>\<^sub>0 \<in> Y_set. \<forall>k.
@@ -717,13 +723,67 @@ next
           combined with the stability-preservation properties of
           \<open>f_refl\<close>.\<close>
       sorry
+    \<comment> \<open>Index decomposition for \<open>A\<close>: with \<open>b0_start A = Some s\<close>,
+        the last column index \<open>arr_len A - 1 = l0 A + l1 A\<close>.\<close>
+    have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF Some A_ne])
+    have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+    have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+    have l0_eq: "l0 A = s"
+      using Some s_le_arr unfolding l0_def G_block_def by simp
+    have l1_eq: "l1 A = last_col_idx A - s"
+      using s_lt_last Some last_lt_arr unfolding l1_def B0_block_def by simp
+    have last_decomp: "arr_len A - 1 = l0 A + l1 A"
+      using l0_eq l1_eq s_lt_last by linarith
     have g_lt_\<beta>: "\<forall>i < arr_len (A[Suc n']). g i <\<^sub>o \<beta>"
-      \<comment> \<open>Residual: case-split into G-image (direct from
-          @{thm stable_rep_max_strict_below_last} after lifting
-          indices through @{thm arr_len_expansion_l01}),
-          original \<open>B\<^sub>0\<close>-image (same lemma), and reflected
-          \<open>B_t\<close>-image (\<open>f_refl_lt_\<beta>\<close> above).\<close>
-      sorry
+    proof (intro allI impI)
+      fix i assume i_lt: "i < arr_len (A[Suc n'])"
+      have len_eq: "arr_len (A[Suc n']) = l0 A + Suc (Suc n') * l1 A"
+        using arr_len_expansion_l01[OF A_ne, of "Suc n'"] .
+      show "g i <\<^sub>o \<beta>"
+      proof (cases "i < l0 A")
+        case True
+        \<comment> \<open>G-block: \<open>g i = f_w i\<close>, and \<open>i < l0 A \<le> arr_len A - 1\<close>.\<close>
+        have gi: "g i = f_w i" using True unfolding g_def by simp
+        have "i < arr_len A - 1" using True last_decomp by linarith
+        thus ?thesis using gi f_w_lt by simp
+      next
+        case False
+        show ?thesis
+        proof (cases "l1 A = 0")
+          case True
+          \<comment> \<open>\<open>l1 A = 0\<close>: then \<open>arr_len (A[Suc n']) = l0 A\<close>, so
+              \<open>i < l0 A\<close>, contradicting \<open>\<not> i < l0 A\<close>.\<close>
+          have "arr_len (A[Suc n']) = l0 A" using len_eq True by simp
+          hence "i < l0 A" using i_lt by simp
+          thus ?thesis using False by simp
+        next
+          case l1_pos: False
+          define j where "j = (i - l0 A) mod l1 A"
+          define t where "t = (i - l0 A) div l1 A"
+          have j_lt: "j < l1 A" using l1_pos unfolding j_def by simp
+          have gi: "g i = (if t = 0 then f_w (l0 A + j)
+                            else f_refl (f_w (l0 A + j)))"
+            using False l1_pos unfolding g_def j_def t_def by (simp add: Let_def)
+          show ?thesis
+          proof (cases "t = 0")
+            case True
+            \<comment> \<open>\<open>B\<^sub>0\<close>-image: \<open>g i = f_w (l0 A + j)\<close>, \<open>l0 A + j < arr_len A - 1\<close>.\<close>
+            have gi0: "g i = f_w (l0 A + j)" using gi True by simp
+            have "l0 A + j < arr_len A - 1"
+              using j_lt last_decomp by linarith
+            thus ?thesis using gi0 f_w_lt by simp
+          next
+            case False
+            \<comment> \<open>Reflected region (\<open>t > 0\<close>): \<open>g i = f_refl (f_w (l0 A + j))\<close>,
+                and \<open>f_w (l0 A + j) \<in> Y_set\<close>.\<close>
+            have giR: "g i = f_refl (f_w (l0 A + j))" using gi False by simp
+            have mem: "f_w (l0 A + j) \<in> Y_set"
+              unfolding Y_set_def using j_lt by auto
+            thus ?thesis using giR f_refl_lt_\<beta>_uncond by simp
+          qed
+        qed
+      qed
+    qed
     have g_exists: "\<exists>g. stable_rep (A[Suc n']) g
                        \<and> (\<forall>i < arr_len (A[Suc n']). g i <\<^sub>o \<beta>)"
       using g_stable_rep g_lt_\<beta> by blast
