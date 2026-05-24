@@ -137,6 +137,40 @@ $$\text{step}_{(v)}(k) \;:=\; \text{clause (ii)(iii)(iv) at } k \implies \text{c
 - **(iii), (v)**: 自前 IH 不要 (= k-induction 不要、 同 $k$ の他 clause からの direct corollary)
 - **(ii), (iv), (i)**: 各々自前 IH 要 (= 各自 k-induction)
 
+### 依存図 (mermaid)
+
+clause 間依存 DAG (上記マトリックスの図示; 矢印 = 「使う」)。
+
+```mermaid
+graph LR
+  IHii["IH(ii)"] --> ii["(ii)@k"]
+  IHiv["IH(iv)"] --> iv["(iv)@k"]
+  IHi["IH(i)"]   --> i["(i)@k"]
+  ii  --> iii["(iii)@k"]
+  ii  --> iv
+  ii  --> i
+  iii --> i
+  iv  --> i
+  ii  --> v["(v)@k"]
+  iii --> v
+  iv  --> v
+```
+
+Lemma 2.5 の上位定理における位置づけ (paper §2 全体の依存)。
+
+```mermaid
+graph TD
+  L21["Lemma 2.1<br/>lex 減少 (展開で狭義減少)"] --> L23["Lemma 2.3<br/>seed 子孫が ≤B-全順序"]
+  L23 --> C24["Cor 2.4<br/>BMS 全体が全順序"]
+  L25["Lemma 2.5<br/>(i)-(v) 祖先関係保存"] --> STAB["stability<br/>o: BMS→Ord, stable_rep"]
+  L26["Lemma 2.6<br/>反射 (ZF, σ-pair)"] --> STAB
+  C24 --> T27["Theorem 2.7<br/>BMS は整礎"]
+  STAB --> T27
+```
+
+- Lemma 2.5 は安定表現 `stable_rep` の展開不変性 (`o(A[n+1])` 構成) に使われ、 Lemma 2.6 の反射と合わせて順序保存の ordinal 埋め込みを与える。
+- 整礎性 = Cor 2.4 (全順序) + stability (ordinal への狭義単調埋め込みで整礎性を移送)。
+
 ### Hunter 論法の核心 (page 5)
 
 > "either the k-th elements of all columns in B_0 with indices in **I** ascend or the k-th element of the j-th column in B_0 doesn't ascend"
