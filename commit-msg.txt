@@ -1,7 +1,4 @@
-Prove SM lemma + elem_lt_below_t (m=0, on-chain); reduce (ii) sorry to off-chain
+Add probes refuting two elem_lt_below_t off-chain shortcuts
 
-- Prove m_anc_Suc_imp_strict_min_on_anc (level-Suc m' strict-min on m'-ancestors)
-- Prove elem_lt_below_t m=0 (row-0 strict-min) and m>0 on-chain via SM lemma
-- Reduce (ii) elem_lt_below_t sorry to the single off-chain residual case
-- Rewrite task.md to progress-only (icon + name)
-- Add verify probes probe_offchain{,2}, probe_sm2
+- Add probe_elem_increase: telescoping (adjacent strict increase) reframing is FALSE (interior plateaus)
+- Add probe_faithful_caseB: case-B is vacuous in genuine BMS (no instances), so the faithful route also needs domination
