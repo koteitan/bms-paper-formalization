@@ -9082,12 +9082,17 @@ lemma lemma_2_5_ii_main_v2:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
   shows "lemma_2_5_ii_clause A n k"
-proof (induct k rule: nat_less_induct)
-  case (1 k)
-  have IH_ii: "\<forall>k'<k. lemma_2_5_ii_clause A n k'" using "1.hyps" by blast
-  show ?case
-    by (rule lemma_2_5_ii_clause_step_v2[OF A_BMS A_ne IH_ii])
-qed
+  \<comment> \<open>Lemma 2.5 (ii) is TRUE (Hunter, §2), but the previous proof
+      (via @{thm lemma_2_5_ii_clause_step_v2} \<rightarrow> case-B vacuity \<rightarrow>
+      @{thm bms_b0_col_t_ancestor} \<rightarrow> @{thm bms_b0_col_elem_lt}) reduced
+      case-B to \<open>bms_b0_col_elem_lt\<close> (elem_lt), which is machine-checked
+      FALSE (counterexample \<open>E = (0,0)(1,1)(2,0)(1,1)(1,1)\<close>; see the
+      \<open>cex_elem_lt_*\<close> witnesses).  \<open>elem_lt\<close> and \<open>bms_tparent_anc_all\<close>
+      (UNIFIED) were ORIGINAL reduction targets not in Hunter's paper; they
+      are removed.  The genuine proof is Hunter's SIMULTANEOUS k-induction
+      of clauses (i)-(v) together (Lemma 2.5 proof).  Honest gap until that
+      is formalized.\<close>
+  sorry
 
 text \<open>Elem match between adjacent expansions \<open>A[n-1]\<close> and \<open>A[n]\<close>
   for cols in the shared range \<open>p < idx_B(n-1, l_1)\<close> at row \<open>k < m_0\<close>.
