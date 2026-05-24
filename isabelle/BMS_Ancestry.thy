@@ -5985,20 +5985,108 @@ proof (induct q rule: less_induct)
 qed
 
 text \<open>
-  THE residual structural kernel (Hunter's bumped-region combinatorics):
-  under \<open>Suc t' \<le> max_parent_level\<close>, if \<open>p\<close> is the \<open>(Suc t')\<close>-parent
-  of \<open>q\<close> in the expansion, the \<open>t'\<close>-parent relation is CONSECUTIVE on
-  \<open>(p, q]\<close>: \<open>m_parent (A[n]) t' y = Some (y-1)\<close>.  verify/probe
-  consecutive-t'-chain 0/11808.  (Global row-\<open>t'\<close> consecutiveness is
-  FALSE -- plateaus -- but \<open>p\<close> is positioned exactly so \<open>(p, q]\<close>
-  contains none.)  To prove from the bump structure (\<open>delta\<close>/\<open>ascends\<close>,
-  \<open>elem_AEn_idx_B_value\<close>) without clause (ii)/(iv).\<close>
-lemma tparent_consecutive_below_suc_parent:
+  If the immediate predecessor \<open>i-1\<close> is a level-\<open>Suc r\<close> parent
+  candidate of \<open>i\<close> (strictly smaller row-\<open>Suc r\<close> value AND a lower-level
+  \<open>r\<close>-ancestor link), then it IS the \<open>(Suc r)\<close>-parent (being the maximal
+  index below \<open>i\<close>).  Suc-level analog of @{thm m_parent_zero_pred}.\<close>
+lemma m_parent_suc_pred:
+  assumes i_pos: "0 < i"
+      and lt: "elem A (i - 1) (Suc r) < elem A i (Suc r)"
+      and anc: "m_ancestor A r i (i - 1)"
+  shows "m_parent A (Suc r) i = Some (i - 1)"
+proof -
+  have split: "[0..<i] = [0..<i - 1] @ [i - 1]"
+    using i_pos by (metis Suc_diff_1 upt_Suc_append le0)
+  let ?P = "\<lambda>j. elem A j (Suc r) < elem A i (Suc r) \<and> m_ancestor A r i j"
+  have pred: "?P (i - 1)" using lt anc by blast
+  have filt: "filter ?P [0..<i] = filter ?P [0..<i - 1] @ [i - 1]"
+    using split pred by simp
+  have ne: "filter ?P [0..<i] \<noteq> []" using filt by simp
+  have lst: "last (filter ?P [0..<i]) = i - 1" using filt by simp
+  show ?thesis using ne lst by (simp add: Let_def)
+qed
+
+text \<open>
+  Level induction: if adjacent columns on \<open>(p, q]\<close> are strictly
+  increasing at every row \<open>k \<le> r\<close>, then the \<open>r\<close>-parent relation is
+  consecutive there (\<open>m_parent B r y = Some (y-1)\<close>).  At level \<open>0\<close> this
+  is @{thm m_parent_zero_pred}; at \<open>Suc r'\<close> the lower-level
+  consecutiveness (IH) supplies the \<open>r'\<close>-ancestor link, and
+  @{thm m_parent_suc_pred} closes it.\<close>
+lemma consec_from_elem_increase:
+  assumes inc: "\<forall>y k. p < y \<and> y \<le> q \<and> k \<le> r \<longrightarrow> elem B (y - 1) k < elem B y k"
+      and "p < y\<^sub>0" and "y\<^sub>0 \<le> q"
+  shows "m_parent B r y\<^sub>0 = Some (y\<^sub>0 - 1)"
+proof -
+  have main: "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent B r' y = Some (y - 1)"
+    if "r' \<le> r" for r'
+    using that
+  proof (induct r')
+    case 0
+    show ?case
+    proof (intro allI impI)
+      fix y assume "p < y \<and> y \<le> q"
+      hence py: "p < y" "y \<le> q" by auto
+      have ypos: "0 < y" using py by auto
+      have "elem B (y - 1) 0 < elem B y 0" using inc py by auto
+      thus "m_parent B 0 y = Some (y - 1)" by (rule m_parent_zero_pred[OF ypos])
+    qed
+  next
+    case (Suc r'')
+    have r''_le: "r'' \<le> r" using Suc.prems by simp
+    have IHr: "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent B r'' y = Some (y - 1)"
+      using Suc.hyps r''_le by blast
+    show ?case
+    proof (intro allI impI)
+      fix y assume "p < y \<and> y \<le> q"
+      hence py: "p < y" "y \<le> q" by auto
+      have ypos: "0 < y" using py by auto
+      have eltlt: "elem B (y - 1) (Suc r'') < elem B y (Suc r'')"
+        using inc py Suc.prems by auto
+      have mpr': "m_parent B r'' y = Some (y - 1)" using IHr py by auto
+      have anc: "m_ancestor B r'' y (y - 1)"
+        using m_anc_via_parent_some[OF mpr', of "y - 1"] by blast
+      show "m_parent B (Suc r'') y = Some (y - 1)"
+        by (rule m_parent_suc_pred[OF ypos eltlt anc])
+    qed
+  qed
+  show ?thesis using main[OF le_refl] assms(2,3) by blast
+qed
+
+text \<open>
+  THE residual structural kernel (Hunter's bumped-region combinatorics),
+  now reduced to a PURE elem inequality: under
+  \<open>Suc t' \<le> max_parent_level\<close>, if \<open>p\<close> is the \<open>(Suc t')\<close>-parent of
+  \<open>q\<close> in the expansion, then adjacent columns on \<open>(p, q]\<close> are strictly
+  increasing at EVERY row \<open>k \<le> t'\<close>.  verify/probe 0/23157.  (Global
+  row-\<open>k\<close> consecutiveness is FALSE -- plateaus -- but \<open>p\<close> is positioned
+  exactly so \<open>(p, q]\<close> contains none.)  To be proved from the bump
+  structure (\<open>delta\<close>/\<open>ascends\<close>, \<open>elem_AEn_idx_B_value\<close>) without
+  clause (ii)/(iv).\<close>
+lemma elem_increase_below_suc_parent:
   assumes "A \<in> BMS"
       and "mpl_bound (expansion A n) (Suc t')"
       and "m_parent (expansion A n) (Suc t') q = Some p"
+  shows "\<forall>y k. p < y \<and> y \<le> q \<and> k \<le> t'
+               \<longrightarrow> elem (expansion A n) (y - 1) k < elem (expansion A n) y k"
+  sorry  \<comment> \<open>[VERIFIED-OK] elem-increase-on-(p,q] probe 0/23157.\<close>
+
+text \<open>
+  Consecutiveness of the \<open>t'\<close>-parent chain on \<open>(p, q]\<close>, from the
+  elem-increase kernel via @{thm consec_from_elem_increase}.\<close>
+lemma tparent_consecutive_below_suc_parent:
+  assumes A_BMS: "A \<in> BMS"
+      and mb: "mpl_bound (expansion A n) (Suc t')"
+      and mp: "m_parent (expansion A n) (Suc t') q = Some p"
   shows "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent (expansion A n) t' y = Some (y - 1)"
-  sorry  \<comment> \<open>[VERIFIED-OK] consecutive-t'-chain probe 0/11808.\<close>
+proof (intro allI impI)
+  fix y assume hy: "p < y \<and> y \<le> q"
+  have inc: "\<forall>z k. p < z \<and> z \<le> q \<and> k \<le> t'
+               \<longrightarrow> elem (expansion A n) (z - 1) k < elem (expansion A n) z k"
+    using elem_increase_below_suc_parent[OF A_BMS mb mp] .
+  show "m_parent (expansion A n) t' y = Some (y - 1)"
+    using consec_from_elem_increase[OF inc] hy by blast
+qed
 
 text \<open>
   Interior columns of the \<open>(Suc t')\<close>-parent are \<open>t'\<close>-ancestors of
