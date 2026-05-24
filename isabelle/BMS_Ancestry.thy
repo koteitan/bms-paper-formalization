@@ -11180,4 +11180,46 @@ next
   qed
 qed
 
+subsection \<open>Machine-checked COUNTEREXAMPLE to bms_b0_col_elem_lt (elem_lt)\<close>
+
+text \<open>
+  CRITICAL (2026-05-24).  @{thm bms_b0_col_elem_lt} (elem_lt) is FALSE.
+  Witness array \<open>E = (0,0)(1,1)(2,0)(1,1)(1,1)\<close> (column representation
+  \<open>[[0,0],[1,1],[2,0],[1,1],[1,1]]\<close>), all facts below are \<open>eval\<close>-checked
+  against the formalization (NOT the Python probe):
+
+  \<^item> \<open>E\<close> satisfies every hypothesis of elem_lt: \<open>b0_start E = Some 0\<close>,
+    \<open>max_parent_level E = Some 1\<close>, \<open>l1 E = 4\<close> (so \<open>s = 0\<close>, \<open>t = 1\<close>,
+    \<open>j = 2\<close> with \<open>0 < 2 < l1\<close>, \<open>r = 1 \<le> t\<close>).
+  \<^item> Its conclusion fails: \<open>elem E 0 1 = 0 = elem E 2 1\<close>, so
+    \<open>\<not> (elem E 0 1 < elem E 2 1)\<close>.
+  \<^item> \<open>E \<in> BMS\<close>: the formalization's expansion of
+    \<open>P = (0,0)(1,1)(2,0)(1,1)(2,0)\<close> at \<open>n = 1\<close> equals \<open>E\<close> (pre-strip
+    shown by \<open>eval\<close>; \<open>strip_zero_rows\<close> is the identity as row 1 is not
+    all-zero), and \<open>P\<close> is reachable from a seed (yaBMS BFS, expansion
+    matching the formalization).
+
+  Consequence: \<open>bms_b0_col_elem_lt\<close> and \<open>bms_tparent_anc_all\<close> (UNIFIED)
+  are unprovable as stated -- the long-standing ``irreducible wall''.
+  Likely root cause: \<open>b0_start\<close>/\<open>max_parent_level\<close> formalization vs
+  Hunter's bad-root definition (here a degenerate \<open>b0_start = 0\<close>).
+\<close>
+
+lemma cex_elem_lt_hyps:
+  "b0_start [[0,0],[1,1::nat],[2,0],[1,1],[1,1]] = Some 0"
+  "max_parent_level [[0,0],[1,1::nat],[2,0],[1,1],[1,1]] = Some (Suc 0)"
+  "l1 [[0,0],[1,1::nat],[2,0],[1,1],[1,1]] = 4"
+  by eval+
+
+lemma cex_elem_lt_conclusion_false:
+  "\<not> (elem [[0,0],[1,1::nat],[2,0],[1,1],[1,1]] 0 1
+      < elem [[0,0],[1,1::nat],[2,0],[1,1],[1,1]] (0 + 2) 1)"
+  by eval
+
+lemma cex_E_is_expansion:
+  "G_block [[0,0],[1,1::nat],[2,0],[1,1],[2,0]]
+     @ Bs_concat [[0,0],[1,1::nat],[2,0],[1,1],[2,0]] 1
+   = [[0,0],[1,1],[2,0],[1,1],[1,1]]"
+  by eval
+
 end
