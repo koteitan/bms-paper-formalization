@@ -6064,12 +6064,50 @@ text \<open>
   structure (\<open>delta\<close>/\<open>ascends\<close>, \<open>elem_AEn_idx_B_value\<close>) without
   clause (ii)/(iv).\<close>
 lemma elem_increase_below_suc_parent:
-  assumes "A \<in> BMS"
-      and "mpl_bound (expansion A n) (Suc t')"
-      and "m_parent (expansion A n) (Suc t') q = Some p"
+  assumes "E \<in> BMS"
+      and "mpl_bound E (Suc t')"
+      and "m_parent E (Suc t') q = Some p"
+      and "q < length E"
   shows "\<forall>y k. p < y \<and> y \<le> q \<and> k \<le> t'
-               \<longrightarrow> elem (expansion A n) (y - 1) k < elem (expansion A n) y k"
-  sorry  \<comment> \<open>[VERIFIED-OK] elem-increase-on-(p,q] probe 0/23157.\<close>
+               \<longrightarrow> elem E (y - 1) k < elem E y k"
+  using assms
+proof (induct E arbitrary: t' q p rule: BMS.induct)
+  case (seed_in_BMS n)
+  have qlt: "q < 2" using seed_in_BMS.prems(3) length_seed by simp
+  have tk: "Suc t' < n"
+  proof -
+    have "mpl_bound (seed n) (Suc t')" by (rule seed_in_BMS.prems(1))
+    then obtain M where "max_parent_level (seed n) = Some M" and "Suc t' \<le> M"
+      unfolding mpl_bound_def by blast
+    moreover have "M < height (seed n)" using \<open>max_parent_level (seed n) = Some M\<close>
+      by (rule max_parent_level_lt)
+    ultimately show ?thesis by (simp add: height_seed)
+  qed
+  show ?case
+  proof (intro allI impI)
+    fix y k assume H: "p < y \<and> y \<le> q \<and> k \<le> t'"
+    hence py: "p < y" and yq: "y \<le> q" and kt: "k \<le> t'" by auto
+    have y1: "y = 1" using py yq qlt by linarith
+    have kn: "k < n" using kt tk by simp
+    have "elem (seed n) 0 k < elem (seed n) 1 k"
+      using elem_seed_0[OF kn] elem_seed_1[OF kn] by simp
+    thus "elem (seed n) (y - 1) k < elem (seed n) y k" using y1 by simp
+  qed
+next
+  case (expand_in_BMS A m)
+  \<comment> \<open>THE residual Hunter-core kernel.  ATTACK (memory 続6-5): use the
+      bump formula @{thm elem_AEn_idx_B_value}
+      (\<open>elem (A[m]) (idx_B x j) k = (A!(s+j))!k + (ascends A j k ? x*delta A k)\<close>)
+      to decompose adjacent columns of \<open>A[m]\<close> on \<open>(p, q]\<close> into G'
+      (verbatim = predecessor), within-block, and cross-block cases.  The
+      within-block case needs the predecessor's \<open>B\<^sub>0\<close> adjacent increase
+      \<open>(A!(s+j-1))!k < (A!(s+j))!k\<close>, which is exactly this lemma's IH for
+      \<open>A\<close> instantiated at \<open>q' = last_col_idx A\<close>, \<open>Suc t' = max_parent_level A\<close>
+      (there the \<open>(Suc t')\<close>-parent is \<open>s = b0_start A\<close>, so the interval
+      \<open>(s, last]\<close> is the \<open>B\<^sub>0\<close> region).  Cross-block uses \<open>delta \<ge> 0\<close>
+      and the prefix-closedness of \<open>ascends\<close>.\<close>
+  show ?case sorry
+qed
 
 text \<open>
   Consecutiveness of the \<open>t'\<close>-parent chain on \<open>(p, q]\<close>, from the
@@ -6078,12 +6116,14 @@ lemma tparent_consecutive_below_suc_parent:
   assumes A_BMS: "A \<in> BMS"
       and mb: "mpl_bound (expansion A n) (Suc t')"
       and mp: "m_parent (expansion A n) (Suc t') q = Some p"
+      and qlt: "q < length (expansion A n)"
   shows "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent (expansion A n) t' y = Some (y - 1)"
 proof (intro allI impI)
   fix y assume hy: "p < y \<and> y \<le> q"
+  have E_BMS: "expansion A n \<in> BMS" using A_BMS by (rule expand_in_BMS)
   have inc: "\<forall>z k. p < z \<and> z \<le> q \<and> k \<le> t'
                \<longrightarrow> elem (expansion A n) (z - 1) k < elem (expansion A n) z k"
-    using elem_increase_below_suc_parent[OF A_BMS mb mp] .
+    using elem_increase_below_suc_parent[OF E_BMS mb mp qlt] .
   show "m_parent (expansion A n) t' y = Some (y - 1)"
     using consec_from_elem_increase[OF inc] hy by blast
 qed
@@ -6097,11 +6137,12 @@ lemma m_ancestor_interior_of_suc_parent:
   assumes A_BMS: "A \<in> BMS"
       and mb: "mpl_bound (expansion A n) (Suc t')"
       and mp: "m_parent (expansion A n) (Suc t') q = Some p"
+      and qlt: "q < length (expansion A n)"
       and px: "p < x" and xq: "x < q"
   shows "m_ancestor (expansion A n) t' q x"
 proof -
   have cons: "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent (expansion A n) t' y = Some (y - 1)"
-    using tparent_consecutive_below_suc_parent[OF A_BMS mb mp] .
+    using tparent_consecutive_below_suc_parent[OF A_BMS mb mp qlt] .
   show ?thesis by (rule m_ancestor_of_consecutive_chain[OF cons px xq])
 qed
 
@@ -6374,7 +6415,7 @@ next
                   hypothesis.\<close>
               have "m_ancestor (A[n]) t' q x"
                 using m_ancestor_interior_of_suc_parent[OF expand_in_BMS.hyps(1)
-                        mb[unfolded Suc] mp[unfolded Suc] px x_lt_q] .
+                        mb[unfolded Suc] mp[unfolded Suc] q_lt px x_lt_q] .
               with False show ?thesis by blast
             qed
           qed
