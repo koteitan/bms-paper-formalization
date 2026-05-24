@@ -1,4 +1,4 @@
-Add probes refuting two elem_lt_below_t off-chain shortcuts
+Add probe refuting the l0-keyed location dichotomy for b0_start(A[n])
 
-- Add probe_elem_increase: telescoping (adjacent strict increase) reframing is FALSE (interior plateaus)
-- Add probe_faithful_caseB: case-B is vacuous in genuine BMS (no instances), so the faithful route also needs domination
+- Add probe_location_dichotomy: l0A=0/R1, l0A>0/R2 hypothesis is FALSE (block-start occurs at l0A>0)
+- Confirm the usable fact: b0_start(A[n]) is always G-prefix (<l0A) or a block-start, never mid-block
