@@ -12,7 +12,7 @@
   - ✅ refl_exists_from_sigma_align
   - 🚨 refl_exists [ID 43]
   - 🚨 g_stable_rep [ID 12,13]
-  - 🚨 g_lt_β
+  - ✅ g_lt_β
   - ✅ stable_rep_extend_strict_zero [ID 31]
   - ✅ induct n refactor [ID 41]
   - ✅ b0_start=None case 分離 [ID 42]
