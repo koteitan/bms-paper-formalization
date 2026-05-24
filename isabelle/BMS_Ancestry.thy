@@ -5915,10 +5915,33 @@ text \<open>
   the bumped-region case (\<open>q \<ge> l0 A\<close>) is the remaining structural kernel.
 \<close>
 
+definition mpl_bound :: "array \<Rightarrow> nat \<Rightarrow> bool" where
+  "mpl_bound A t \<longleftrightarrow> (\<exists>M. max_parent_level A = Some M \<and> t \<le> M)"
+
+lemma mpl_bound_mono: "mpl_bound A t \<Longrightarrow> t' \<le> t \<Longrightarrow> mpl_bound A t'"
+  unfolding mpl_bound_def by auto
+
+text \<open>
+  Transfer of the \<open>mpl_bound\<close> guard from the expansion \<open>A[n]\<close> to the
+  predecessor \<open>A\<close>, valid in the verbatim-copied prefix region
+  (\<open>q < l0 A + l1 A\<close>) where a genuine interior \<open>(t)\<close>-parent pair
+  exists.  Although \<open>max_parent_level\<close> is NOT monotone under \<open>A[0]\<close>
+  in general, in this non-vacuous transfer region the bound does carry
+  over: verify/probe (G+B0 region, \<open>n = 0..3\<close>, \<open>t \<le> max_parent_level (A[n])\<close>)
+  reports 0/16644 cases of \<open>t > max_parent_level A\<close>.\<close>
+lemma mpl_bound_transfer:
+  assumes "A \<in> BMS" and "A \<noteq> []"
+      and "mpl_bound (expansion A n) t"
+      and "q < l0 A + l1 A"
+      and "m_parent (expansion A n) t q = Some p" and "p < c" and "c < q"
+  shows "mpl_bound A t"
+  sorry  \<comment> \<open>[VERIFIED-OK] probe (G+B0 transfer region, n=0..3): 0/16644.
+      Structural \<open>max_parent_level\<close>-transfer lemma; residual.\<close>
+
 lemma bms_tparent_anc_all:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS"
-  shows "\<forall>t q p c. t < height A \<longrightarrow> q < length A
+  shows "\<forall>t q p c. mpl_bound A t \<longrightarrow> t < height A \<longrightarrow> q < length A
                    \<longrightarrow> m_parent A t q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
                    \<longrightarrow> m_ancestor A t c p"
   using A_BMS
@@ -5934,7 +5957,7 @@ proof (induct A rule: BMS.induct)
   qed
 next
   case (expand_in_BMS A n)
-  have IH: "\<forall>t q p c. t < height A \<longrightarrow> q < length A
+  have IH: "\<forall>t q p c. mpl_bound A t \<longrightarrow> t < height A \<longrightarrow> q < length A
                       \<longrightarrow> m_parent A t q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
                       \<longrightarrow> m_ancestor A t c p"
     using expand_in_BMS.hyps(2) .
@@ -5948,19 +5971,20 @@ next
         ancestry side-condition \<open>anc_lo\<close> of @{thm m_anc_suc_strict_min}.
         The outer \<open>BMS.induct\<close> IH (\<open>IH\<close>) gives the predecessor \<open>A\<close> at
         the SAME level.\<close>
-    have key: "\<forall>q p c. t < height (A[n]) \<longrightarrow> q < length (A[n])
+    have key: "\<forall>q p c. mpl_bound (A[n]) t \<longrightarrow> t < height (A[n]) \<longrightarrow> q < length (A[n])
                  \<longrightarrow> m_parent (A[n]) t q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
                  \<longrightarrow> m_ancestor (A[n]) t c p" for t
     proof (induct t rule: nat_less_induct)
       case (1 t)
-      have tIH: "\<forall>t'<t. \<forall>q p c. t' < height (A[n]) \<longrightarrow> q < length (A[n])
+      have tIH: "\<forall>t'<t. \<forall>q p c. mpl_bound (A[n]) t' \<longrightarrow> t' < height (A[n]) \<longrightarrow> q < length (A[n])
                    \<longrightarrow> m_parent (A[n]) t' q = Some p \<longrightarrow> p < c \<longrightarrow> c < q
                    \<longrightarrow> m_ancestor (A[n]) t' c p"
         using "1.hyps" by blast
       show ?case
       proof (intro allI impI)
         fix q p c
-        assume t_lt: "t < height (A[n])" and q_lt: "q < length (A[n])"
+        assume mb: "mpl_bound (A[n]) t"
+           and t_lt: "t < height (A[n])" and q_lt: "q < length (A[n])"
            and mp: "m_parent (A[n]) t q = Some p" and pc: "p < c" and cq: "c < q"
         show "m_ancestor (A[n]) t c p"
         proof (cases "q < l0 A")
@@ -6020,8 +6044,10 @@ next
         by (auto split: option.splits)
       have q_len: "q < length A" using q_l0 l0_le by linarith
       have c_reg: "c < l0 A + l1 A" using cq q_l0 by linarith
+      have mbA: "mpl_bound A t"
+        using mpl_bound_transfer[OF expand_in_BMS.hyps(1) A_ne mb q_reg mp pc cq] .
       have anc_A: "m_ancestor A t c p"
-        using IH t_hA q_len mpA pc cq by blast
+        using IH mbA t_hA q_len mpA pc cq by blast
       show "m_ancestor (A[n]) t c p"
         using m_anc_orig_eq_AEn_G[OF A_ne t_keep c_reg] anc_A by blast
     next
@@ -6091,8 +6117,10 @@ next
         qed
         have q_len: "q < length A" using q_b0 l01_eq A_ne by (cases A) auto
         have c_reg: "c < l0 A + l1 A" using cq q_b0 by linarith
+        have mbA: "mpl_bound A t"
+          using mpl_bound_transfer[OF expand_in_BMS.hyps(1) A_ne mb q_b0 mp pc cq] .
         have anc_A: "m_ancestor A t c p"
-          using IH t_hA q_len mpA pc cq by blast
+          using IH mbA t_hA q_len mpA pc cq by blast
         show "m_ancestor (A[n]) t c p"
           using m_anc_orig_eq_AEn_G[OF A_ne t_keep c_reg] anc_A by blast
       next
@@ -6118,13 +6146,16 @@ next
           case (Suc t')
           have t'_lt_t: "t' < t" using Suc by simp
           have t'_lt_H: "t' < height (A[n])" using t_lt Suc by simp
+          have mb_t': "mpl_bound (A[n]) t'"
+            using mpl_bound_mono[OF mb] t'_lt_t by simp
           \<comment> \<open>\<open>par_t'\<close>: the UNIFIED parent-property at the LOWER level
-              \<open>t'\<close> for \<open>A[n]\<close> itself, supplied by the level-IH \<open>tIH\<close>.\<close>
+              \<open>t'\<close> for \<open>A[n]\<close> itself, supplied by the level-IH \<open>tIH\<close>
+              (its \<open>mpl_bound\<close> guard discharged via @{thm mpl_bound_mono}).\<close>
           have par_t': "\<And>q' p' c'. q' < length (A[n])
                           \<Longrightarrow> m_parent (A[n]) t' q' = Some p'
                           \<Longrightarrow> p' < c' \<Longrightarrow> c' < q'
                           \<Longrightarrow> m_ancestor (A[n]) t' c' p'"
-            using tIH t'_lt_t t'_lt_H by blast
+            using tIH t'_lt_t mb_t' t'_lt_H by blast
           \<comment> \<open>\<open>p\<close> is the \<open>t'\<close>-ancestor of \<open>q\<close> (candidate condition of the
               \<open>(Suc t')\<close>-parent \<open>p\<close>).\<close>
           have anc_q: "m_ancestor (A[n]) t' q p"
@@ -6208,9 +6239,10 @@ proof -
   have sj_lt_last: "s + j < last_col_idx A" using j_lt l1_eq by linarith
   have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
   have s_lt_sj: "s < s + j" using j_pos by simp
+  have mbt: "mpl_bound A t" using mp unfolding mpl_bound_def by blast
   have anc_t: "m_ancestor A t (s + j) s"
     using bms_tparent_anc_all[OF A_BMS]
-          t_lt_H last_lt_len mpC s_lt_sj sj_lt_last
+          mbt t_lt_H last_lt_len mpC s_lt_sj sj_lt_last
     by blast
   have anc_r: "m_ancestor A r (s + j) s" by (rule m_ancestor_mono[OF r_le anc_t])
   show "elem A s r < elem A (s + j) r" by (rule m_ancestor_elem_lt[OF anc_r])

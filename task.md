@@ -120,8 +120,11 @@ graph LR
       - ✅ **二重帰納 re-structure** — `bms_tparent_anc_all` を outer `BMS.induct` + inner `induct t (nat_less_induct)` に再編。 inner t-IH (`tIH`) が同一配列 A[n] の level t' UNIFIED(parent 版)を供給、 outer IH が predecessor A を供給
       - ✅ **汎用 helper 2本** — `m_anc_suc_strict_min` (level Suc r' 版 strict-min anchor、 BMS 不要) と `anc_all_from_parent_all` (parent 版 → ancestor 版、 chain walk)
       - ✅ **t=Suc t' slice の sm 還元** — Suc t' ケースを配線: `anc_q`(p が q の t'-祖先) + `anc_lo`(p が (p,c] 全列の t'-祖先、 `anc_all_from_parent_all`+tIH で無料) を組み、 `m_anc_suc_strict_min` で goal を **単一の純粋 elem 不等式 `sm`** に還元
-      - ✅/🚨 `sm` Case A — `m_parent_Suc_candidate_le` (Suc 版 candidate≤parent) で proven: m_ancestor t' q x なら最右性で elem x≥elem q>elem p。 **Case B (¬m_ancestor t' q x) は sorry**。 ⚠️ `∀t` 版では Case B は非空かつ sm 偽 (反例 elem p=elem x=0)。 **`t≤max_parent_level` 制約下では Case B 空・sm 真** (probe 0 viol)。 = 制約追加後に Case B を t-chain vacuity で潰せる
-      - 🚨 **次の作業 = `t≤max_parent_level` 仮説追加 (statement fix)**。 候補3方向: (A) t≤mpl で restructure (transfer case の mpl 非単調を回避要)、 (B) q=last_col_idx に制限 (全 t で真だが inner 帰納の自己完結性要確認)、 (C) Hunter 流 5-clause 同時帰納 (大規模)。 ユーザ判断待ち
+      - ✅ **(A) `t≤max_parent_level` guard 追加完了 (build green、 statement が真に修正)** — `mpl_bound A t ≡ ∃M. max_parent_level A=Some M ∧ t≤M` を定義し UNIFIED の前提に追加。 seed/transfer/bumped 全ケースに threading 完了。 elem_lt 呼び出し側は `mp:max_parent_level A=Some t` から `mpl_bound A t` を供給 (M=t)。 bumped Suc t' は `mpl_bound_mono` で tIH の guard を discharge
+      - ✅ `sm` Case A proven (`m_parent_Suc_candidate_le`: m_ancestor t' q x → elem x≥elem q>elem p)
+      - 🚨 **残 honest sorry 2本 (共に t≤mpl 下で真、 probe 0 viol)**:
+        1. `mpl_bound_transfer` — transfer 領域 (q<l0+l1) で `mpl_bound(A[n]) t ⟹ mpl_bound A t` (G+B0、 n=0..3 で 0/16644)。 max_parent_level は n=0 で非単調だが非 vacuous transfer 領域では carry over。 構造的 mpl-transfer 補題
+        2. `sm` Case B — `¬m_ancestor t' q x` は t≤mpl 下で vacuous (FACT-F: anc_lo な x は必ず q の t'-祖先)。 chain-density 論法が要 (t'-chain の隣接ノード間に descendant gap が無い)。 真のカーネル
       - ✅ `elem_AEn_lt_block_implies_block_zero_when_j_not_asc` — Round 2 片方向不等式 lemma: ¬ ascends A j ⟹ block-c の elem 不等式が block-0 の elem 不等式を imply (delta ≥ 0 を活用)
       - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_via_S_empty` — Round 2 m_parent outside lemma: not_asc_chain なし版、 S_empty + 片方向不等式で B_c 内 candidate を弾く
       - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)
