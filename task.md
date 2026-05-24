@@ -88,6 +88,11 @@ graph LR
       - ✅ `lemma_2_5_iii_clause_when_k_ge_m0`: k≥m_0 で (iii) vacuous
       - 🚨 5 main lemmas (∀k. (i)(ii)(iii)(iv)(v)) の AND 構築
     - 🚨 **Stage 1: ∀k. (ii)@k** `lemma_2_5_ii_main_v2` (k-induction wrapper、 provides **IH(ii)**)
+      - ✅✅ **現状 (2026-05-24 続9)**: clause (ii) を Hunter 忠実 step `lemma_2_5_ii_clause_step` に再編し**全 6-way case を証明**、 `lemma_2_5_ii_main_v2` も step ベース k-strong-induction で実証明。 偽の elem_lt/S-empty/nasc_chain0 経路を完全排除。 **clause (ii) 全体の残 sorry はただ1つ = `elem_lt_below_t`** (`elem A s m < elem A (s+j) m` for **m<t 厳密**; = 偽だった elem_lt の m≤t を m<t に制限した真版、 246 BMS 0 viol)。 build green
+        - case-B (`Suc k'<t, ¬ascends j`) は **VACUOUS** と判明 (k≥t の真の non-ascend regime は別 branch `..._when_k_ge_t` で処理済; この sliver は m₀ 未満ゆえ必ず ascend)。 `b0_col_ancestor_below_t` (s は m<t で全 B0 内列の m-祖先、 削除済 r_ancestor_all を m<t に bound して `elem_lt_below_t` から完全証明) で `ascends` を導き矛盾。
+        - 他5 case: None/n=0/i≥j 自明、 k=0×{t=0,row-0 case-A via `ascends_row0_prefix`,¬asc}、 Suc k'×{t≤Suc k',asc via `bms_ascend_propagates_to_chain_ancestor`} は全 sorry-free leaf helper へ dispatch 済。
+        - 次 = `elem_lt_below_t` の証明 (m<t で bad root が内部 B0 列を狭義 dominate; 続6 系の foundational gap、 Hunter simultaneous induction 筋。 ⚠️ 偽の m≤t 版と混同しない)。 [[feedback-bms-hunter-thy-separation]] [[feedback-verify-with-data]]
+      - 📜 (以下 91-136 行は削除済 elem_lt/UNIFIED/clause_step_v2 edifice の旧記録 — ✅ は当時の状態。 現行は上記 step lemma に集約)
       - ✅ step `lemma_2_5_ii_clause_step_v2` (入力: **IH(ii)** = ∀k'<k. (ii)@k') — body sorry-free、 全て 3 named lemma 経由
       - ✅ `lemma_2_5_ii_clause_step_v2_at_zero_when_t_pos` — k=0 row 0、 **2026-05-23 Hunter 流 per-column 場合分けに再構成** ([[follow-hunter-paper]]): `ascends A j 0` で case-split。 STRICT/all-ascend 依存を完全除去 (`bms_b0_row0_strict_min`/`bms_all_b0_ascend_row0_when_t_pos`/`bms_b0_col_row0_ancestor`/`bms_b0_col_clex_strict_row0`/`bms_b0_row0_gt_s` を削除)
         - ✅ **case A** (`ascends A j 0`) — `ascends_row0_prefix` (j ascend ⟹ ∀x≤j ascend) で local all-asc を出し、 bounded helper `m_anc_zero_idx_B_in_block_shift_when_t_pos_prefix_asc` (+ within/outside `_prefix_asc` 版) に渡す。 **sorry なし完全証明**

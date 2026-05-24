@@ -7724,25 +7724,345 @@ proof (induct j arbitrary: i rule: less_induct)
 qed
 
 
-text \<open>Independent k-induction on (ii) alone, using the v2 step lemma
-  (sound, depends only on IH(ii)). Provides \<open>\<forall>k. (ii) at k\<close> without
-  joint induction with other clauses.\<close>
+text \<open>Strict-below-\<open>m\<^sub>0\<close> domination of the bad root \<open>s\<close> over every
+  interior \<open>B\<^sub>0\<close> column.  This is the \<open>m < t\<close> (STRICT) restriction of the
+  former \<open>bms_b0_col_elem_lt\<close>.  The unrestricted \<open>m \<le> t\<close> version is
+  machine-checked FALSE --- it fails exactly at the top level \<open>m = t = m\<^sub>0\<close>
+  (counterexample \<open>(0,0)(1,1)(2,0)(1,1)(1,1)\<close>: \<open>elem _ 0 1 = 0 = elem _ 2 1\<close>,
+  see the \<open>cex_elem_lt_*\<close> witnesses).  STRICTLY below \<open>m\<^sub>0\<close> it is
+  empirically true (\<open>verify/probe_elem_lt_below_t.py\<close>: 246 BMSs with
+  \<open>t \<ge> 2\<close>, targeted counterexample-hunting + BFS, 0 violations), but its
+  proof is the genuine open foundational gap (Hunter's simultaneous BMS
+  induction).  It is the ONLY \<open>sorry\<close> behind clause (ii); everything
+  downstream (\<open>b0_col_ancestor_below_t\<close>, the (ii) case-B leaf) is PROVEN
+  from it.\<close>
+
+lemma elem_lt_below_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and m_lt: "m < t"
+      and j_pos: "0 < j" and j_lt: "j < l1 A"
+  shows "elem A s m < elem A (s + j) m"
+  sorry
+
+text \<open>Below \<open>m\<^sub>0\<close>, the bad root \<open>s\<close> is a level-\<open>m\<close> m-ancestor of every
+  interior \<open>B\<^sub>0\<close> column \<open>s + j\<close>.  Proved (mirroring the former
+  \<open>bms_b0_col_r_ancestor_all\<close>, but bounded to \<open>m < t\<close>) by induction on the
+  level \<open>m\<close> (outer) and the column offset \<open>j\<close> (inner, strong): at each level
+  the strict domination @{thm elem_lt_below_t} makes \<open>s\<close> a parent-candidate
+  of \<open>s + j\<close>, and the inner induction walks the parent chain down to \<open>s\<close>.
+  This makes Lemma 2.5 (ii) case-B (\<open>Suc k' < t\<close>, \<open>\<not> ascends\<close>) VACUOUS.\<close>
+
+lemma b0_col_ancestor_below_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+  shows "m < t \<longrightarrow> (\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m (s + j) s)"
+proof (induct m)
+  case 0
+  show ?case
+  proof
+    assume t_pos: "0 < t"
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A 0 (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_pos0: "0 < j" and j_lt0: "j < l1 A"
+      show "m_ancestor A 0 (s + j) s"
+        using j_pos0 j_lt0
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s 0 < elem A (s + j) 0"
+          by (rule elem_lt_below_t[OF A_BMS A_ne b0 mp t_pos j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A 0 (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A 0 (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A 0 p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+next
+  case (Suc m')
+  show ?case
+  proof
+    assume Sm_lt: "Suc m' < t"
+    have m'_lt: "m' < t" using Sm_lt by simp
+    have IH_all: "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m' (s + j) s"
+      using Suc.hyps m'_lt by blast
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A (Suc m') (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_posS: "0 < j" and j_ltS: "j < l1 A"
+      show "m_ancestor A (Suc m') (s + j) s"
+        using j_posS j_ltS
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s (Suc m') < elem A (s + j) (Suc m')"
+          by (rule elem_lt_below_t[OF A_BMS A_ne b0 mp Sm_lt j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        have anc_r': "m_ancestor A m' (s + j) s" using IH_all j_pos j_lt by blast
+        obtain p where mp_p: "m_parent A (Suc m') (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A (Suc m') (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A (Suc m') (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A (Suc m') p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+qed
+
+text \<open>Hunter-faithful per-\<open>k\<close> step for clause (ii) (paper page 5).
+  Fixing \<open>i, j < l\<^sub>1\<close> and using the induction hypothesis ((ii) at every
+  \<open>k' < k\<close>), the proof dispatches each structural sub-case to a PROVEN
+  block-shift helper:
+
+  \<^item> \<open>i \<ge> j\<close>: both sides of the iff are False (\<open>m_ancestor\<close> needs a
+    strictly smaller target index), so the iff holds.
+  \<^item> \<open>i < j, k = 0, t = 0\<close>: @{thm m_anc_zero_idx_B_in_block_shift_when_t_zero}.
+  \<^item> \<open>i < j, k = 0, 0 < t, \<not> ascends A j 0\<close>:
+    @{thm m_anc_zero_idx_B_in_block_shift_when_j_not_asc}.
+  \<^item> \<open>i < j, k = Suc k', t \<le> Suc k'\<close>:
+    @{thm m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t} (uses IH(ii) at \<open>k'\<close>).
+  \<^item> \<open>i < j, k = 0, 0 < t, ascends A j 0\<close>: Hunter's row-0 case-A.  Since
+    \<open>I = \<close> all columns at \<open>k = 0\<close> (the \<open>\<forall>k' < 0\<close> condition is vacuous),
+    \<open>j\<close> ascending forces every \<open>x \<le> j\<close> to ascend
+    (@{thm ascends_row0_prefix}); reduce via
+    @{thm m_anc_zero_idx_B_in_block_shift_when_t_pos_prefix_asc}.
+  \<^item> \<open>i < j, k = Suc k', Suc k' < t, ascends A j (Suc k')\<close>:
+    @{thm m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_asc}, discharging the
+    ascend chain via @{thm bms_ascend_propagates_to_chain_ancestor}.
+  \<^item> \<open>i < j, k = Suc k', Suc k' < t, \<not> ascends A j (Suc k')\<close>: this case is
+    VACUOUS.  Below \<open>m\<^sub>0 = t\<close> the bad root \<open>s\<close> is a \<open>(Suc k')\<close>-ancestor of
+    every interior \<open>B\<^sub>0\<close> column (@{thm b0_col_ancestor_below_t}), i.e.
+    \<open>ascends A j (Suc k')\<close> always holds for \<open>j > 0\<close>, contradicting the case
+    hypothesis.  (This avoids the old, now-removed \<open>nasc_chain0\<close> reduction,
+    which was empirically refuted, and the \<open>bms_S_empty_case_B_at_block_0
+    \<rightarrow> elem_lt\<close> route, which was machine-checked FALSE.)  The vacuity rests
+    on @{thm b0_col_ancestor_below_t}, hence ultimately on the single sound
+    \<open>sorry\<close> @{thm elem_lt_below_t}.\<close>
+
+lemma lemma_2_5_ii_clause_step:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and IH_ii: "\<forall>k'<k. lemma_2_5_ii_clause A n k'"
+  shows "lemma_2_5_ii_clause A n k"
+proof (cases "b0_start A")
+  case None
+  have l1z: "l1 A = 0" by (rule l1_zero_of_no_b0[OF None])
+  show ?thesis using l1z by (simp add: lemma_2_5_ii_clause_def)
+next
+  case (Some s)
+  note b0 = this
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def by (auto split: option.splits)
+  show ?thesis
+  proof (cases n)
+    case 0
+    show ?thesis using \<open>n = 0\<close> by (simp add: lemma_2_5_ii_clause_def)
+  next
+    case (Suc n')
+    hence n_pos: "0 < n" by simp
+    show ?thesis
+      unfolding lemma_2_5_ii_clause_def
+    proof (intro allI impI)
+      fix i j
+      assume ij: "i < l1 A \<and> j < l1 A"
+      have i_lt: "i < l1 A" using ij by simp
+      have j_lt: "j < l1 A" using ij by simp
+      show "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_B_in_expansion A 0 i)
+          \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_B_in_expansion A n i)"
+      proof (cases "i < j")
+        case False
+        \<comment> \<open>\<open>i \<ge> j\<close>: both sides False (target index would have to be strictly
+            smaller; \<open>idx_B\<close> is monotone in the column).\<close>
+        have lhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                            (idx_B_in_expansion A 0 i)"
+        proof
+          assume H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j)
+                                          (idx_B_in_expansion A 0 i)"
+          have "idx_B_in_expansion A 0 i < idx_B_in_expansion A 0 j"
+            by (rule m_ancestor_target_lt[OF H])
+          thus False using False unfolding idx_B_in_expansion_def by simp
+        qed
+        have rhs_F: "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                            (idx_B_in_expansion A n i)"
+        proof
+          assume H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                          (idx_B_in_expansion A n i)"
+          have "idx_B_in_expansion A n i < idx_B_in_expansion A n j"
+            by (rule m_ancestor_target_lt[OF H])
+          thus False using False unfolding idx_B_in_expansion_def by simp
+        qed
+        show ?thesis using lhs_F rhs_F by blast
+      next
+        case True
+        note i_lt_j = this
+        show ?thesis
+        proof (cases k)
+          case 0
+          show ?thesis
+          proof (cases t)
+            case 0
+            have mp0: "max_parent_level A = Some 0" using mp \<open>t = 0\<close> by simp
+            show ?thesis
+              using m_anc_zero_idx_B_in_block_shift_when_t_zero
+                      [OF A_BMS A_ne b0 mp0 le0 order.refl i_lt j_lt i_lt_j]
+                    \<open>k = 0\<close> by simp
+          next
+            case (Suc t')
+            have t_pos: "0 < t" using \<open>t = Suc t'\<close> by simp
+            show ?thesis
+            proof (cases "ascends A j 0")
+              case False
+              show ?thesis
+                using m_anc_zero_idx_B_in_block_shift_when_j_not_asc
+                        [OF A_BMS A_ne b0 mp t_pos n_pos False le0 order.refl
+                            i_lt j_lt i_lt_j]
+                      \<open>k = 0\<close> by simp
+            next
+              case True
+              \<comment> \<open>Hunter row-0 case-A: \<open>j\<close> ascends at row 0, so by
+                  @{thm ascends_row0_prefix} every \<open>x \<le> j\<close> ascends; reduce
+                  via @{thm m_anc_zero_idx_B_in_block_shift_when_t_pos_prefix_asc}.\<close>
+              have pre_asc: "\<forall>x. x \<le> j \<longrightarrow> ascends A x 0"
+                using ascends_row0_prefix[OF b0 mp t_pos \<open>ascends A j 0\<close>] by blast
+              show ?thesis
+                using m_anc_zero_idx_B_in_block_shift_when_t_pos_prefix_asc
+                        [OF A_BMS A_ne b0 mp t_pos n_pos pre_asc le0 order.refl
+                            i_lt j_lt i_lt_j]
+                      \<open>k = 0\<close> by simp
+            qed
+          qed
+        next
+          case (Suc k')
+          show ?thesis
+          proof (cases "t \<le> Suc k'")
+            case True
+            have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
+            have IH_kp: "lemma_2_5_ii_clause A n k'" using IH_ii k'_lt by blast
+            show ?thesis
+              using m_anc_idx_B_in_block_shift_at_Suc_k_when_k_ge_t
+                      [OF A_BMS A_ne b0 mp True IH_kp i_lt j_lt i_lt_j]
+                    \<open>k = Suc k'\<close> by simp
+          next
+            case False
+            hence Sk_lt_t: "Suc k' < t" by simp
+            have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
+            have IH_kp: "lemma_2_5_ii_clause A n k'" using IH_ii k'_lt by blast
+            have k_lt_keep: "Suc k' < keep_of (G_block A @ Bs_concat A n)"
+              using Sk_lt_t
+                    keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos]
+              by linarith
+            have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+            have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+            have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+            have t_lt_HA: "t < height A" using max_parent_level_lt[OF mp] .
+            have Sk_lt_HA: "Suc k' < height A" using Sk_lt_t t_lt_HA by linarith
+            have x_len_all: "\<forall>x<l1 A. Suc k' < length (A ! (s + x))"
+            proof (intro allI impI)
+              fix x assume x_lt: "x < l1 A"
+              have x_lt_diff: "x < last_col_idx A - s"
+                using x_lt b0 s_lt_last last_lt_arr
+                unfolding l1_def B0_block_def by simp
+              have sx_lt_last: "s + x < last_col_idx A"
+                using x_lt_diff s_lt_last by linarith
+              have sx_lt_arr: "s + x < arr_len A" using sx_lt_last last_lt_arr by linarith
+              have "length (A ! (s + x)) = height A"
+                using length_col_arr[OF is_arr A_ne sx_lt_arr] .
+              thus "Suc k' < length (A ! (s + x))" using Sk_lt_HA by simp
+            qed
+            have k'_lt_t: "k' < t" using Sk_lt_t by simp
+            show ?thesis
+            proof (cases "ascends A j (Suc k')")
+              case True
+              note asc_j = this
+              have asc_chain: "\<forall>x<j. m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                            (idx_B_in_expansion A 0 x)
+                                     \<longrightarrow> ascends A x (Suc k')"
+              proof (intro allI impI)
+                fix x assume x_lt: "x < j"
+                assume chain_AEn: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 j)
+                                                        (idx_B_in_expansion A 0 x)"
+                show "ascends A x (Suc k')"
+                  using bms_ascend_propagates_to_chain_ancestor
+                          [OF A_BMS A_ne b0 mp k'_lt_t n_pos asc_j j_lt x_lt chain_AEn] .
+              qed
+              show ?thesis
+                using m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_asc
+                        [OF A_BMS A_ne b0 mp Sk_lt_t IH_kp asc_j asc_chain
+                            x_len_all k_lt_keep i_lt j_lt i_lt_j]
+                      \<open>k = Suc k'\<close> by simp
+            next
+              case False
+              \<comment> \<open>Hunter case-B is VACUOUS below \<open>m\<^sub>0\<close>: with \<open>Suc k' < t\<close> and
+                  \<open>j > 0\<close>, \<open>s\<close> is a \<open>(Suc k')\<close>-ancestor of \<open>s + j\<close>
+                  (@{thm b0_col_ancestor_below_t}), so \<open>ascends A j (Suc k')\<close>,
+                  contradicting the case hypothesis.\<close>
+              have j_pos: "0 < j" using i_lt_j by simp
+              have anc: "m_ancestor A (Suc k') (s + j) s"
+                using b0_col_ancestor_below_t[OF A_BMS A_ne b0 mp] Sk_lt_t j_pos j_lt
+                by blast
+              have "ascends A j (Suc k')"
+                using b0 mp Sk_lt_t anc
+                unfolding ascends_def non_strict_ancestor_def by simp
+              with False show ?thesis by simp
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
+
+text \<open>\<open>\<forall>k. (ii) at k\<close> by strong induction on \<open>k\<close>, each step discharged by
+  @{thm lemma_2_5_ii_clause_step} (which depends only on IH(ii) at smaller
+  \<open>k\<close>).  The whole of clause (ii) is now PROVEN modulo the single sound
+  foundational \<open>sorry\<close> @{thm elem_lt_below_t} (strict domination of the bad
+  root below \<open>m\<^sub>0\<close>); every other leaf of the \<open>k\<close>-step --- including the
+  former ascend-dichotomy case-A at row 0 and the case-B vacuity at
+  \<open>Suc k'\<close> --- is discharged by a proven block-shift / ancestry lemma.\<close>
 
 lemma lemma_2_5_ii_main_v2:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
   shows "lemma_2_5_ii_clause A n k"
-  \<comment> \<open>Lemma 2.5 (ii) is TRUE (Hunter, §2), but the previous proof
-      (via \<open>lemma_2_5_ii_clause_step_v2\<close> \<rightarrow> case-B vacuity \<rightarrow>
-      \<open>bms_b0_col_t_ancestor\<close> \<rightarrow> \<open>bms_b0_col_elem_lt\<close>) reduced
-      case-B to \<open>bms_b0_col_elem_lt\<close> (elem_lt), which is machine-checked
-      FALSE (counterexample \<open>E = (0,0)(1,1)(2,0)(1,1)(1,1)\<close>; see the
-      \<open>cex_elem_lt_*\<close> witnesses).  \<open>elem_lt\<close> and \<open>bms_tparent_anc_all\<close>
-      (UNIFIED) were ORIGINAL reduction targets not in Hunter's paper; they
-      are removed.  The genuine proof is Hunter's SIMULTANEOUS k-induction
-      of clauses (i)-(v) together (Lemma 2.5 proof).  Honest gap until that
-      is formalized.\<close>
-  sorry
+proof (induct k rule: nat_less_induct)
+  case (1 k)
+  have IH_ii: "\<forall>k'<k. lemma_2_5_ii_clause A n k'" using "1.hyps" by blast
+  show ?case by (rule lemma_2_5_ii_clause_step[OF A_BMS A_ne IH_ii])
+qed
 
 text \<open>Elem match between adjacent expansions \<open>A[n-1]\<close> and \<open>A[n]\<close>
   for cols in the shared range \<open>p < idx_B(n-1, l_1)\<close> at row \<open>k < m_0\<close>.
