@@ -122,9 +122,10 @@ graph LR
       - ✅ **t=Suc t' slice の sm 還元** — Suc t' ケースを配線: `anc_q`(p が q の t'-祖先) + `anc_lo`(p が (p,c] 全列の t'-祖先、 `anc_all_from_parent_all`+tIH で無料) を組み、 `m_anc_suc_strict_min` で goal を **単一の純粋 elem 不等式 `sm`** に還元
       - ✅ **(A) `t≤max_parent_level` guard 追加完了 (build green、 statement が真に修正)** — `mpl_bound A t ≡ ∃M. max_parent_level A=Some M ∧ t≤M` を定義し UNIFIED の前提に追加。 seed/transfer/bumped 全ケースに threading 完了。 elem_lt 呼び出し側は `mp:max_parent_level A=Some t` から `mpl_bound A t` を供給 (M=t)。 bumped Suc t' は `mpl_bound_mono` で tIH の guard を discharge
       - ✅ `sm` Case A proven (`m_parent_Suc_candidate_le`: m_ancestor t' q x → elem x≥elem q>elem p)
-      - 🚨 **残 honest sorry 2本 (共に t≤mpl 下で真、 probe 0 viol)**:
-        1. `mpl_bound_transfer` — transfer 領域 (q<l0+l1) で `mpl_bound(A[n]) t ⟹ mpl_bound A t` (G+B0、 n=0..3 で 0/16644)。 max_parent_level は n=0 で非単調だが非 vacuous transfer 領域では carry over。 構造的 mpl-transfer 補題
-        2. `sm` Case B — `¬m_ancestor t' q x` は t≤mpl 下で vacuous (FACT-F: anc_lo な x は必ず q の t'-祖先)。 chain-density 論法が要 (t'-chain の隣接ノード間に descendant gap が無い)。 真のカーネル
+      - ✅ `sm` Case B も **proven 化** (kernel lemma 経由) — `m_ancestor_interior_of_suc_parent` (interior が q の t'-祖先) で `¬m_ancestor t' q x` を矛盾に。 bumped Suc t' case は完全に配線済 (sm Case A + Case B 両方 closed)
+      - 🚨 **残 honest sorry 2本に集約 (clean named kernel、 共に t≤mpl 下で真、 probe 0 viol)**:
+        1. `mpl_bound_transfer` — transfer 領域 (q<l0+l1) で `mpl_bound(expansion A n) t ⟹ mpl_bound A t` (G+B0、 n=0..3 で 0/16644)。 max_parent_level は n=0 で非単調だが非 vacuous transfer 領域では carry over
+        2. `m_ancestor_interior_of_suc_parent` — `Suc t'≤mpl`、 p=(Suc t')-parent of q、 p<x<q ⟹ `m_ancestor(E) t' q x`。 機構=**(p,q] で t'-parent chain が連続** (`m_parent(E) t' y=y-1`、 probe 0/11808; 大域 row-t' consec は plateau で偽だが p が plateau を除外)。 = Hunter 組合せ核心 (bumped row 構造、 delta/ascends)。 multi-hundred-line 見込み
       - ✅ `elem_AEn_lt_block_implies_block_zero_when_j_not_asc` — Round 2 片方向不等式 lemma: ¬ ascends A j ⟹ block-c の elem 不等式が block-0 の elem 不等式を imply (delta ≥ 0 を活用)
       - ✅ `m_parent_AEn_idx_B_outside_block_at_Suc_k_via_S_empty` — Round 2 m_parent outside lemma: not_asc_chain なし版、 S_empty + 片方向不等式で B_c 内 candidate を弾く
       - ✅ `bms_suc_k_ancestor_does_not_ascend_when_j_not_ascends` — Hunter case B 基礎: j が ascending しないなら (Suc k)-祖先 y も ascending しない (chain trans で 5 行)

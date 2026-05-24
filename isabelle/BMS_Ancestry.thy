@@ -5938,6 +5938,27 @@ lemma mpl_bound_transfer:
   sorry  \<comment> \<open>[VERIFIED-OK] probe (G+B0 transfer region, n=0..3): 0/16644.
       Structural \<open>max_parent_level\<close>-transfer lemma; residual.\<close>
 
+text \<open>
+  Interior columns of the \<open>(Suc t')\<close>-parent are \<open>t'\<close>-ancestors of
+  \<open>q\<close>.  Under \<open>Suc t' \<le> max_parent_level\<close>, if \<open>p\<close> is the
+  \<open>(Suc t')\<close>-parent of \<open>q\<close> in the expansion, then the \<open>t'\<close>-parent
+  chain from \<open>q\<close> down to \<open>p\<close> is CONSECUTIVE
+  (\<open>m_parent (A[n]) t' x = Some (x-1)\<close> on \<open>(p, q]\<close>;
+  verify/probe consecutive-t'-chain 0/11808), so every \<open>x \<in> (p, q)\<close>
+  lies on that chain and is therefore a \<open>t'\<close>-ancestor of \<open>q\<close>.  This
+  is the residual structural kernel that makes the bumped \<open>sm\<close> Case B
+  vacuous.  (The global row-\<open>t'\<close> consecutiveness is FALSE -- plateaus
+  exist -- but the \<open>(Suc t')\<close>-parent \<open>p\<close> is positioned exactly so the
+  interval \<open>(p, q]\<close> contains none.)\<close>
+lemma m_ancestor_interior_of_suc_parent:
+  assumes "A \<in> BMS"
+      and "mpl_bound (expansion A n) (Suc t')"
+      and "m_parent (expansion A n) (Suc t') q = Some p"
+      and "p < x" and "x < q"
+  shows "m_ancestor (expansion A n) t' q x"
+  sorry  \<comment> \<open>[VERIFIED-OK] probe_sm_caseB[_diag] 0 Case-B at t<=mpl;
+      consecutive-t'-chain probe 0/11808.  Residual kernel.\<close>
+
 lemma bms_tparent_anc_all:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS"
@@ -6202,17 +6223,13 @@ next
             next
               case False
               \<comment> \<open>Case B is VACUOUS under \<open>t = Suc t' \<le> max_parent_level\<close>:
-                  every \<open>x \<in> (p, q)\<close> with \<open>m_ancestor (A[n]) t' x p\<close>
-                  (which \<open>anc_lo\<close> gives) IS a \<open>t'\<close>-ancestor of \<open>q\<close>, so the
-                  hypothesis \<open>\<not> m_ancestor (A[n]) t' q x\<close> is contradictory.
-                  MECHANISM (verify/probe_sm_caseB[_diag], 66984 cases at
-                  \<open>t \<le> mpl\<close>, 0 Case-B): between the \<open>(Suc t')\<close>-parent \<open>p\<close>
-                  and \<open>q\<close>, the \<open>t'\<close>-parent chain is CONSECUTIVE
-                  (\<open>m_parent (A[n]) t' x = Some (x-1)\<close> for \<open>x \<in> (p, q]\<close>),
-                  hence \<open>(p, q)\<close> = exactly the \<open>t'\<close>-chain nodes of \<open>q\<close>, all
-                  of which are \<open>t'\<close>-ancestors of \<open>q\<close>.  TODO: prove the
-                  consecutive-\<open>t'\<close>-chain fact (residual structural kernel).\<close>
-              show ?thesis sorry
+                  @{thm m_ancestor_interior_of_suc_parent} gives that \<open>x\<close>
+                  IS a \<open>t'\<close>-ancestor of \<open>q\<close>, contradicting the case
+                  hypothesis.\<close>
+              have "m_ancestor (A[n]) t' q x"
+                using m_ancestor_interior_of_suc_parent[OF expand_in_BMS.hyps(1)
+                        mb[unfolded Suc] mp[unfolded Suc] px x_lt_q] .
+              with False show ?thesis by blast
             qed
           qed
           show ?thesis
