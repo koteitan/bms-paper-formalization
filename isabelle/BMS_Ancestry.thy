@@ -6201,11 +6201,17 @@ next
               thus ?thesis using ep_lt_q by simp
             next
               case False
-              \<comment> \<open>Case B (the remaining bump kernel): \<open>x\<close> is a \<open>t'\<close>-descendant
-                  of \<open>p\<close> (\<open>anc_lo\<close>) but NOT a \<open>t'\<close>-ancestor of \<open>q\<close>.  Needs
-                  the bump structure (\<open>delta\<close>/\<open>ascends\<close>); clause (ii)/(iv)
-                  forbidden (circular).  [VERIFIED-OK]
-                  probe=verify/probe_unified_bumped.py.\<close>
+              \<comment> \<open>Case B is VACUOUS under \<open>t = Suc t' \<le> max_parent_level\<close>:
+                  every \<open>x \<in> (p, q)\<close> with \<open>m_ancestor (A[n]) t' x p\<close>
+                  (which \<open>anc_lo\<close> gives) IS a \<open>t'\<close>-ancestor of \<open>q\<close>, so the
+                  hypothesis \<open>\<not> m_ancestor (A[n]) t' q x\<close> is contradictory.
+                  MECHANISM (verify/probe_sm_caseB[_diag], 66984 cases at
+                  \<open>t \<le> mpl\<close>, 0 Case-B): between the \<open>(Suc t')\<close>-parent \<open>p\<close>
+                  and \<open>q\<close>, the \<open>t'\<close>-parent chain is CONSECUTIVE
+                  (\<open>m_parent (A[n]) t' x = Some (x-1)\<close> for \<open>x \<in> (p, q]\<close>),
+                  hence \<open>(p, q)\<close> = exactly the \<open>t'\<close>-chain nodes of \<open>q\<close>, all
+                  of which are \<open>t'\<close>-ancestors of \<open>q\<close>.  TODO: prove the
+                  consecutive-\<open>t'\<close>-chain fact (residual structural kernel).\<close>
               show ?thesis sorry
             qed
           qed
