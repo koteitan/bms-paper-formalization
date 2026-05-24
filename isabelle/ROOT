@@ -14,3 +14,4 @@ session BMS = HOL +
     BMS_Hunter
     BMS_Stability
     BMS_WellOrdered
+    ValueCheck_T2

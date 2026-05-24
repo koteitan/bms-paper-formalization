@@ -9272,6 +9272,26 @@ text \<open>
   block structure, which is not in the current library; isolated \<open>sorry\<close>.
 \<close>
 
+text \<open>
+  \<^bold>\<open>WARNING --- THIS LEMMA IS FALSE AS STATED (2026-05-25).\<close> The
+  premise combination IS realizable, so the conclusion \<open>False\<close> cannot be
+  derived. Machine-confirmed counterexample (see theory \<open>ValueCheck_T2\<close>,
+  lemma \<open>vc_T2_counterexample\<close>): \<open>A = (0,0)(1,1)\<close>, \<open>n = 1\<close>,
+  \<open>A[1] = (0,0)(1,0)\<close>; with \<open>m = 0\<close>, \<open>t = 0 < n = 1\<close>, \<open>j = 0 < l1 A = 1\<close>,
+  \<open>idx_B(t,j) = idx_B(0,0) = 0\<close> IS a level-0 m-ancestor of
+  \<open>idx_B(n,0) = idx_B(1,0) = 1\<close>. A strip-correct yaBMS BFS finds 32250
+  counterexamples even under the full inductive hypotheses
+  (\<open>verify/probe_T2_with_hyps.py\<close>, \<open>verify/probe_clauseiv_three_targets.py\<close>).
+  The earlier ``0 of 441'' vacuity claim was a coverage-gap false positive
+  from an un-stripped probe (same trap as the refuted \<open>consec\<close>/\<open>linchpin\<close>/
+  \<open>gmin\<close> family). This lemma must be RESTATED (with correct guards) or
+  REMOVED, and its consumer
+  \<open>clause_iv_intermediate_B_t_impossible_chain_through_Bn_first\<close>
+  (which cites it) reworked --- that consumer is currently \<^emph>\<open>unsound\<close>
+  (proven from a false \<open>sorry\<close>). Pending Hunter-paper re-analysis of the
+  correct intermediate-block-exclusion statement.
+\<close>
+
 lemma idx_B_n_zero_no_intermediate_B_t_ancestor:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
