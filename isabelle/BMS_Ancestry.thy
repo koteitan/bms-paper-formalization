@@ -5688,6 +5688,23 @@ proof -
 qed
 
 text \<open>
+  \<open>=====================================================================\<close>
+  DEAD / TO BE REMOVED -- ORIGINAL (non-paper) edifice, machine-checked FALSE.
+  \<open>=====================================================================\<close>
+  The block from here (\<open>m_anc_suc_strict_min\<close>) through
+  \<open>bms_S_empty_case_B_at_block_0\<close>, together with
+  \<open>lemma_2_5_ii_clause_step_v2\<close>(\<open>_at_zero_when_t_pos\<close>) below, is the
+  ORIGINAL reduction toward \<open>bms_b0_col_elem_lt\<close> (elem_lt) and
+  \<open>bms_tparent_anc_all\<close> (UNIFIED).  These statements are NOT in Hunter's
+  paper, and elem_lt/UNIFIED are MACHINE-CHECKED FALSE (counterexample
+  \<open>E = (0,0)(1,1)(2,0)(1,1)(1,1)\<close>; see \<open>cex_elem_lt_*\<close>).  Since
+  \<open>lemma_2_5_ii_main_v2\<close> has been reverted to an honest \<open>sorry\<close>, this
+  whole block is now DEAD CODE (used only within itself).  It is retained
+  only transiently and slated for physical removal; nothing here is part
+  of the faithful Hunter formalization (which lives in BMS_Hunter.thy).
+  [PROVEN-FALSE: bms_b0_col_elem_lt, bms_tparent_anc_all, bms_b0_col_r_ancestor_all,
+   bms_b0_col_t_ancestor, mpl_bound_transfer, elem_increase_below_suc_parent.]
+
   Level-\<open>Suc r'\<close> analog of @{thm m_anc_zero_strict_min}: a strict-min
   anchor lemma for the \<open>(Suc r')\<close>-ancestor relation.  If \<open>p\<close> is the
   strict row-\<open>Suc r'\<close> minimum over \<open>(p, c]\<close> (\<open>sm\<close>) AND \<open>p\<close> is a
