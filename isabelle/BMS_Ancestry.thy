@@ -5950,14 +5950,72 @@ text \<open>
   vacuous.  (The global row-\<open>t'\<close> consecutiveness is FALSE -- plateaus
   exist -- but the \<open>(Suc t')\<close>-parent \<open>p\<close> is positioned exactly so the
   interval \<open>(p, q]\<close> contains none.)\<close>
-lemma m_ancestor_interior_of_suc_parent:
+text \<open>
+  If the \<open>t'\<close>-parent relation is CONSECUTIVE on \<open>(p, q]\<close>
+  (\<open>m_parent B t' y = Some (y-1)\<close>), then \<open>q\<close>'s \<open>t'\<close>-parent chain is
+  \<open>q, q-1, \<dots>, p\<close>, so every \<open>x \<in> (p, q)\<close> is a \<open>t'\<close>-ancestor of
+  \<open>q\<close>.  Pure m-parent fact (no BMS).\<close>
+lemma m_ancestor_of_consecutive_chain:
+  assumes "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent B t' y = Some (y - 1)"
+      and "p < x" and "x < q"
+  shows "m_ancestor B t' q x"
+  using assms
+proof (induct q rule: less_induct)
+  case (less q)
+  have cons: "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent B t' y = Some (y - 1)"
+    by (rule less.prems(1))
+  have px: "p < x" by (rule less.prems(2))
+  have xq: "x < q" by (rule less.prems(3))
+  have mpq: "m_parent B t' q = Some (q - 1)" using cons px xq by auto
+  show ?case
+  proof (cases "x = q - 1")
+    case True
+    thus ?thesis using m_anc_via_parent_some[OF mpq] by simp
+  next
+    case False
+    hence x_lt: "x < q - 1" using xq by simp
+    have p_lt: "p < q - 1" using px x_lt by simp
+    have cons': "\<forall>y. p < y \<and> y \<le> q - 1 \<longrightarrow> m_parent B t' y = Some (y - 1)"
+      using cons by auto
+    have q1_lt_q: "q - 1 < q" using xq by simp
+    have "m_ancestor B t' (q - 1) x"
+      using less.hyps[OF q1_lt_q cons' px x_lt] .
+    thus ?thesis using m_anc_via_parent_some[OF mpq] by simp
+  qed
+qed
+
+text \<open>
+  THE residual structural kernel (Hunter's bumped-region combinatorics):
+  under \<open>Suc t' \<le> max_parent_level\<close>, if \<open>p\<close> is the \<open>(Suc t')\<close>-parent
+  of \<open>q\<close> in the expansion, the \<open>t'\<close>-parent relation is CONSECUTIVE on
+  \<open>(p, q]\<close>: \<open>m_parent (A[n]) t' y = Some (y-1)\<close>.  verify/probe
+  consecutive-t'-chain 0/11808.  (Global row-\<open>t'\<close> consecutiveness is
+  FALSE -- plateaus -- but \<open>p\<close> is positioned exactly so \<open>(p, q]\<close>
+  contains none.)  To prove from the bump structure (\<open>delta\<close>/\<open>ascends\<close>,
+  \<open>elem_AEn_idx_B_value\<close>) without clause (ii)/(iv).\<close>
+lemma tparent_consecutive_below_suc_parent:
   assumes "A \<in> BMS"
       and "mpl_bound (expansion A n) (Suc t')"
       and "m_parent (expansion A n) (Suc t') q = Some p"
-      and "p < x" and "x < q"
+  shows "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent (expansion A n) t' y = Some (y - 1)"
+  sorry  \<comment> \<open>[VERIFIED-OK] consecutive-t'-chain probe 0/11808.\<close>
+
+text \<open>
+  Interior columns of the \<open>(Suc t')\<close>-parent are \<open>t'\<close>-ancestors of
+  \<open>q\<close>, via consecutiveness of the \<open>t'\<close>-parent chain on \<open>(p, q]\<close>
+  (@{thm tparent_consecutive_below_suc_parent}) and
+  @{thm m_ancestor_of_consecutive_chain}.\<close>
+lemma m_ancestor_interior_of_suc_parent:
+  assumes A_BMS: "A \<in> BMS"
+      and mb: "mpl_bound (expansion A n) (Suc t')"
+      and mp: "m_parent (expansion A n) (Suc t') q = Some p"
+      and px: "p < x" and xq: "x < q"
   shows "m_ancestor (expansion A n) t' q x"
-  sorry  \<comment> \<open>[VERIFIED-OK] probe_sm_caseB[_diag] 0 Case-B at t<=mpl;
-      consecutive-t'-chain probe 0/11808.  Residual kernel.\<close>
+proof -
+  have cons: "\<forall>y. p < y \<and> y \<le> q \<longrightarrow> m_parent (expansion A n) t' y = Some (y - 1)"
+    using tparent_consecutive_below_suc_parent[OF A_BMS mb mp] .
+  show ?thesis by (rule m_ancestor_of_consecutive_chain[OF cons px xq])
+qed
 
 lemma bms_tparent_anc_all:
   fixes A :: array
