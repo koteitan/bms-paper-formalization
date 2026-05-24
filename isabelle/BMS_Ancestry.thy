@@ -7745,7 +7745,44 @@ lemma elem_lt_below_t:
       and m_lt: "m < t"
       and j_pos: "0 < j" and j_lt: "j < l1 A"
   shows "elem A s m < elem A (s + j) m"
-  sorry
+proof (cases m)
+  case 0
+  \<comment> \<open>Row-0 case (= the former long-open \<open>bms_b0_row0_strict_min\<close>).  The bad
+      root \<open>s\<close> is the \<open>t\<close>-parent of the last column \<open>C\<close>, hence a
+      \<open>(t-1)\<close>-ancestor of \<open>C\<close> and (monotone) a \<open>0\<close>-ancestor of \<open>C\<close>.  By
+      @{thm m_anc_zero_imp_strict_min} it strictly dominates the whole open
+      interval \<open>(s, C)\<close> at row 0, which contains every interior \<open>B\<^sub>0\<close>
+      column \<open>s + j\<close> (\<open>0 < j < l\<^sub>1 = C - s\<close>).\<close>
+  have t_pos: "0 < t" using m_lt 0 by simp
+  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
+  have mpC: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  have anc_t': "m_ancestor A t' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mpC[unfolded t_eq]] .
+  have anc0: "m_ancestor A 0 (last_col_idx A) s"
+    using m_ancestor_mono[OF le0 anc_t'] .
+  have strict: "\<forall>c. s < c \<and> c < last_col_idx A \<longrightarrow> elem A s 0 < elem A c 0"
+    using m_anc_zero_imp_strict_min[OF anc0] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+    using s_lt_last b0 last_lt_arr unfolding l1_def B0_block_def by simp
+  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq by linarith
+  have s_lt_sj: "s < s + j" using j_pos by simp
+  have "elem A s 0 < elem A (s + j) 0" using strict s_lt_sj sj_lt_C by blast
+  thus ?thesis using 0 by simp
+next
+  case (Suc m')
+  \<comment> \<open>Levels \<open>0 < m < t\<close>: Hunter's bad-root domination ABOVE row 0.  This is
+      the genuine open foundational gap.  At level \<open>Suc m'\<close> the
+      \<open>m\<close>-ancestor / elem-\<open><\<close> equivalence is circular (row 0 escapes it via
+      the empty ancestor side-condition of the level-0 \<open>m\<close>-parent); Hunter
+      weaves the domination into the simultaneous (i)--(v) \<open>k\<close>-induction
+      rather than proving it standalone.  Empirically true
+      (\<open>verify/probe_vacuity_refute.py\<close>: 500+ BMSs with \<open>t \<ge> 2\<close>, BFS +
+      targeted, 0 violations).  This is the single remaining (ii) \<open>sorry\<close>.\<close>
+  show ?thesis sorry
+qed
 
 text \<open>Below \<open>m\<^sub>0\<close>, the bad root \<open>s\<close> is a level-\<open>m\<close> m-ancestor of every
   interior \<open>B\<^sub>0\<close> column \<open>s + j\<close>.  Proved (mirroring the former
