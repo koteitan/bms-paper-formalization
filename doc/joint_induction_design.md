@@ -32,10 +32,12 @@ where
 - 5 clause の seed case は既存(`lemma_2_5_at_n_zero` 等)を流用。
 
 ### expand case (A ↦ A[n'], predecessor = A, IH = bms_2_5_joint A)
-DOM(A[n']) を示す。 b0_start(A[n']) の位置で **l1 A による case-split**(verify/probe_location_predictor.py で確定):
+DOM(A[n']) を示す。 b0_start(A[n']) の位置で **l1 A による case-split**(正しい検証は `verify/probe_location_3way.py`; 旧 `probe_location_predictor.py` は mid-block 破棄バグで信用不可):
 
 - **CASE l1 A ≥ 2(主ケース)**:
-  - b0_start(A[n']) は **必ず block-start** R1: `= l0 A + c·l1 A`(c=ある block index)。 [要補題化: `loc_R1`]
+  - **DOM(A[n']) が非 vacuous なのは mpl(A[n'])≥1 のときのみ**(mpl=0 なら m<0 で vacuous、 位置不要)。
+  - **mpl(A[n'])≥1 のとき** b0_start(A[n']) は **必ず block-start** R1: `= l0 A + c·l1 A`。 [要補題化: `loc_R1`、 **mpl(A[n'])≥1 guard 必須**; 2160/2160 検証]
+  - ⚠️ 無条件 `loc_R1`(guard なし)は **偽**: mpl(A[n'])=0 で mid-block(R3)が起きる(反例 `A=(0)(1)(2)(1)(0)(1)(2)(1)`, b0(A[1])=8 mid-block)。
   - A[n'] の B0' block の interior 列 = bump 公式 `elem (A[n']) (idx_B c x) m = (A!(s_A+x))!m + (ascends A x m ? c·delta A m : 0)` で A の列に対応。
   - DOM(A[n']) ⟸ **DOM(A)[IH, 非 vacuous]** + bump 非負 + delta 構造(续9 で内部 transfer 720/0 検証済)。
   - → IH で閉じる(同レベル循環は展開方向に開く)。
@@ -50,7 +52,7 @@ DOM(A[n']) を示す。 b0_start(A[n']) の位置で **l1 A による case-split
 - CORE-B(gateway)の leaf(iii_single_step / clause_iv / clause_i 4本 / v_iff)は within-block monotonicity 経由で DOM に帰着 → DOM が IH/不変量に入ったことで閉じる見込み。 [要検証: 各 leaf が DOM から出るか]
 
 ## 3. 必要な補題(実装時に証明)
-- `loc_R1`: `A∈BMS ⟹ l1 A ≥ 2 ⟹ b0_start(A[n']) = Some(l0 A + c·l1 A)`(block-start)。 経験則確定、 構造証明要(おそらく clause(iv)/gateway から)。
+- `loc_R1`(**guarded**): `A∈BMS ⟹ l1 A ≥ 2 ⟹ mpl(A[n'])≥1 ⟹ b0_start(A[n']) = Some(l0 A + c·l1 A)`(block-start)。 guard 付きは 2160/2160 検証、 無条件は偽(mpl=0 で mid-block)。 構造証明要(おそらく clause(iv)/gateway から)。
 - `dom_transfer_R1`: R1 block-start のとき DOM(A[n']) ⟸ DOM(A) + bump。 续9 で 720/0。
 - `mpl_relation`: t'=mpl(A[n']) と tA の関係(t-1/t/t+1、 t'=t-1 は pure R1)。 IH を正しい level で使うため。
 - l1 A=1 case の handle(設計 gap)。

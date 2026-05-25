@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 """
+!!! BUGGY — DO NOT TRUST ITS "l1>=2 => 100% R1" CONCLUSION. Use
+verify/probe_location_3way.py instead. !!!
+This probe had only two buckets (R1 block-start / R2 in-G') and SILENTLY
+DISCARDED the mid-block case (s' >= l0A and (s'-l0A)%l1A != 0) via `r=2: continue`
+BEFORE counting. So mid-block counterexamples never appeared, giving a false
+"l1 A >= 2 => always block-start". Refuted: A=(0)(1)(2)(1)(0)(1)(2)(1) has
+l1 A = 3 but b0_start(A[1]) = 8 (mid-block). The CORRECT result (probe_location_3way):
+mid-block (R3) occurs for l1 A >= 2 but ONLY when mpl(A[n]) = 0 (domination
+vacuous); under the design-relevant guard mpl(A[n]) >= 1 it really is always a
+block-start (2160/2160). Kept for the historical record of the false-confidence bug.
+
 DESIGN-VERIFICATION probe for the joint-induction reconstruction.
 
 The remaining technical blocker is locating b0_start(A[n]): it is always either
