@@ -11,3 +11,6 @@
   Hunter Lemma 2.5 (i)-(v) 同時帰納の設計指針。
 - `joint_induction_design.md` — Lemma 2.5 同時帰納の具体実装設計(複合不変量・
   展開帰納の case-split・必要補題)。verify-first 設計フェーズの成果。
+- `verification_pitfalls.md` — 経験的検証(probe)の落とし穴と対策チェックリスト。
+  plausible だが偽の命題を「検証済」と誤認した実害(strip漏れ/bucket破棄/浅いBFS/
+  誤guard/非BMS混入/yaBMS≠Hunter)と対策。probe を信じる前の pre-flight。
