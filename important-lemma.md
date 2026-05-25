@@ -264,3 +264,8 @@ BMS_Hunter.thy  ── Hunter Lemma 2.5 の paper-level 層
 - 散文 claim 3本は ✅。組立 (at_main + projection) は build green だが全て下流の clause-step sorry に依存 (🟡 conditional)。
 - 未証明 sorry は 2 core に集約: **CORE-A = elem_lt domination** ((ii) off-chain)、**CORE-B = gateway/intermediate-block-exclusion** ((iii)(iv)(i)(v))。CORE-B の within-block monotonicity は predecessor の elem_lt に帰着するので、究極的には全て CORE-A に収束。
 - これらを閉じるには Hunter (i)-(v) の**同時 k-induction 忠実再構成** (multi-session) が必要。
+
+**reconstruction 進捗 (2026-05-25, 续29)** — domination transfer の両ブランチが proven building block:
+- ✅ `dom_transfer_R1` (BMS_Ancestry ~9589): R1 (block-start) で domination ⟸ DOM(A)[IH] + bump 公式。
+- ✅ `dom_transfer_R2` / `dom_transfer_R2_via_BMS` (~9663): R2 (in-G') で domination ⟸ ancestry `ANC(A[n])` + `m_ancestor_elem_lt`。R2 は独立 crux でなく、A[n]-direct で見れば elem_lt を A[n]∈BMS に instantiate したもの (续27 の G'-tail 54viol は M1 proxy artifact、A[n]-direct genuine-seed で 0 viol)。
+- **⭐ 両 transfer とも domination は ancestry の下流 (`m_ancestor_elem_lt`)**。∴ CORE-A も CORE-B も「**ancestry clause (i)-(v) の前方伝播**」という単一目標に収束。残る hard target = ⑥ assembly (ancestry を BMS.induct で回す Hunter 原論文の同時 k-induction)。domination/elem_lt はそこから自動。

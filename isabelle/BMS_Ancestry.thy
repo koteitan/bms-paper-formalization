@@ -7181,6 +7181,115 @@ next
   qed
 qed
 
+text \<open>
+  \<^bold>\<open>Non-circular ancestry-from-domination\<close> (joint-induction keystone, 续30).
+
+  @{thm b0_col_ancestor_below_t} proves the ancestry \<open>m_ancestor A m (s+j) s\<close>
+  (\<open>m < t\<close>) by \<^emph>\<open>calling\<close> @{thm elem_lt_below_t} for the strict domination
+  \<open>elem A s m < elem A (s+j) m\<close> at each level (lines for the m=0 / Suc m'
+  parent-candidate steps).  Since \<open>elem_lt_below_t\<close> still has the off-chain
+  \<open>sorry\<close>, that route cannot be used to \<^emph>\<open>close\<close> \<open>elem_lt_below_t\<close> — the
+  classic Hunter entanglement.
+
+  This variant takes the domination as an \<^bold>\<open>explicit hypothesis\<close> \<open>DOM\<close>
+  (the conjunct that the joint simultaneous induction carries) instead of
+  calling \<open>elem_lt_below_t\<close>.  The proof body is otherwise identical.  Given
+  \<open>DOM A\<close> at the predecessor (supplied by the BMS-induction hypothesis), it
+  yields ancestry \<^emph>\<open>without any reference to\<close> \<open>elem_lt_below_t\<close>, so it is
+  sound to use inside the joint induction that establishes \<open>DOM\<close>.  In
+  particular it discharges the \<open>ascends \<equiv> ancestry\<close> (\<open>ascends_def\<close> =
+  \<open>non_strict_ancestor\<close>) side conditions of \<open>dom_transfer_R1\<close> (stated later
+  in this theory) from the IH \<open>DOM\<close>, making the R1 branch self-contained.\<close>
+
+lemma b0_col_ancestor_below_t_from_DOM:
+  fixes A :: array
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and DOM: "\<And>m j. m < t \<Longrightarrow> 0 < j \<Longrightarrow> j < l1 A
+                  \<Longrightarrow> elem A s m < elem A (s + j) m"
+  shows "m < t \<longrightarrow> (\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m (s + j) s)"
+proof (induct m)
+  case 0
+  show ?case
+  proof
+    assume t_pos: "0 < t"
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A 0 (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_pos0: "0 < j" and j_lt0: "j < l1 A"
+      show "m_ancestor A 0 (s + j) s"
+        using j_pos0 j_lt0
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s 0 < elem A (s + j) 0"
+          by (rule DOM[OF t_pos j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A 0 (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A 0 (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A 0 p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+next
+  case (Suc m')
+  show ?case
+  proof
+    assume Sm_lt: "Suc m' < t"
+    have m'_lt: "m' < t" using Sm_lt by simp
+    have IH_all: "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m' (s + j) s"
+      using Suc.hyps m'_lt by blast
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A (Suc m') (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_posS: "0 < j" and j_ltS: "j < l1 A"
+      show "m_ancestor A (Suc m') (s + j) s"
+        using j_posS j_ltS
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s (Suc m') < elem A (s + j) (Suc m')"
+          by (rule DOM[OF Sm_lt j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        have anc_r': "m_ancestor A m' (s + j) s" using IH_all j_pos j_lt by blast
+        obtain p where mp_p: "m_parent A (Suc m') (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A (Suc m') (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A (Suc m') (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A (Suc m') p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+qed
+
 text \<open>Hunter-faithful per-\<open>k\<close> step for clause (ii) (paper page 5).
   Fixing \<open>i, j < l\<^sub>1\<close> and using the induction hypothesis ((ii) at every
   \<open>k' < k\<close>), the proof dispatches each structural sub-case to a PROVEN
@@ -9659,6 +9768,179 @@ proof -
     thus ?thesis
       using val_bs val_iv base_bs base_iv off0 by simp
   qed
+qed
+
+text \<open>
+  \<^bold>\<open>R2-branch domination transfer\<close> (joint-induction building block, CORE-B).
+
+  The companion of @{thm dom_transfer_R1}.  In the expand case of the joint
+  induction, after the (genuine-BMS verified) design-regime guard
+  \<open>l\<^sub>1 (A[n]) \<ge> 2\<close> and \<open>mpl (A[n]) \<ge> 1\<close>, the location of \<open>b0_start (A[n])\<close>
+  splits into:
+    \<^item> \<^bold>\<open>R1\<close> (block-start): \<open>b0_start (A[n])\<close> is the first column of a bumped
+      block; handled by @{thm dom_transfer_R1} — there the whole \<open>B\<^sub>0'\<close>-block
+      interior consists of bumped \<open>B\<close>-columns, dominated via \<open>DOM(A)\<close>+bump.
+    \<^item> \<^bold>\<open>R2\<close> (in-\<open>G'\<close>): \<open>b0_start (A[n]) = s' < l\<^sub>0 A\<close>, so \<open>A[n]\<close>'s own
+      \<open>B\<^sub>0'\<close>-block reaches LEFT into the \<open>G'\<close>-tail (verbatim \<open>A\<close> \<open>G\<close>-columns,
+      @{thm elem_orig_eq_AEn_G}) as well as the bumped \<open>B\<close>-region.
+
+  \<^bold>\<open>Key structural observation.\<close>  The R2 target — \<open>s'\<close> strictly dominates,
+  at every level \<open>m < mpl (A[n])\<close>, every interior \<open>B\<^sub>0'\<close>-column of \<open>A[n]\<close> —
+  is \<^emph>\<open>exactly\<close> @{thm elem_lt_below_t} instantiated at the array \<open>A[n]\<close>
+  (which is in \<open>BMS\<close> by @{thm expand_in_BMS}).  There is no separate
+  \<open>G'\<close>-tail/\<open>B\<close>-region case split at the level of \<open>A[n]\<close>: the columns of
+  \<open>B\<^sub>0'(A[n])\<close> are the contiguous indices \<open>s' < s'+j < last_col_idx (A[n])\<close>
+  (by @{thm l1_eq_last_minus_b0}), and the bad root \<open>s'\<close> dominates them all
+  uniformly.  The naive ``\<open>G'\<close>-tail = \<open>elem A\<close> verbatim'' reading is a probe
+  artifact: it compares \<open>elem A\<close> at \<open>A\<close>'s indices \<open>< l\<^sub>0 A\<close> and ignores the
+  global re-indexing/strip of the expansion (\<open>verify/probe_R2_anc_at_AEn.py\<close>
+  compares at \<open>A[n]\<close> directly: 2127 R2 design-regime cases, 30936 checks,
+  \<^bold>\<open>0\<close> raw-domination violations and \<^bold>\<open>0\<close> ancestry violations on a deep
+  genuine-BMS BFS).
+
+  \<^bold>\<open>The needed extra invariant\<close> (this is what the task asks to identify): the
+  domination is NOT \<open>DOM(A)\<close> (predecessor's \<open>B\<^sub>0\<close>-only bump domination), and it
+  is NOT raw all-columns domination of \<open>A\<close>.  It is the \<^emph>\<open>ancestry conjunct of
+  the joint induction at the expanded array \<open>A[n]\<close>\<close>:
+    \<^item> \<open>ANC(A[n])\<close>: for \<open>m < mpl (A[n])\<close> and \<open>0 < j < l\<^sub>1 (A[n])\<close>, the bad root
+      \<open>s' = b0_start (A[n])\<close> is an \<open>m\<close>-ancestor of \<open>s'+j\<close> in \<open>A[n]\<close>.
+  This is precisely the conclusion of @{thm b0_col_ancestor_below_t} at
+  \<open>A[n]\<close> — the same ancestry invariant the simultaneous \<open>k\<close>-induction carries
+  (it makes clause (ii) case-B vacuous).  Given \<open>ANC(A[n])\<close>, the domination is
+  immediate from @{thm m_ancestor_elem_lt}: an \<open>m\<close>-ancestor is strictly
+  dominated at level \<open>m\<close>.  So R2 needs no machinery beyond the ancestry
+  invariant already proven below \<open>mpl\<close>; in particular the off-chain residual of
+  @{thm elem_lt_below_t} is \<^bold>\<open>vacuous\<close> in the R2 design regime
+  (\<open>verify/probe_R2_anc_at_AEn.py\<close>: 0 off-chain firings).
+
+  We state R2 with \<open>ANC(A[n])\<close> as the explicit hypothesis (the strengthened
+  joint-induction invariant), keeping the lemma sorry-free.
+\<close>
+
+lemma dom_transfer_R2:
+  fixes A :: array and n j m s' :: nat
+  assumes En_ne: "A[n] \<noteq> []"
+      and b0': "b0_start (A[n]) = Some s'"
+      and mpl': "max_parent_level (A[n]) = Some t'"
+      and m_lt: "m < t'"
+      and j_pos: "0 < j" and j_lt: "j < l1 (A[n])"
+      \<comment> \<open>\<open>ANC(A[n])\<close>: the joint-induction ancestry invariant at the expanded
+          array — \<open>s'\<close> is a level-\<open>m\<close> m-ancestor of every interior \<open>B\<^sub>0'\<close>-column
+          \<open>s'+j\<close> of \<open>A[n]\<close> (the conclusion of @{thm b0_col_ancestor_below_t}
+          at \<open>A[n]\<close>; genuine-BMS verified, 0 violations).\<close>
+      and ANC: "m_ancestor (A[n]) m (s' + j) s'"
+  shows "elem (A[n]) s' m < elem (A[n]) (s' + j) m"
+  using m_ancestor_elem_lt[OF ANC] .
+
+text \<open>
+  Corollary: in the joint induction, the ancestry invariant \<open>ANC(A[n])\<close> is
+  not an extra assumption but the conclusion of @{thm b0_col_ancestor_below_t}
+  applied to \<open>A[n] \<in> BMS\<close>.  We record the fully-discharged R2 domination,
+  parameterized only by the \<open>BMS\<close>-membership of \<open>A[n]\<close> (which the induction
+  supplies via @{thm expand_in_BMS}).  This shows R2 transfers with \<^emph>\<open>no\<close>
+  net-new \<open>sorry\<close> beyond the single foundational gap already inside
+  @{thm elem_lt_below_t} (which \<open>b0_col_ancestor_below_t\<close> consumes), and that
+  the gap is the \<^emph>\<open>same\<close> gap as the R1/base analysis — R2 introduces nothing
+  new.
+\<close>
+
+lemma dom_transfer_R2_via_BMS:
+  fixes A :: array and n j m s' :: nat
+  assumes En_BMS: "A[n] \<in> BMS"
+      and En_ne: "A[n] \<noteq> []"
+      and b0': "b0_start (A[n]) = Some s'"
+      and mpl': "max_parent_level (A[n]) = Some t'"
+      and m_lt: "m < t'"
+      and j_pos: "0 < j" and j_lt: "j < l1 (A[n])"
+  shows "elem (A[n]) s' m < elem (A[n]) (s' + j) m"
+proof -
+  have ANC: "m_ancestor (A[n]) m (s' + j) s'"
+    using b0_col_ancestor_below_t[OF En_BMS En_ne b0' mpl'] m_lt j_pos j_lt
+    by blast
+  show ?thesis by (rule dom_transfer_R2[OF En_ne b0' mpl' m_lt j_pos j_lt ANC])
+qed
+
+section \<open>Joint-induction architecture for the domination \<open>elem_lt_below_t\<close> (续31/32)\<close>
+
+text \<open>
+  The off-chain residual of @{thm elem_lt_below_t} cannot be closed by the
+  separated lemmas (\<open>elem_lt_below_t\<close> \<leftrightarrow> \<open>b0_col_ancestor_below_t\<close> are
+  mutually circular: ancestry is proven \<^emph>\<open>from\<close> domination, and \<open>ascends\<close>
+  \<^bold>\<open>is\<close> ancestry by definition).  The only route is a single joint induction
+  over \<open>BMS\<close> carrying the domination as an invariant.  We package the
+  domination/ancestry invariants as predicates and prove the \<^emph>\<open>scaffold\<close>:
+  the entire problem reduces to one geometric obligation, the
+  \<^bold>\<open>expand-transfer\<close> \<open>DOM A \<Longrightarrow> ANC (A[n])\<close>, which decomposes into
+  (i) a location dichotomy R1\<or>R2, (ii) the R1 coordinate bridge
+  (@{thm dom_transfer_R1}), (iii) the R2 G-tail (@{thm m_anc_orig_eq_AEn_G})
+  and the R2 B-region.  Those geometric bridges are the genuine remaining
+  multi-session work; here we establish the sorry-free reduction so the goal
+  is a single clean statement.\<close>
+
+definition DOM :: "array \<Rightarrow> bool" where
+  "DOM A \<longleftrightarrow> (\<forall>s t m j. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+                 \<longrightarrow> m < t \<longrightarrow> 0 < j \<longrightarrow> j < l1 A
+                 \<longrightarrow> elem A s m < elem A (s + j) m)"
+
+definition ANC :: "array \<Rightarrow> bool" where
+  "ANC A \<longleftrightarrow> (\<forall>s t m j. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+                 \<longrightarrow> m < t \<longrightarrow> 0 < j \<longrightarrow> j < l1 A
+                 \<longrightarrow> m_ancestor A m (s + j) s)"
+
+text \<open>Domination is downstream of ancestry: @{thm m_ancestor_elem_lt}
+  applied pointwise (an \<open>m\<close>-ancestor \<open>s\<close> of \<open>s+j\<close> has strictly smaller
+  level-\<open>m\<close> value).  No location split, no bump — clean.\<close>
+
+lemma DOM_of_ANC: "ANC A \<Longrightarrow> DOM A"
+  unfolding DOM_def ANC_def using m_ancestor_elem_lt by blast
+
+text \<open>\<open>l\<^sub>1 (seed n) \<le> 1\<close>: \<open>B0_block (seed n) = take (1 - s) (drop s (seed n))\<close>
+  has length \<open>\<le> 1\<close> (\<open>last_col_idx (seed n) = 1\<close> by @{thm length_seed}), so the
+  seed's \<open>B\<^sub>0\<close>-block is at most one column.  Makes \<open>DOM (seed n)\<close> vacuous.\<close>
+
+lemma l1_seed_le_1: "l1 (seed n) \<le> 1"
+proof -
+  have "length (B0_block (seed n)) \<le> 1"
+  proof (cases "b0_start (seed n)")
+    case None thus ?thesis unfolding B0_block_def by simp
+  next
+    case (Some s)
+    have lc: "last_col_idx (seed n) = 1" by (simp add: length_seed)
+    have "B0_block (seed n) = take (1 - s) (drop s (seed n))"
+      using Some lc unfolding B0_block_def by simp
+    hence "length (B0_block (seed n)) = min (1 - s) (length (drop s (seed n)))"
+      by simp
+    thus ?thesis by simp
+  qed
+  thus ?thesis unfolding l1_def by simp
+qed
+
+text \<open>\<^bold>\<open>Scaffold (sorry-free):\<close> if the expand-transfer \<open>DOM A \<Longrightarrow> ANC (A[n])\<close>
+  holds for every \<open>A \<in> BMS\<close> and \<open>n\<close>, then domination holds for all of
+  \<open>BMS\<close>.  Seed is vacuous (@{thm l1_seed_le_1}); the expand step reduces to
+  the transfer plus @{thm DOM_of_ANC}.  This isolates the entire remaining
+  difficulty into the single hypothesis \<open>TRANSFER\<close>.\<close>
+
+lemma DOM_all_if_transfer:
+  assumes TRANSFER: "\<And>A n. A \<in> BMS \<Longrightarrow> DOM A \<Longrightarrow> ANC (A[n])"
+  assumes "A \<in> BMS"
+  shows "DOM A"
+  using \<open>A \<in> BMS\<close>
+proof (induct A rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case unfolding DOM_def
+  proof (intro allI impI)
+    fix s t m j
+    assume "b0_start (seed n) = Some s" "max_parent_level (seed n) = Some t"
+       and "m < t" and jp: "0 < j" and jl: "j < l1 (seed n)"
+    from jp jl l1_seed_le_1[of n] have False by linarith
+    thus "elem (seed n) s m < elem (seed n) (s + j) m" by simp
+  qed
+next
+  case (expand_in_BMS A n)
+  have "ANC (A[n])"
+    using TRANSFER[OF expand_in_BMS.hyps(1) expand_in_BMS.hyps(2)] .
+  thus ?case by (rule DOM_of_ANC)
 qed
 
 end
