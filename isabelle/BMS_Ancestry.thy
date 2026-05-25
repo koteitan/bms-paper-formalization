@@ -9554,4 +9554,111 @@ lemma cex_E_is_expansion:
    = [[0,0],[1,1],[2,0],[1,1],[1,1]]"
   by eval
 
+
+text \<open>
+  \<^bold>\<open>R1-branch domination transfer\<close> (joint-induction building block).
+
+  In the joint induction (\<open>induct A rule: BMS.induct\<close>), the expand case for
+  \<open>A[n]\<close> in the R1 sub-case puts \<open>b0_start (A[n])\<close> at a \<^emph>\<open>block-start\<close>
+  \<open>idx_B_in_expansion A c\<^sub>0 0 = l\<^sub>0 A + c\<^sub>0 \<cdot> l\<^sub>1 A\<close>, the first column of block
+  \<open>B\<^sub>c\<^sub>\<^sub>0\<close>. We must show that this block-start column dominates, at every
+  level \<open>m < t\<close>, every \<^emph>\<open>later interior column\<close> of \<open>A[n]\<close>'s own \<open>B\<^sub>0'\<close> block,
+  i.e. every \<open>idx_B_in_expansion A c'' off''\<close> with \<open>c\<^sub>0 \<le> c'' \<le> n\<close>,
+  \<open>off'' < l\<^sub>1 A\<close>, and \<open>(c\<^sub>0 < c'' \<or> 0 < off'')\<close>.
+
+  The mechanism, via the bump formula @{thm elem_AEn_idx_B_value}, uses three
+  facts about the predecessor \<open>A\<close> that are available as induction hypotheses /
+  design-regime invariants (all eval-confirmed, 0 violations across a deep BFS):
+
+    \<^item> \<open>DOM\<close>: \<open>elem A s m < elem A (s + j) m\<close> for \<open>0 < j < l\<^sub>1 A\<close>, \<open>m < t\<close>
+      (the predecessor's domination of its \<open>B\<^sub>0\<close> by its first column);
+    \<^item> \<open>ASC\<close>: every column \<open>off < l\<^sub>1 A\<close> of \<open>B\<^sub>0\<close> ascends at every level
+      \<open>m < t\<close> (so \<^emph>\<open>both\<close> compared columns carry the bump);
+    \<^item> \<open>DPOS\<close>: \<open>0 < delta A m\<close> for \<open>m < t\<close> (the bump is strictly positive).
+
+  With these, for \<open>m < t\<close> let \<open>e\<^sub>s = elem A s m\<close>, \<open>d = delta A m > 0\<close>. By the
+  bump formula and \<open>ASC\<close>:
+    \<^item> the block-start value is \<open>e\<^sub>s + c\<^sub>0 \<cdot> d\<close>;
+    \<^item> the interior value is \<open>elem A (s + off'') m + c'' \<cdot> d\<close>.
+  If \<open>0 < off''\<close>: \<open>DOM\<close> gives \<open>e\<^sub>s < elem A (s + off'') m\<close> and \<open>c\<^sub>0 \<cdot> d \<le> c'' \<cdot> d\<close>
+  (as \<open>c\<^sub>0 \<le> c''\<close>), so the sum is strictly larger. If \<open>off'' = 0\<close> (then
+  \<open>c\<^sub>0 < c''\<close> by hypothesis): both base values equal \<open>e\<^sub>s\<close>, and
+  \<open>c\<^sub>0 \<cdot> d < c'' \<cdot> d\<close> by \<open>DPOS\<close>. Either way the block-start is dominated.
+\<close>
+
+lemma dom_transfer_R1:
+  fixes A :: array and n c\<^sub>0 c'' off'' m :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      \<comment> \<open>level below the maximal parent level\<close>
+      and m_lt: "m < t"
+      \<comment> \<open>\<open>DOM(A)\<close>: predecessor domination of \<open>B\<^sub>0\<close> by its first column\<close>
+      and DOM: "\<And>j. 0 < j \<Longrightarrow> j < l1 A \<Longrightarrow> elem A s m < elem A (s + j) m"
+      \<comment> \<open>\<open>ASC\<close>: every \<open>B\<^sub>0\<close> column ascends at level \<open>m < t\<close>\<close>
+      and ASC: "\<And>off. off < l1 A \<Longrightarrow> ascends A off m"
+      \<comment> \<open>\<open>DPOS\<close>: the bump at level \<open>m < t\<close> is strictly positive\<close>
+      and DPOS: "0 < delta A m"
+      \<comment> \<open>block / offset bounds putting the interior column to the right of
+          the block-start \<open>idx_B_in_expansion A c\<^sub>0 0\<close>\<close>
+      and c0_le: "c\<^sub>0 \<le> c''" and c''_le: "c'' \<le> n"
+      and off_lt: "off'' < l1 A"
+      and later: "c\<^sub>0 < c'' \<or> 0 < off''"
+      \<comment> \<open>bump-formula prerequisites (rows are kept; columns reach level \<open>m\<close>)\<close>
+      and m_keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and m_col0: "m < length (A ! (s + 0))"
+      and m_coloff: "m < length (A ! (s + off''))"
+  shows "elem (A[n]) (idx_B_in_expansion A c\<^sub>0 0) m
+       < elem (A[n]) (idx_B_in_expansion A c'' off'') m"
+proof -
+  have c0_le_n: "c\<^sub>0 \<le> n" using c0_le c''_le by simp
+  \<comment> \<open>offset 0 is a legitimate \<open>B\<^sub>0\<close> column whenever \<open>B\<^sub>0\<close> is non-empty;
+      \<open>later\<close> guarantees \<open>B\<^sub>0\<close> non-empty (\<open>off'' < l1 A\<close> already does so).\<close>
+  have l1_pos: "0 < l1 A" using off_lt by simp
+  \<comment> \<open>both columns ascend at level \<open>m\<close> (block-start offset 0 and interior offset).\<close>
+  have asc0: "ascends A 0 m" using ASC[OF l1_pos] .
+  have ascoff: "ascends A off'' m" using ASC[OF off_lt] .
+  \<comment> \<open>bump-formula values of the two columns.\<close>
+  have val_bs: "elem (A[n]) (idx_B_in_expansion A c\<^sub>0 0) m
+              = (A ! (s + 0)) ! m + c\<^sub>0 * delta A m"
+    using elem_AEn_idx_B_value[OF A_ne b0 c0_le_n l1_pos m_keep m_col0] asc0
+    by simp
+  have val_iv: "elem (A[n]) (idx_B_in_expansion A c'' off'') m
+              = (A ! (s + off'')) ! m + c'' * delta A m"
+    using elem_AEn_idx_B_value[OF A_ne b0 c''_le off_lt m_keep m_coloff] ascoff
+    by simp
+  \<comment> \<open>base values as \<open>elem\<close> (so \<open>DOM\<close> applies).\<close>
+  have base_bs: "(A ! (s + 0)) ! m = elem A s m"
+    by (simp add: elem_def)
+  have base_iv: "(A ! (s + off'')) ! m = elem A (s + off'') m"
+    by (simp add: elem_def)
+  have mono_c: "c\<^sub>0 * delta A m \<le> c'' * delta A m"
+    using c0_le by (rule mult_le_mono1)
+  show ?thesis
+  proof (cases "0 < off''")
+    case True
+    \<comment> \<open>\<open>DOM\<close> gives strict domination of the base; bump is monotone.\<close>
+    have dom: "elem A s m < elem A (s + off'') m"
+      using DOM[OF True off_lt] .
+    have "elem A s m + c\<^sub>0 * delta A m
+        < elem A (s + off'') m + c'' * delta A m"
+      using dom mono_c by linarith
+    thus ?thesis
+      using val_bs val_iv base_bs base_iv by simp
+  next
+    case False
+    \<comment> \<open>\<open>off'' = 0\<close>, so by \<open>later\<close> we have \<open>c\<^sub>0 < c''\<close>; bases are equal,
+        and the bump is strictly larger by \<open>DPOS\<close>.\<close>
+    have off0: "off'' = 0" using False by simp
+    have cgt: "c\<^sub>0 < c''" using later off0 by simp
+    have strict_c: "c\<^sub>0 * delta A m < c'' * delta A m"
+      using cgt DPOS by (simp add: mult_less_mono1)
+    have "elem A s m + c\<^sub>0 * delta A m
+        < elem A s m + c'' * delta A m"
+      using strict_c by linarith
+    thus ?thesis
+      using val_bs val_iv base_bs base_iv off0 by simp
+  qed
+qed
+
 end
