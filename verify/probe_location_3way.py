@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 """
+!!! STILL UNRELIABLE (coverage gap) — use verify/probe_location_correct.py. !!!
+This fixed the bucket-discard bug but kept (a) a shallow BFS (depth 7, hand seeds)
+and (b) the WRONG guard (mpl>=1 only, not l1(A[n])>=2). Its "('>=2','>=1') R3=0,
+R2=0" conclusion is a COVERAGE-GAP false positive: with a deeper BFS and the
+correct design guard (l1(A[n])>=2 AND mpl(A[n])>=1), b0_start(A[n]) is R1 (block-
+start) OR R2 (in-G') — R2 occurs for l1(A)>=2 too (2025 cases). Only R3 (mid-block)
+is genuinely 0 in the design-relevant regime. See probe_location_correct.py.
+
 CORRECTED location probe (the earlier probe_location_predictor.py had a BUG:
 it discarded the mid-block case `r=2: continue` BEFORE counting, giving a false
 "l1>=2 => 100% block-start"). Here we count ALL three buckets and never discard:

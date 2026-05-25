@@ -34,13 +34,11 @@ where
 ### expand case (A ↦ A[n'], predecessor = A, IH = bms_2_5_joint A)
 DOM(A[n']) を示す。 b0_start(A[n']) の位置で **l1 A による case-split**(正しい検証は `verify/probe_location_3way.py`; 旧 `probe_location_predictor.py` は mid-block 破棄バグで信用不可):
 
-- **CASE l1 A ≥ 2(主ケース)**:
-  - **DOM(A[n']) が非 vacuous なのは mpl(A[n'])≥1 のときのみ**(mpl=0 なら m<0 で vacuous、 位置不要)。
-  - **mpl(A[n'])≥1 のとき** b0_start(A[n']) は **必ず block-start** R1: `= l0 A + c·l1 A`。 [要補題化: `loc_R1`、 **mpl(A[n'])≥1 guard 必須**; 2160/2160 検証]
-  - ⚠️ 無条件 `loc_R1`(guard なし)は **偽**: mpl(A[n'])=0 で mid-block(R3)が起きる(反例 `A=(0)(1)(2)(1)(0)(1)(2)(1)`, b0(A[1])=8 mid-block)。
-  - A[n'] の B0' block の interior 列 = bump 公式 `elem (A[n']) (idx_B c x) m = (A!(s_A+x))!m + (ascends A x m ? c·delta A m : 0)` で A の列に対応。
-  - DOM(A[n']) ⟸ **DOM(A)[IH, 非 vacuous]** + bump 非負 + delta 構造(续9 で内部 transfer 720/0 検証済)。
-  - → IH で閉じる(同レベル循環は展開方向に開く)。
+- **DOM(A[n']) が非 vacuous なのは `l1(A[n'])≥2 ∧ mpl(A[n'])≥1` のときのみ**(これが位置を使う設計領域)。
+- ⚠️ **「l1 A≥2 ⟹ block-start」 は偽だった**(私の coverage-gap/bucket バグ artifact、3回訂正、続24)。 確定版 `verify/probe_location_correct.py`(深い BFS, MECE, 正しい guard): 設計領域で位置は **2-way: R1(block-start `=l0A+c·l1A`)∨ R2(in-G' `<l0A`)**、 **mid-block(R3)は起きない**(R3=0; これだけが robust な前進)。 clean な l1 discriminator は無い。
+- 共通: A[n'] の B-region 列 = bump 公式 `elem (A[n']) (idx_B c x) m = (A!(s_A+x))!m + (ascends A x m ? c·delta A m : 0)`。
+- **CASE R1(b0_start(A[n']) = block-start)**: B0' interior は bump コピー → DOM(A[n']) ⟸ DOM(A)[IH]+bump(续9 transfer 720/0)。 比較的 clean。
+- **CASE R2(b0_start(A[n']) in-G')**: interior = G'-tail(verbatim A の G 列、M1 `elem_orig_eq_AEn_G`)+ B-region。 G'-tail の **G 列間 domination** が要(DOM(A) 非該当、clause(i)/G-ancestry 帰着の見込み)= l1=1/R2 と同じ gap。 **CORE-B 同様の残作業**。
 
 - **CASE l1 A = 1(特殊・thin)** — `verify/probe_l1eq1_case.py` で構造判明(DOM(A[n']) 0 viol):
   - A の B0 単一列 → **DOM(A)[IH] は vacuous**。 B-region は同一列の bump コピー(`(A!s)!m + c·delta`)で block-index c に単調。
