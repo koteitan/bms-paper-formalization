@@ -219,3 +219,48 @@ graph TD
 - **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$** (自前 IH 不要)
 - 内容: block index の上方 shift で祖先関係が不変
 - paper page 7: "by application of (iii)" + "(ii) for k" + (iv) 使用
+
+## Isabelle 形式化の進捗ツリー (BMS_Hunter.thy, 2026-05-25)
+
+凡例: ✅ = sorry-free 完全証明 / 🟡 = 構造は proven だが下流 sorry に依存 (conditional) / 🚨 = 未証明 sorry / ⛏ = 帰着先の core / ✗ = 削除済 (偽命題)。lemma 名は `.thy` のもの。
+
+```
+BMS_Hunter.thy  ── Hunter Lemma 2.5 の paper-level 層
+│
+├─ 🟡 lemma_2_5_at_main          (k-外/n-内 同時帰納で 5 clause を組み立て)
+│   │   ※ build green だが下記 clause step の open sorry に依存 (conditional)
+│   │
+│   ├─ 🟡 (ii) lemma_2_5_ii_main_v2  →  lemma_2_5_ii_clause_step
+│   │        └─ b0_col_ancestor_below_t  ✅ (elem_lt から導出済)
+│   │            └─ 🚨 elem_lt_below_t  ── m=0 ✅ / on-chain ✅ / off-chain 🚨
+│   │                                      ⛏ CORE-A: domination (同時帰納の entanglement point)
+│   │
+│   ├─ 🟡 (iii) lemma_2_5_iii_clause_step   [uses (ii)@k + IH]
+│   │        └─ 🚨 iii_single_step_t_to_Suc_t     ⛏ CORE-B: gateway/block-translation
+│   │
+│   ├─ 🟡 (iv) lemma_2_5_iv_clause_step      [uses (ii)(iii)@k + IH]
+│   │        ├─ ✅ clause_iv_intermediate_B_t_impossible_at_zero
+│   │        ├─ 🚨 ..._at_zero_outside_lands_in_G        ⛏ CORE-B
+│   │        ├─ 🚨 m_parent_block_n_stays_until_zero     ⛏ CORE-B (→within-block monotone→CORE-A)
+│   │        └─ 🚨 chain_through_Bn_first  ── vacuity sorry (真・0/14994)  ⛏ CORE-B
+│   │            └─ ✗ idx_B_n_zero_no_intermediate_B_t_ancestor 削除済 (偽 T2)
+│   │
+│   ├─ 🟡 (i) lemma_2_5_i_clause_step        [uses (ii)(iii)(iv)@k + IH]
+│   │        └─ 🚨 forward/backward × ascends/not_ascends (4本)
+│   │                ⛏ CORE-B (clause iv と intermediate-block-exclusion core を共有)
+│   │
+│   └─ 🟡 (v) lemma_2_5_v_clause_step        [uses (i)-(iv)@k + IH]
+│            └─ 🚨 lemma_2_5_v_clause_step_iff      ⛏ CORE-B
+│
+├─ 🟡 lemma_2_5_i / _ii / _iii / _iv / _v / _iv_and_v   (at_main からの projection、依存継承)
+│
+└─ ✅ paper proof 中の散文 claim (完全証明・sorry-free)
+     ├─ ✅ hunter_ascends_iff_first_b0_ancestor
+     ├─ ✅ hunter_first_b0_col_ascends
+     └─ ✅ hunter_m_ancestry_total_on_ancestors
+```
+
+**要点**:
+- 散文 claim 3本は ✅。組立 (at_main + projection) は build green だが全て下流の clause-step sorry に依存 (🟡 conditional)。
+- 未証明 sorry は 2 core に集約: **CORE-A = elem_lt domination** ((ii) off-chain)、**CORE-B = gateway/intermediate-block-exclusion** ((iii)(iv)(i)(v))。CORE-B の within-block monotonicity は predecessor の elem_lt に帰着するので、究極的には全て CORE-A に収束。
+- これらを閉じるには Hunter (i)-(v) の**同時 k-induction 忠実再構成** (multi-session) が必要。
