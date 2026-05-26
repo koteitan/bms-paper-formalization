@@ -59,6 +59,12 @@
   - ✅ elem_lt_below_t m=0
   - ✅ elem_lt_below_t m>0 on-chain
   - 🚨 elem_lt_below_t m>0 off-chain
+    - ✅ DOM / ANC / DOM_of_ANC / l1_seed_le_1
+    - ✅ DOM_all_if_transfer (off-chain → 単一 TRANSFER obligation に簡約)
+    - ✅ b0_col_ancestor_below_t_from_DOM
+    - ✅ dom_transfer_R1
+    - ✅ dom_transfer_R2 / dom_transfer_R2_via_BMS
+    - 🚨 TRANSFER: DOM A ⟹ ANC (A[n]) (DOM joint induction)
   - ✅ b0_col_ancestor_below_t
   - ✅ m_anc_Suc_imp_strict_min_on_anc
   - ✅ m_anc_zero_imp_strict_min / m_anc_zero_strict_min
@@ -72,12 +78,12 @@
   - ✅ clause_iv_intermediate_B_t_impossible_when_G_parent_exists
   - ✅ idx_B_earlier_block_lt_block_n
   - ✅ clause_iv_intermediate_B_t_impossible_at_zero
-  - 🚨 clause_iv_intermediate_B_t_impossible_chain_through_Bn_first
+  - ✅ clause_iv_intermediate_B_t_impossible_chain_through_Bn_first
   - ✅ clause_iv_intermediate_B_t_impossible_chain_breaks
   - ✅ idx_B_n_zero_gateway_for_earlier_block_ancestor
   - ✅ idx_B_n_zero_gateway_aux
   - 🚨 m_parent_block_n_stays_until_zero
-  - 🚨 clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G
+  - ✅ clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G
 
 - 🚨 Stage 3: ∀k.(iii)@k — lemma_2_5_iii_main
   - ✅ lemma_2_5_iii_clause_step
