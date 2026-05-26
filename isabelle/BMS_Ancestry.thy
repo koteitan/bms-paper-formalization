@@ -8396,7 +8396,121 @@ lemma clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G:
       and S_empty: "[j' \<leftarrow> [0..<i]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
                             < elem (A[n]) (idx_B_in_expansion A 0 i) 0] = []"
   shows "p < l0 A"
-  sorry
+proof -
+  \<comment> \<open>\<open>b0_start = Some s\<close> pins \<open>max_parent_level A = Some t\<close> and
+      \<open>m_parent A t (last) = Some s\<close>.\<close>
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def by (auto split: option.splits)
+  have parent_t: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  \<comment> \<open>Basic geometry of \<open>B\<^sub>0\<close>.\<close>
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+    using s_lt_last b0 last_lt_arr unfolding l1_def B0_block_def by simp
+  have height_pos: "0 < height A" using max_parent_level_lt[OF mp] by linarith
+  \<comment> \<open>Column \<open>s + i\<close> lies strictly inside \<open>B\<^sub>0\<close> (\<open>0 < i < l1\<close>).\<close>
+  have si_lt_last: "s + i < last_col_idx A" using i_lt l1_eq by linarith
+  have si_lt_arr: "s + i < arr_len A" using si_lt_last last_lt_arr by linarith
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by linarith
+  have len_As: "0 < length (A ! s)"
+    using length_col_arr[OF is_arr A_ne s_lt_arr] height_pos by simp
+  have len_Asi: "0 < length (A ! (s + i))"
+    using length_col_arr[OF is_arr A_ne si_lt_arr] height_pos by simp
+  \<comment> \<open>The bad root \<open>s\<close> is a level-0 m-ancestor of the last column (uniformly
+      in \<open>t\<close>), hence strictly dominates the whole open interval \<open>(s, last)\<close>
+      at row 0; in particular \<open>elem A s 0 < elem A (s + i) 0\<close>.\<close>
+  have m_anc_0: "m_ancestor A 0 (last_col_idx A) s"
+  proof (cases t)
+    case 0
+    show ?thesis using m_anc_via_parent_some[OF parent_t[unfolded 0]] by simp
+  next
+    case (Suc t')
+    have "m_ancestor A t' (last_col_idx A) s"
+      using m_parent_Suc_implies_m_ancestor[OF parent_t[unfolded Suc]] .
+    thus ?thesis using m_ancestor_mono[OF le0] by blast
+  qed
+  have strict: "elem A s 0 < elem A (s + i) 0"
+    using m_anc_zero_imp_strict_min[OF m_anc_0] s_lt_last si_lt_last
+          i_pos by simp
+  \<comment> \<open>The \<open>B\<^sub>0\<close> column \<open>s + i\<close> has a positive row-0 value (\<open>> elem A s 0\<close>),
+      and it occurs verbatim in the pre-strip array \<open>?P\<close> at \<open>idx_B(0, i)\<close>;
+      hence the strip cutoff is positive: \<open>0 < keep_of\<close>.\<close>
+  let ?P = "G_block A @ Bs_concat A n"
+  have len_P: "length ?P = l0 A + Suc n * l1 A"
+    by (simp add: l0_def l1_def length_Bs_concat)
+  have idxBi_ltP: "idx_B_in_expansion A 0 i < length ?P"
+  proof -
+    have "(0::nat) * l1 A + i < Suc n * l1 A" using i_lt by simp
+    thus ?thesis using len_P unfolding idx_B_in_expansion_def by simp
+  qed
+  have P_ne: "?P \<noteq> []" using idxBi_ltP by auto
+  \<comment> \<open>\<open>?P\<close>'s column at \<open>idx_B(0, i)\<close> is exactly the original column \<open>A ! (s+i)\<close>.\<close>
+  have B0_col: "B0_block A ! i = A ! (s + i)"
+  proof -
+    have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have i_lt_diff: "i < last_col_idx A - s" using i_lt l1_eq by simp
+    have "B0_block A ! i = take (last_col_idx A - s) (drop s A) ! i"
+      using B0_form by simp
+    also have "\<dots> = (drop s A) ! i" using i_lt_diff by simp
+    also have "\<dots> = A ! (s + i)" using si_lt_arr by (simp add: add.commute)
+    finally show ?thesis .
+  qed
+  have P_col: "?P ! (idx_B_in_expansion A 0 i) = A ! (s + i)"
+  proof -
+    have "?P ! (idx_B_in_expansion A 0 i) = Bi_block A 0 ! i"
+      using le0 i_lt by (rule pre_strip_nth_B)
+    also have "\<dots> = B0_block A ! i" using Bi_block_zero[OF A_ne] by simp
+    also have "\<dots> = A ! (s + i)" using B0_col .
+    finally show ?thesis .
+  qed
+  have col_pos: "0 < (?P ! (idx_B_in_expansion A 0 i)) ! 0"
+    using strict P_col unfolding elem_def by simp
+  \<comment> \<open>All columns of \<open>?P\<close> have length \<open>height A > 0\<close>, so \<open>0 < height ?P\<close>.\<close>
+  have all_P: "\<forall>c \<in> set ?P. length c = height A"
+  proof -
+    have all_A: "\<forall>c \<in> set A. length c = height A"
+      using is_arr unfolding is_array_def by simp
+    have all_G: "\<forall>c \<in> set (G_block A). length c = height A"
+      using G_block_subset_A all_A by blast
+    have all_Bs: "\<forall>c \<in> set (Bs_concat A n). length c = height A"
+      using Bs_concat_uniform[OF is_arr A_ne] .
+    show ?thesis using all_G all_Bs by auto
+  qed
+  have height_P_pos: "0 < height ?P"
+  proof -
+    have "hd ?P \<in> set ?P" using P_ne by (rule hd_in_set)
+    hence "length (hd ?P) = height A" using all_P by blast
+    thus ?thesis using P_ne height_pos by simp
+  qed
+  have keep_pos: "0 < keep_of ?P"
+  proof (rule ccontr)
+    assume "\<not> 0 < keep_of ?P"
+    hence keep0: "keep_of ?P \<le> 0" by simp
+    have col_in: "?P ! (idx_B_in_expansion A 0 i) \<in> set ?P"
+      using nth_mem[OF idxBi_ltP] .
+    have "(?P ! (idx_B_in_expansion A 0 i)) ! 0 = 0"
+      using keep_of_row_zero[OF keep0 height_P_pos col_in] .
+    thus False using col_pos by simp
+  qed
+  \<comment> \<open>Block-0 columns of \<open>A[n]\<close> carry the original \<open>B\<^sub>0\<close> row-0 values.\<close>
+  have i_lt': "i < l1 A" by (rule i_lt)
+  have zero_lt_l1: "(0::nat) < l1 A" by (rule l1_pos)
+  have e0: "elem (A[n]) (idx_B_in_expansion A 0 0) 0 = elem A (s + 0) 0"
+    using elem_expansion_B0_via_orig[OF A_ne b0 zero_lt_l1 keep_pos] len_As by simp
+  have ei: "elem (A[n]) (idx_B_in_expansion A 0 i) 0 = elem A (s + i) 0"
+    using elem_expansion_B0_via_orig[OF A_ne b0 i_lt' keep_pos] len_Asi by simp
+  have lt0i: "elem (A[n]) (idx_B_in_expansion A 0 0) 0
+            < elem (A[n]) (idx_B_in_expansion A 0 i) 0"
+    using e0 ei strict by simp
+  \<comment> \<open>Hence offset \<open>0 \<in> S\<close>, contradicting \<open>S_empty\<close>; the goal is vacuous.\<close>
+  have "0 \<in> set [j' \<leftarrow> [0..<i]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                          < elem (A[n]) (idx_B_in_expansion A 0 i) 0]"
+    using i_pos lt0i by simp
+  thus ?thesis using S_empty by simp
+qed
 
 text \<open>
   Within-block landing of the row-0 m-parent of \<open>idx_B(c, i)\<close> when
@@ -8601,6 +8715,45 @@ text \<open>
   remains open.
 \<close>
 
+text \<open>
+  Sharper inductive step underlying the gateway property below. The
+  \<^emph>\<open>immediate\<close> \<open>m\<close>-parent of a block-\<open>n\<close> column \<open>idx_B(n, a)\<close> with
+  \<open>0 < a\<close> never lands strictly below the leftmost block-\<open>n\<close> column
+  \<open>idx_B(n, 0)\<close>: it either stays inside block \<open>n\<close> at a smaller offset,
+  or equals \<open>idx_B(n, 0)\<close> itself. In particular the parent is never a
+  \<open>G\<close>-column directly --- to exit block \<open>n\<close> leftwards the chain must first
+  reach \<open>idx_B(n, 0)\<close>.
+
+  This is a refinement of clause (iv) (which allows a direct \<open>G\<close>-parent
+  in general); for \<open>a > 0\<close> the \<open>G\<close>-parent case is empirically vacuous.
+  Confirmed (yaBMS BFS, \<open>verify/verify_Bn_parent_not_below_zero.py\<close>:
+  885 BMSs, 0 failures, re-run 2026-05-20; strip-correct genuine-seed
+  re-verification \<open>verify/probe_mparent_block_n_stays.py\<close>: 0 violations
+  of 26298 checks). Isolated as a single \<open>sorry\<close>; the full gateway lemma
+  is then proved from it by induction on the block-\<open>n\<close> offset (see
+  \<open>idx_B_n_zero_gateway_aux\<close>, fully discharged modulo this step), and the
+  intermediate-block-exclusion consumer below uses it directly.
+
+  \<^bold>\<open>Math obstruction.\<close> At level \<open>m = 0\<close> the parent is the rightmost
+  candidate below \<open>idx_B(n, a)\<close>; the \<open>outside_block\<close> helper shows the
+  candidate set, restricted to indices \<open>< idx_B(n, 0)\<close>, would force
+  \<open>p < idx_B(n, 0)\<close> precisely when the within-block set \<open>S\<close> is empty.
+  So this step needs that \<open>S\<close> is \<^emph>\<open>non-empty\<close> for every \<open>a > 0\<close>: some
+  smaller block-\<open>n\<close> offset has a strictly smaller row-0 value. That is
+  the dual of the global-minimum property used by the two clause-(iv)
+  helpers above, and equally not yet in the library --- bare \<open>sorry\<close>.
+\<close>
+
+lemma m_parent_block_n_stays_until_zero:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and a_pos: "0 < a" and a_lt: "a < l1 A"
+      and mp_eq: "m_parent (A[n]) m (idx_B_in_expansion A n a) = Some p"
+  shows "idx_B_in_expansion A n 0 \<le> p"
+  sorry
+
 lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -8621,91 +8774,22 @@ lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
                                                             (idx_B_in_expansion A n 0)"
   shows "False"
 proof -
-  let ?i = "idx_B_in_expansion A n i"
-  let ?b0 = "idx_B_in_expansion A n 0"
-  \<comment> \<open>Since \<open>0 < k\<close>, write \<open>k = Suc k\<^sub>0\<close>; the level-\<open>k\<close> parent \<open>p\<close> is then a
-      level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close> (definition of \<open>m_parent\<close>).\<close>
-  obtain k\<^sub>0 where k_eq: "k = Suc k\<^sub>0" using k_pos by (cases k) auto
-  have anc_p: "m_ancestor (A[n]) k\<^sub>0 ?i p"
-    using m_parent_Suc_implies_m_ancestor[OF mp_eq[unfolded k_eq]] .
-  \<comment> \<open>By the chain hypothesis at level \<open>k\<^sub>0 < k\<close>, \<open>?b0\<close> is also a level-\<open>k\<^sub>0\<close>
-      ancestor of \<open>?i\<close>.\<close>
-  have k0_lt: "k\<^sub>0 < k" using k_eq by simp
-  have anc_b0: "m_ancestor (A[n]) k\<^sub>0 ?i ?b0"
-    using chain_through_Bn0 k0_lt by blast
-  \<comment> \<open>\<open>p = idx_B(t, j)\<close> with \<open>t < n\<close> lies strictly below \<open>idx_B(n, 0) = ?b0\<close>.\<close>
-  have p_lt_b0: "p < ?b0"
+  \<comment> \<open>The level-\<open>k\<close> \<^emph>\<open>immediate\<close> parent of the block-\<open>n\<close> column \<open>idx_B(n, i)\<close>
+      (with \<open>0 < i < l1\<close>) cannot land strictly below the leftmost block-\<open>n\<close>
+      column \<open>idx_B(n, 0)\<close>: by the gateway step
+      @{thm m_parent_block_n_stays_until_zero}, \<open>idx_B(n, 0) \<le> p\<close>.\<close>
+  have p_ge_b0: "idx_B_in_expansion A n 0 \<le> p"
+    using m_parent_block_n_stays_until_zero
+            [OF A_BMS A_ne b0 l1_pos i_pos i_lt mp_eq] .
+  \<comment> \<open>But \<open>p = idx_B(t, j)\<close> with \<open>t < n\<close> lies strictly below \<open>idx_B(n, 0)\<close>;
+      this directly contradicts the gateway bound. (The full premise
+      combination is also empirically unrealizable on genuine BMS --- strip-correct
+      probe \<open>verify/probe_T2_consumer_realizable.py\<close>: 0 of 14994 --- consistent
+      with this proof being vacuous.)\<close>
+  have p_lt_b0: "p < idx_B_in_expansion A n 0"
     using p_eq idx_B_earlier_block_lt_block_n[OF t_lt_n j_lt] by simp
-  \<comment> \<open>Both \<open>p\<close> and \<open>?b0\<close> are level-\<open>k\<^sub>0\<close> ancestors of \<open>?i\<close>, so by linearity
-      of the \<open>m\<close>-ancestor chain they are comparable.\<close>
-  have "p = ?b0 \<or> m_ancestor (A[n]) k\<^sub>0 p ?b0 \<or> m_ancestor (A[n]) k\<^sub>0 ?b0 p"
-    using m_ancestor_chain_linear anc_p anc_b0 by blast
-  thus False
-  proof (elim disjE)
-    \<comment> \<open>\<open>p = ?b0\<close> contradicts \<open>p < ?b0\<close>.\<close>
-    assume "p = ?b0" thus False using p_lt_b0 by simp
-  next
-    \<comment> \<open>If \<open>p\<close> is an ancestor of \<open>?b0\<close> then \<open>?b0 < p\<close>, contradicting \<open>p < ?b0\<close>.\<close>
-    assume "m_ancestor (A[n]) k\<^sub>0 p ?b0"
-    hence "?b0 < p" by (rule m_ancestor_target_lt)
-    thus False using p_lt_b0 by simp
-  next
-    \<comment> \<open>The remaining configuration: \<open>p = idx_B(t, j)\<close> is itself a
-        \<open>k\<^sub>0\<close>-ancestor of \<open>?b0 = idx_B(n, 0)\<close>. Combined with all the
-        hypotheses in scope (\<open>0 < i < l1\<close>, \<open>0 < k\<close>, the \<open>k\<close>-parent of
-        \<open>idx_B(n,i)\<close> being \<open>p = idx_B(t,j)\<close> with \<open>t < n\<close>, \<open>no_G_parent\<close>,
-        and \<open>chain_through_Bn0\<close>), this is the gateway/intermediate-block
-        configuration. The full combination is UNREALIZABLE on genuine BMS
-        (strip-correct probe \<open>verify/probe_T2_consumer_realizable.py\<close>: 0 of
-        14994), so the branch is vacuously contradictory --- an honest (true)
-        \<open>sorry\<close>, replacing the former FALSE standalone lemma
-        \<open>idx_B_n_zero_no_intermediate_B_t_ancestor\<close> (removed; see the note
-        above and theory \<open>ValueCheck_T2\<close>). A faithful proof needs Hunter's
-        p.6 gateway argument.\<close>
-    assume "m_ancestor (A[n]) k\<^sub>0 ?b0 p"
-    thus False
-      sorry
-  qed
+  show False using p_ge_b0 p_lt_b0 by simp
 qed
-
-text \<open>
-  Sharper inductive step underlying the gateway property below. The
-  \<^emph>\<open>immediate\<close> \<open>m\<close>-parent of a block-\<open>n\<close> column \<open>idx_B(n, a)\<close> with
-  \<open>0 < a\<close> never lands strictly below the leftmost block-\<open>n\<close> column
-  \<open>idx_B(n, 0)\<close>: it either stays inside block \<open>n\<close> at a smaller offset,
-  or equals \<open>idx_B(n, 0)\<close> itself. In particular the parent is never a
-  \<open>G\<close>-column directly — to exit block \<open>n\<close> leftwards the chain must first
-  reach \<open>idx_B(n, 0)\<close>.
-
-  This is a refinement of clause (iv) (which allows a direct \<open>G\<close>-parent
-  in general); for \<open>a > 0\<close> the \<open>G\<close>-parent case is empirically vacuous.
-  Confirmed (yaBMS BFS, \<open>verify/verify_Bn_parent_not_below_zero.py\<close>:
-  885 BMSs, 0 failures, re-run 2026-05-20; and a separate probe over
-  1246 expansions found 0 direct \<open>G\<close>-parents of any \<open>idx_B(n, a)\<close> with
-  \<open>a > 0\<close>). Isolated as a single \<open>sorry\<close>; the full gateway lemma is then
-  proved from it by induction on the block-\<open>n\<close> offset (see
-  \<open>idx_B_n_zero_gateway_aux\<close>, which is fully discharged modulo this
-  step).
-
-  \<^bold>\<open>Math obstruction.\<close> At level \<open>m = 0\<close> the parent is the rightmost
-  candidate below \<open>idx_B(n, a)\<close>; the \<open>outside_block\<close> helper shows the
-  candidate set, restricted to indices \<open>< idx_B(n, 0)\<close>, would force
-  \<open>p < idx_B(n, 0)\<close> precisely when the within-block set \<open>S\<close> is empty.
-  So this step needs that \<open>S\<close> is \<^emph>\<open>non-empty\<close> for every \<open>a > 0\<close>: some
-  smaller block-\<open>n\<close> offset has a strictly smaller row-0 value. That is
-  the dual of the global-minimum property used by the two clause-(iv)
-  helpers above, and equally not yet in the library — bare \<open>sorry\<close>.
-\<close>
-
-lemma m_parent_block_n_stays_until_zero:
-  fixes A :: array and n :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and l1_pos: "0 < l1 A"
-      and a_pos: "0 < a" and a_lt: "a < l1 A"
-      and mp_eq: "m_parent (A[n]) m (idx_B_in_expansion A n a) = Some p"
-  shows "idx_B_in_expansion A n 0 \<le> p"
-  sorry
 
 text \<open>
   The \<open>B_n[0]\<close> gateway property. The leftmost block-\<open>n\<close> column
