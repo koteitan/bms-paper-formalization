@@ -1,4 +1,10 @@
-Add probe refuting the l0-keyed location dichotomy for b0_start(A[n])
+v0.1.48/Reduce R2 domination + clause (i)/(v) ascending to isolated geometric cruxes
 
-- Add probe_location_dichotomy: l0A=0/R1, l0A>0/R2 hypothesis is FALSE (block-start occurs at l0A>0)
-- Confirm the usable fact: b0_start(A[n]) is always G-prefix (<l0A) or a block-start, never mid-block
+- Add P1_keystone_R2 assembling b0_start(A[n]) = m_parent A t' s in the R2 regime, with height_pre_strip_eq / height_expansion_eq_keep supplying the mpl-level keep/height bounds
+- Add ganc_from_interval_dom reducing GANC to the interval-domination hypothesis dom_intv via the b0_col_ancestor offset induction
+- Add r2b_R2 fully proving the bumped-region domination (block copy = base column + nonnegative bump)
+- Add dom_transfer_R2_modulo_intervaldom capstone reducing the whole R2 transfer to dom_intv alone
+- Add clause_i_ascends_iff_from_blockcopy / block_copy_anc_from_onestep / clause_v_asc_iff_from_onestep unifying clause (i) and (v) ascending cases to the single atomic crux onestep_anc
+- Add verify/probe_{R2_ganc_genuine,R2_interval_dom,blockcopy_anc,gparent_eq,onestep,onestep_all,onestep_jbreak}.py validating the reductions on genuine 2-column-seed BFS
+- Reorder task.md sections into Lemma-number order; mark P1, R2B and the clause-(i) j=0 slice done
+- Bump version v0.1.47 -> v0.1.48
