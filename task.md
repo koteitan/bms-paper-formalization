@@ -124,8 +124,12 @@
   - clause (i) @ j=0 slice (P1b に十分, level 帰納):
     - ✅ m_anc_eq_of_m_parent_eq (m_parent 一致 ⟹ m_anc 一致)
     - ✅ clause_i_j0_step_not_asc (not-asc level: P1_from_struct で m_parent 一致)
-    - 🚨 clause_i_j0 asc level (k<mpl A): m_parent 相違・G-anc 一致 = chain-transfer (Hunter case-A bump translation)
-    - 🚨 clause_i_j0 level 帰納 assembly
+    - ✅ m_anc_below_ancestor_transfer (X が Z の祖先 ∧ i<X ⟹ m_anc Z i⟺m_anc X i)
+    - ✅ clause_i_j0 asc level: fact2 + transfer 補題
+      - ✅ consecutive_block_start_parent (l1=1,asc, level 帰納)
+      - ✅ block_start_anc_zero (fact2, c 帰納)
+      - ✅ clause_i_j0_step_asc
+    - ✅ clause_i_j0 (level 帰納 assembly, asc/not-asc dispatch) ← P1b の源, R2 crux 完成
 
 - 🚨 Stage 5: ∀k.(v)@k — lemma_2_5_v_main
   - ✅ lemma_2_5_v_clause_step
