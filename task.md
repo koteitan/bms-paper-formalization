@@ -72,7 +72,11 @@
         - 🚨 P1: b0_start(A[n]) = m_parent A t' (b0_start A)
           - ✅ last_col_idx_expansion
           - ✅ b0_start_expansion_as_mparent (P1 LHS を idx_B 形に)
+          - ✅ elem_AEn_last_block_start (idx_B A n 0 の値)
           - 🚨 cross-block: m_parent(A[n]) t' (last col) = m_parent A t' s_A
+            - 🚨 mpl(A[n]) ≥ mpl A under R2 (⟹ ascends A 0 t' false)
+            - ✅ P1a_bumped_region_value (bumped 列の値=elem A s t', 候補除外)
+            - 🚨 P1b: ancestry-into-G 同値 (idx_B A n 0 ↔ s_A, clause(i)系)
         - ✅ R2_endpoint_ancestor (P1 → s' は s_A の m-祖先, m<t')
         - 🚨 interval-density: s' は (s',s_A] 全列の m-祖先
         - 🚨 R2b: bumped 列 domination (bump 非負)

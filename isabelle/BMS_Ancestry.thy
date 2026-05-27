@@ -9965,6 +9965,63 @@ proof -
   finally show ?thesis .
 qed
 
+text \<open>\<^bold>\<open>Value of the last block-start column \<open>idx_B (A,n,0)\<close> (sorry-free).\<close>
+  The leftmost column of the last block \<open>B\<^sub>n\<close> is the \<open>n\<close>-fold bumped copy of
+  \<open>B\<^sub>0\<close>'s first column (the bad root \<open>s\<close>): its level-\<open>k\<close> value is
+  \<open>elem A s k\<close> plus \<open>n \<cdot> delta A k\<close> when the bad-root row \<open>k\<close> ascends.
+  Specialization of @{thm elem_AEn_idx_B_value} at \<open>t=n, j=0\<close>; the base
+  column is \<open>A ! s\<close> (so its value is \<open>elem A s k\<close>).  Feeds the candidate
+  analysis of the P1 keystone.\<close>
+
+lemma elem_AEn_last_block_start:
+  fixes A :: array and n k :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s" and l1_pos: "0 < l1 A"
+      and k_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and k_col: "k < length (A ! s)"
+  shows "elem (A[n]) (idx_B_in_expansion A n 0) k
+       = elem A s k + (if ascends A 0 k then n * delta A k else 0)"
+proof -
+  have "elem (A[n]) (idx_B_in_expansion A n 0) k
+      = (A ! (s + 0)) ! k + (if ascends A 0 k then n * delta A k else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 le_refl l1_pos k_keep] k_col by simp
+  thus ?thesis by (simp add: elem_def)
+qed
+
+text \<open>\<^bold>\<open>P1a: bumped-region value collapse (sorry-free).\<close>  In the R2 regime
+  (\<open>l\<^sub>1 A = 1\<close>) the columns strictly between \<open>l\<^sub>0 A\<close> and the last column
+  \<open>idx_B (A,n,0)\<close> are exactly the earlier block-start copies \<open>idx_B (A,c,0)\<close>
+  (\<open>c < n\<close>).  When the bad-root row \<open>t'\<close> does \<^emph>\<open>not\<close> ascend (which holds in
+  R2 because \<open>t' = mpl (A[n]) \<ge> mpl A\<close>, so the bump term vanishes), every
+  such copy carries the \<^emph>\<open>same\<close> level-\<open>t'\<close> value \<open>elem A s t'\<close> as the last
+  column.  Hence none of them satisfies the \<^emph>\<open>strict\<close> \<open>elem\<close>-candidate
+  condition for \<open>m_parent (A[n]) t'\<close>, restricting the candidate set to the
+  \<open>G\<close>-region.  (Bound hypotheses \<open>keep\<close>/\<open>col\<close> isolate the strip/length
+  side-conditions; \<open>asc_false\<close> isolates the \<open>mpl\<close>-bound.)\<close>
+
+lemma P1a_bumped_region_value:
+  fixes A :: array and n p t' :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and l1_eq: "l1 A = 1"
+      and asc_false: "\<not> ascends A 0 t'"
+      and p_ge: "l0 A \<le> p" and p_lt: "p < idx_B_in_expansion A n 0"
+      and keep: "t' < keep_of (G_block A @ Bs_concat A n)"
+      and col: "t' < length (A ! s)"
+  shows "elem (A[n]) p t' = elem A s t'"
+proof -
+  define c where "c = p - l0 A"
+  have idxBn: "idx_B_in_expansion A n 0 = l0 A + n"
+    unfolding idx_B_in_expansion_def using l1_eq by simp
+  have c_lt_n: "c < n" using p_ge p_lt idxBn c_def by linarith
+  have p_eq: "p = idx_B_in_expansion A c 0"
+    unfolding idx_B_in_expansion_def using l1_eq p_ge c_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have "elem (A[n]) (idx_B_in_expansion A c 0) t'
+      = (A ! (s + 0)) ! t' + (if ascends A 0 t' then c * delta A t' else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 less_imp_le[OF c_lt_n] l1_pos keep] col
+    by simp
+  thus ?thesis using p_eq asc_false by (simp add: elem_def)
+qed
+
 text \<open>\<^bold>\<open>\<open>b0_start (A[n])\<close> as a parent of the last block column (sorry-free).\<close>
   Restates \<open>b0_start (A[n])\<close> via @{thm last_col_idx_expansion}: it is the
   \<open>t'\<close>-parent (in \<open>A[n]\<close>) of the last column \<open>idx_B (A,n,l\<^sub>1-1)\<close>.  The P1
