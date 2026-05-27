@@ -10204,8 +10204,99 @@ text \<open>
       (ii) at \<open>k\<close> together with IH (i) transfer the chain.
 \<close>
 
+text \<open>\<^bold>\<open>Ancestry below a known ancestor transfers (sorry-free).\<close>  If \<open>X\<close> is a
+  \<open>k\<close>-ancestor of \<open>Z\<close> and the target \<open>i\<close> lies strictly below \<open>X\<close>, then \<open>Z\<close>
+  and \<open>X\<close> have the same \<open>k\<close>-ancestry to \<open>i\<close>.  Forward via
+  @{thm m_ancestor_chain_linear} (both \<open>i\<close> and \<open>X\<close> are ancestors of \<open>Z\<close>,
+  hence comparable; \<open>i < X\<close> rules out the other branches), backward via
+  @{thm m_ancestor_trans}.\<close>
+
+lemma m_anc_below_ancestor_transfer:
+  fixes A :: array and k Z X i :: nat
+  assumes ZX: "m_ancestor A k Z X"
+      and i_lt_X: "i < X"
+  shows "m_ancestor A k Z i \<longleftrightarrow> m_ancestor A k X i"
+proof
+  assume Zi: "m_ancestor A k Z i"
+  have "i = X \<or> m_ancestor A k i X \<or> m_ancestor A k X i"
+    using m_ancestor_chain_linear[of A k Z] Zi ZX by blast
+  thus "m_ancestor A k X i"
+  proof (elim disjE)
+    assume "i = X" thus ?thesis using i_lt_X by simp
+  next
+    assume "m_ancestor A k i X"
+    hence "X < i" by (rule m_ancestor_target_lt)
+    thus ?thesis using i_lt_X by simp
+  next
+    assume "m_ancestor A k X i" thus ?thesis .
+  qed
+next
+  assume "m_ancestor A k X i"
+  thus "m_ancestor A k Z i" using m_ancestor_trans[OF ZX] by blast
+qed
+
+text \<open>\<^bold>\<open>Block-copy ancestry by chaining the one-step ancestry (sorry-free,
+  续59).\<close>  The multi-step \<open>block_copy_anc\<close> (\<open>idx_B (A,0,j)\<close> is a
+  \<open>k\<close>-ancestor of \<open>idx_B (A,c,j)\<close>) chains the atomic \<^bold>\<open>one-step\<close> ancestry
+  \<open>onestep\<close> by induction on \<open>c\<close> via @{thm m_ancestor_trans}.  The block-copy is
+  rarely the direct \<open>m_parent\<close> for \<open>l\<^sub>1 > 1\<close> (\<open>verify/probe_onestep.py\<close>), so
+  transitivity (not parent-prepending) does the chaining.\<close>
+
+lemma block_copy_anc_from_onestep:
+  fixes A :: array and n j k c :: nat
+  assumes onestep: "\<And>c'. 0 < c' \<Longrightarrow> c' \<le> n \<Longrightarrow>
+                      m_ancestor (A[n]) k (idx_B_in_expansion A c' j)
+                                          (idx_B_in_expansion A (c' - 1) j)"
+      and c_pos: "0 < c" and c_le: "c \<le> n"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A 0 j)"
+  using c_pos c_le
+proof (induct c)
+  case 0 thus ?case by simp
+next
+  case (Suc c')
+  have step: "m_ancestor (A[n]) k (idx_B_in_expansion A (Suc c') j)
+                                  (idx_B_in_expansion A c' j)"
+    using onestep[of "Suc c'"] Suc.prems by simp
+  show ?case
+  proof (cases "c' = 0")
+    case True thus ?thesis using step by simp
+  next
+    case False
+    hence c'_pos: "0 < c'" by simp
+    have c'_le: "c' \<le> n" using Suc.prems by simp
+    have IH: "m_ancestor (A[n]) k (idx_B_in_expansion A c' j) (idx_B_in_expansion A 0 j)"
+      using Suc.hyps c'_pos c'_le by simp
+    show ?thesis using m_ancestor_trans[OF step IH] .
+  qed
+qed
+
+text \<open>\<^bold>\<open>Ascending one-step / atomic bump-chain crux (shared by clauses (i) and (v)).\<close>
+  When \<open>j\<close> ascends at \<open>k\<close>, the bumped copy \<open>idx_B(c,j)\<close> reaches the previous
+  copy \<open>idx_B(c-1,j)\<close> by a \<open>k\<close>-chain.  The previous copy is rarely the
+  \<^emph>\<open>direct\<close> m-parent for \<open>l\<^sub>1 > 1\<close> (only \<open>~6%\<close> of cases;
+  \<open>verify/probe_onestep.py\<close>), so the relation is genuine multi-step ancestry
+  through the within-block parent chain — the atomic crux left as a labelled
+  sorry.  Empirically one-step ancestry holds with \<open>0\<close> violations across
+  \<open>321246\<close> bumped instances (\<open>verify/probe_onestep.py\<close>,
+  \<open>verify/probe_onestep_all.py\<close>).\<close>
+
+lemma onestep_anc_when_ascends:
+  fixes A :: array and n c :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and asc: "ascends A j k"
+      and j_lt: "j < l1 A"
+      and c_pos: "0 < c"
+      and c_le: "c \<le> n"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A (c - 1) j)"
+  sorry
+
 lemma lemma_2_5_i_clause_step_forward_case_ascends:
-  \<comment> \<open>CASE (A): source column \<open>j\<close> ascends at level \<open>k\<close>.\<close>
+  \<comment> \<open>CASE (A): source column \<open>j\<close> ascends at level \<open>k\<close>.  The whole block-copy
+      run \<open>idx_B(n,j) \<leadsto> idx_B(0,j)\<close> is a \<open>k\<close>-ancestor chain (built from the
+      atomic @{thm onestep_anc_when_ascends} via @{thm block_copy_anc_from_onestep});
+      since the \<open>G\<close>-target lies below \<open>idx_B(0,j)\<close>, ancestry to it transfers
+      between the two block copies (@{thm m_anc_below_ancestor_transfer}).\<close>
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and b0: "b0_start A = Some s"
@@ -10220,29 +10311,19 @@ lemma lemma_2_5_i_clause_step_forward_case_ascends:
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
 proof -
-  \<comment> \<open>As in the not-asc case, peel the first \<open>m_parent\<close> step. With \<open>j\<close>
-      ascending at \<open>k\<close>, every row of column \<open>j\<close> at or below \<open>k\<close> is
-      uniformly translated by \<open>n \<cdot> delta\<close> across blocks
-      (@{thm elem_AEn_cross_block_when_ascends}); combined with (iv)@k the
-      parent stays in a \<open>G\<close>- or block-\<open>n\<close> column, never an intermediate
-      block. The None case is impossible by @{thm H}.\<close>
-  have tgt_lt_src0: "idx_G A i < idx_B_in_expansion A 0 j"
-    using i_lt
-    by (simp add: idx_G_def idx_B_in_expansion_def)
-  show ?thesis
-  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A 0 j)")
-    case None
-    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
-      using m_anc_via_parent_none[OF None] .
-    thus ?thesis using H by simp
-  next
-    case (Some p0)
-    show ?thesis
-      \<comment> \<open>RESIDUAL (forward, asc): uniform-translation chain-transfer through
-          the matched parent step (n\<cdot>delta), recursing on the parent column.
-          Sound by \<open>verify/verify_clause_i_forward.py\<close>.\<close>
-      sorry
-  qed
+  have onestep: "\<And>c. 0 < c \<Longrightarrow> c \<le> n
+                  \<Longrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A c j)
+                                          (idx_B_in_expansion A (c - 1) j)"
+    using onestep_anc_when_ascends[OF A_BMS A_ne b0 asc j_lt] by blast
+  have blockcopy: "m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                       (idx_B_in_expansion A 0 j)"
+    using block_copy_anc_from_onestep[OF onestep n_pos order.refl] .
+  have tgt_lt: "idx_G A i < idx_B_in_expansion A 0 j"
+    using i_lt by (simp add: idx_G_def idx_B_in_expansion_def)
+  have iff: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)
+           \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+    using m_anc_below_ancestor_transfer[OF blockcopy tgt_lt] .
+  show ?thesis using iff H by blast
 qed
 
 lemma lemma_2_5_i_clause_step_forward_case_not_ascends:
@@ -10261,38 +10342,64 @@ lemma lemma_2_5_i_clause_step_forward_case_not_ascends:
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
 proof -
-  \<comment> \<open>Opening move shared with the B\<rightarrow>B engine
-      @{thm m_anc_idx_B_in_block_shift_at_Suc_k_when_k_lt_t_not_asc}:
-      peel the first \<open>m_parent\<close> step of the source column. The target
-      \<open>idx_G A i = i < l0 A\<close> sits strictly below every B-column index
-      \<open>idx_B_in_expansion A c x = l0 A + c * l1 A + x\<close>, so it can only be
-      reached once the chain leaves the B-region (outside-block step). The
-      None case is impossible because the source has a \<open>k\<close>-ancestor by
-      @{thm H}.\<close>
-  have tgt_lt_src0: "idx_G A i < idx_B_in_expansion A 0 j"
-    using i_lt
-    by (simp add: idx_G_def idx_B_in_expansion_def)
+  \<comment> \<open>Discharged by the B\<rightarrow>G not-ascending engine
+      @{thm m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc} in the
+      \<open>0 < Suc k' < t\<close> regime (the engine's iff transfers \<open>H\<close>); the level-0
+      (\<open>k = 0\<close>) and above-max-parent-level (\<open>t \<le> Suc k'\<close>) regimes are left as
+      labelled sorries (separate level machinery, parallel to clause (ii)).\<close>
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def by (auto split: option.splits)
   show ?thesis
-  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A 0 j)")
-    case None
-    \<comment> \<open>No parent: @{thm H} is then false, discharging the goal.\<close>
-    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
-      using m_anc_via_parent_none[OF None] .
-    thus ?thesis using H by simp
+  proof (cases k)
+    case 0
+    \<comment> \<open>RESIDUAL (not-asc, level \<open>k = 0\<close>): row-0 G-landing, separate machinery.\<close>
+    show ?thesis sorry
   next
-    case (Some p0)
-    \<comment> \<open>The chain steps through the parent \<open>p0\<close> of the block-0 source. To
-        transfer the chain to the block-\<open>n\<close> source we must match \<open>p0\<close>
-        with the parent of \<open>idx_B_in_expansion A n j\<close>; this is the
-        residual recursive core (B\<rightarrow>G analogue of the B\<rightarrow>B engine), left as
-        a labelled sorry below.\<close>
+    case (Suc k')
     show ?thesis
-      \<comment> \<open>RESIDUAL (forward, not-asc): chain-transfer through the matched
-          parent step, recursing on the strictly smaller parent column.
-          Sound by the empirical check
-          \<open>verify/verify_clause_i_forward.py\<close> (441 BMS arrays,
-          no counter-example).\<close>
-      sorry
+    proof (cases "t \<le> Suc k'")
+      case True
+      \<comment> \<open>RESIDUAL (not-asc, \<open>t \<le> Suc k'\<close>): above the max parent level, separate.\<close>
+      show ?thesis using \<open>k = Suc k'\<close> sorry
+    next
+      case False
+      hence Sk_lt_t: "Suc k' < t" by simp
+      have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
+      have IH_kp: "lemma_2_5_at A n k'" using IH k'_lt by blast
+      have IH_ii_kp: "lemma_2_5_ii_clause A n k'"
+        using IH_kp unfolding lemma_2_5_at_def by simp
+      have IH_i_kp: "lemma_2_5_i_clause A n k'"
+        using IH_kp unfolding lemma_2_5_at_def by simp
+      have clause_iv_k': "lemma_2_5_iv_clause A n (Suc k')"
+        using clause_iv_at_k \<open>k = Suc k'\<close> by simp
+      have nasc: "\<not> ascends A j (Suc k')" using not_asc \<open>k = Suc k'\<close> by simp
+      have k_lt_keep: "Suc k' < keep_of (G_block A @ Bs_concat A n)"
+        using Sk_lt_t keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos]
+        by linarith
+      have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+      have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+      have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+      have t_lt_HA: "t < height A" using max_parent_level_lt[OF mp] .
+      have Sk_lt_HA: "Suc k' < height A" using Sk_lt_t t_lt_HA by linarith
+      have x_len_all: "\<forall>x<l1 A. Suc k' < length (A ! (s + x))"
+      proof (intro allI impI)
+        fix x assume x_lt: "x < l1 A"
+        have x_lt_diff: "x < last_col_idx A - s"
+          using x_lt b0 s_lt_last last_lt_arr
+          unfolding l1_def B0_block_def by simp
+        have sx_lt_last: "s + x < last_col_idx A" using x_lt_diff s_lt_last by linarith
+        have sx_lt_arr: "s + x < arr_len A" using sx_lt_last last_lt_arr by linarith
+        have "length (A ! (s + x)) = height A"
+          using length_col_arr[OF is_arr A_ne sx_lt_arr] .
+        thus "Suc k' < length (A ! (s + x))" using Sk_lt_HA by simp
+      qed
+      have iff: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j) (idx_G A i)
+               \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j) (idx_G A i)"
+        using m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc
+                [OF A_BMS A_ne b0 mp Sk_lt_t IH_ii_kp IH_i_kp clause_iv_k' nasc n_pos
+                    x_len_all k_lt_keep i_lt j_lt] .
+      show ?thesis using iff H \<open>k = Suc k'\<close> by blast
+    qed
   qed
 qed
 
@@ -10373,27 +10480,24 @@ lemma lemma_2_5_i_clause_step_backward_case_ascends:
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
 proof -
-  \<comment> \<open>Dual of @{thm lemma_2_5_i_clause_step_forward_case_ascends}: peel the
-      first \<open>m_parent\<close> step of the block-\<open>n\<close> source. The None case is
-      impossible by @{thm H}; the residual recursive transfer is left as a
-      labelled sorry.\<close>
-  have tgt_lt_srcn: "idx_G A i < idx_B_in_expansion A n j"
-    using i_lt
-    by (simp add: idx_G_def idx_B_in_expansion_def)
-  show ?thesis
-  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A n j)")
-    case None
-    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
-      using m_anc_via_parent_none[OF None] .
-    thus ?thesis using H by simp
-  next
-    case (Some pn)
-    show ?thesis
-      \<comment> \<open>RESIDUAL (backward, asc): uniform-translation chain-transfer
-          through the matched parent step, recursing on the parent column.
-          Sound by \<open>verify/verify_clause_i_forward.py\<close>.\<close>
-      sorry
-  qed
+  \<comment> \<open>Dual of @{thm lemma_2_5_i_clause_step_forward_case_ascends}: the block-copy
+      run is a \<open>k\<close>-ancestor chain (@{thm block_copy_anc_from_onestep} from the
+      atomic @{thm onestep_anc_when_ascends}), and the \<open>G\<close>-target below
+      \<open>idx_B(0,j)\<close> transfers ancestry between the two copies
+      (@{thm m_anc_below_ancestor_transfer}).\<close>
+  have onestep: "\<And>c. 0 < c \<Longrightarrow> c \<le> n
+                  \<Longrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A c j)
+                                          (idx_B_in_expansion A (c - 1) j)"
+    using onestep_anc_when_ascends[OF A_BMS A_ne b0 asc j_lt] by blast
+  have blockcopy: "m_ancestor (A[n]) k (idx_B_in_expansion A n j)
+                                       (idx_B_in_expansion A 0 j)"
+    using block_copy_anc_from_onestep[OF onestep n_pos order.refl] .
+  have tgt_lt: "idx_G A i < idx_B_in_expansion A 0 j"
+    using i_lt by (simp add: idx_G_def idx_B_in_expansion_def)
+  have iff: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)
+           \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+    using m_anc_below_ancestor_transfer[OF blockcopy tgt_lt] .
+  show ?thesis using iff H by blast
 qed
 
 lemma lemma_2_5_i_clause_step_backward_case_not_ascends:
@@ -10414,26 +10518,63 @@ lemma lemma_2_5_i_clause_step_backward_case_not_ascends:
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
 proof -
   \<comment> \<open>Dual of @{thm lemma_2_5_i_clause_step_forward_case_not_ascends}:
-      row \<open>k\<close> of column \<open>j\<close> coincides across blocks
-      (@{thm elem_AEn_cross_block_when_not_ascends}), so peeling the first
-      \<open>m_parent\<close> step of the block-\<open>n\<close> source and transferring it back to
-      block 0 via (ii)@k preserves ancestry. None case impossible by @{thm H}.\<close>
-  have tgt_lt_srcn: "idx_G A i < idx_B_in_expansion A n j"
-    using i_lt
-    by (simp add: idx_G_def idx_B_in_expansion_def)
+      discharged by the B\<rightarrow>G not-ascending engine
+      @{thm m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc} (its iff transfers
+      \<open>H\<close> backward) in the \<open>0 < Suc k' < t\<close> regime; the \<open>k = 0\<close> and
+      \<open>t \<le> Suc k'\<close> regimes are labelled sorries (separate level machinery).\<close>
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def by (auto split: option.splits)
   show ?thesis
-  proof (cases "m_parent (A[n]) k (idx_B_in_expansion A n j)")
-    case None
-    have "\<not> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
-      using m_anc_via_parent_none[OF None] .
-    thus ?thesis using H by simp
+  proof (cases k)
+    case 0
+    \<comment> \<open>RESIDUAL (not-asc, level \<open>k = 0\<close>): row-0 G-landing, separate machinery.\<close>
+    show ?thesis sorry
   next
-    case (Some pn)
+    case (Suc k')
     show ?thesis
-      \<comment> \<open>RESIDUAL (backward, not-asc): chain-transfer through the matched
-          parent step, recursing on the parent column.
-          Sound by \<open>verify/verify_clause_i_forward.py\<close>.\<close>
-      sorry
+    proof (cases "t \<le> Suc k'")
+      case True
+      \<comment> \<open>RESIDUAL (not-asc, \<open>t \<le> Suc k'\<close>): above the max parent level, separate.\<close>
+      show ?thesis using \<open>k = Suc k'\<close> sorry
+    next
+      case False
+      hence Sk_lt_t: "Suc k' < t" by simp
+      have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
+      have IH_kp: "lemma_2_5_at A n k'" using IH k'_lt by blast
+      have IH_ii_kp: "lemma_2_5_ii_clause A n k'"
+        using IH_kp unfolding lemma_2_5_at_def by simp
+      have IH_i_kp: "lemma_2_5_i_clause A n k'"
+        using IH_kp unfolding lemma_2_5_at_def by simp
+      have clause_iv_k': "lemma_2_5_iv_clause A n (Suc k')"
+        using clause_iv_at_k \<open>k = Suc k'\<close> by simp
+      have nasc: "\<not> ascends A j (Suc k')" using not_asc \<open>k = Suc k'\<close> by simp
+      have k_lt_keep: "Suc k' < keep_of (G_block A @ Bs_concat A n)"
+        using Sk_lt_t keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos]
+        by linarith
+      have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+      have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+      have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+      have t_lt_HA: "t < height A" using max_parent_level_lt[OF mp] .
+      have Sk_lt_HA: "Suc k' < height A" using Sk_lt_t t_lt_HA by linarith
+      have x_len_all: "\<forall>x<l1 A. Suc k' < length (A ! (s + x))"
+      proof (intro allI impI)
+        fix x assume x_lt: "x < l1 A"
+        have x_lt_diff: "x < last_col_idx A - s"
+          using x_lt b0 s_lt_last last_lt_arr
+          unfolding l1_def B0_block_def by simp
+        have sx_lt_last: "s + x < last_col_idx A" using x_lt_diff s_lt_last by linarith
+        have sx_lt_arr: "s + x < arr_len A" using sx_lt_last last_lt_arr by linarith
+        have "length (A ! (s + x)) = height A"
+          using length_col_arr[OF is_arr A_ne sx_lt_arr] .
+        thus "Suc k' < length (A ! (s + x))" using Sk_lt_HA by simp
+      qed
+      have iff: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j) (idx_G A i)
+               \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j) (idx_G A i)"
+        using m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc
+                [OF A_BMS A_ne b0 mp Sk_lt_t IH_ii_kp IH_i_kp clause_iv_k' nasc n_pos
+                    x_len_all k_lt_keep i_lt j_lt] .
+      show ?thesis using iff H \<open>k = Suc k'\<close> by blast
+    qed
   qed
 qed
 
@@ -11240,43 +11381,6 @@ proof -
   thus ?thesis using N by simp
 qed
 
-text \<open>\<^bold>\<open>Ancestry below a known ancestor transfers (sorry-free).\<close>  If \<open>X\<close> is a
-  \<open>k\<close>-ancestor of \<open>Z\<close> and the target \<open>i\<close> lies strictly below \<open>X\<close>, then \<open>Z\<close>
-  and \<open>X\<close> have the same \<open>k\<close>-ancestry to \<open>i\<close>.  The \<open>k\<close>-chain is a single
-  strictly-decreasing path (\<open>m_parent\<close> is a function): \<open>X\<close> sits on \<open>Z\<close>'s
-  chain, every node above \<open>X\<close> exceeds \<open>i\<close>, so \<open>i\<close> is reachable from \<open>Z\<close>
-  iff it is reachable from \<open>X\<close>.  Forward via @{thm m_ancestor_chain_linear}
-  (both \<open>i\<close> and \<open>X\<close> are ancestors of \<open>Z\<close>, hence comparable; \<open>i < X\<close> rules
-  out the other branches), backward via @{thm m_ancestor_trans}.  This is the
-  engine for the ascending-level clause-(i) \<open>j=0\<close> transfer: the bumped
-  bad-root copy \<open>idx_B (A,n,0)\<close> has the block-\<open>0\<close> copy \<open>idx_B (A,0,0) = s\<close>
-  as a \<open>k\<close>-ancestor (chain descends \<open>n \<to> n-1 \<to> \<dots> \<to> 0\<close>), and every
-  \<open>G\<close>-target \<open>i < l\<^sub>0 A = s\<close> lies below it.\<close>
-
-lemma m_anc_below_ancestor_transfer:
-  fixes A :: array and k Z X i :: nat
-  assumes ZX: "m_ancestor A k Z X"
-      and i_lt_X: "i < X"
-  shows "m_ancestor A k Z i \<longleftrightarrow> m_ancestor A k X i"
-proof
-  assume Zi: "m_ancestor A k Z i"
-  have "i = X \<or> m_ancestor A k i X \<or> m_ancestor A k X i"
-    using m_ancestor_chain_linear[of A k Z] Zi ZX by blast
-  thus "m_ancestor A k X i"
-  proof (elim disjE)
-    assume "i = X" thus ?thesis using i_lt_X by simp
-  next
-    assume "m_ancestor A k i X"
-    hence "X < i" by (rule m_ancestor_target_lt)
-    thus ?thesis using i_lt_X by simp
-  next
-    assume "m_ancestor A k X i" thus ?thesis .
-  qed
-next
-  assume "m_ancestor A k X i"
-  thus "m_ancestor A k Z i" using m_ancestor_trans[OF ZX] by blast
-qed
-
 text \<open>\<^bold>\<open>Build a level-\<open>Suc m'\<close> ancestor from stratified domination (sorry-free).\<close>
   Ported from the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>le1_build\<close> /
   \<open>m_5_1_parent_exists_4\<close>): if the candidate \<open>j0\<close> is already a level-\<open>m'\<close>
@@ -11635,44 +11739,6 @@ proof -
     using i_lt by (simp add: idx_G_def idx_B_in_expansion_def)
   show ?thesis
     using m_anc_below_ancestor_transfer[OF blockcopy i_lt_src0] .
-qed
-
-text \<open>\<^bold>\<open>Block-copy ancestry by chaining the one-step ancestry (sorry-free,
-  续59).\<close>  The multi-step \<open>block_copy_anc\<close> (\<open>idx_B (A,0,j)\<close> is a
-  \<open>k\<close>-ancestor of \<open>idx_B (A,c,j)\<close>) chains the atomic \<^bold>\<open>one-step\<close> ancestry
-  \<open>onestep\<close> (\<open>idx_B (A,c'-1,j)\<close> is a \<open>k\<close>-ancestor of \<open>idx_B (A,c',j)\<close>) by
-  induction on \<open>c\<close> via @{thm m_ancestor_trans}.  Unlike the \<open>l\<^sub>1 = 1\<close>
-  @{thm block_start_anc_zero} (whose step is the \<^emph>\<open>immediate\<close> parent), the
-  general-\<open>l\<^sub>1\<close> step is only an \<^emph>\<open>ancestor\<close> (the block-copy is rarely the
-  direct \<open>m_parent\<close> for \<open>l\<^sub>1 > 1\<close>; \<open>verify/probe_onestep.py\<close>), so
-  transitivity (not parent-prepending) does the chaining.\<close>
-
-lemma block_copy_anc_from_onestep:
-  fixes A :: array and n j k c :: nat
-  assumes onestep: "\<And>c'. 0 < c' \<Longrightarrow> c' \<le> n \<Longrightarrow>
-                      m_ancestor (A[n]) k (idx_B_in_expansion A c' j)
-                                          (idx_B_in_expansion A (c' - 1) j)"
-      and c_pos: "0 < c" and c_le: "c \<le> n"
-  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A 0 j)"
-  using c_pos c_le
-proof (induct c)
-  case 0 thus ?case by simp
-next
-  case (Suc c')
-  have step: "m_ancestor (A[n]) k (idx_B_in_expansion A (Suc c') j)
-                                  (idx_B_in_expansion A c' j)"
-    using onestep[of "Suc c'"] Suc.prems by simp
-  show ?case
-  proof (cases "c' = 0")
-    case True thus ?thesis using step by simp
-  next
-    case False
-    hence c'_pos: "0 < c'" by simp
-    have c'_le: "c' \<le> n" using Suc.prems by simp
-    have IH: "m_ancestor (A[n]) k (idx_B_in_expansion A c' j) (idx_B_in_expansion A 0 j)"
-      using Suc.hyps c'_pos c'_le by simp
-    show ?thesis using m_ancestor_trans[OF step IH] .
-  qed
 qed
 
 text \<open>\<^bold>\<open>Clause (v) ascending case from the one-step ancestry (sorry-free,
