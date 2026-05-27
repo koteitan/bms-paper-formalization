@@ -73,10 +73,15 @@
           - ✅ last_col_idx_expansion
           - ✅ b0_start_expansion_as_mparent (P1 LHS を idx_B 形に)
           - ✅ elem_AEn_last_block_start (idx_B A n 0 の値)
-          - 🚨 cross-block: m_parent(A[n]) t' (last col) = m_parent A t' s_A
-            - 🚨 mpl(A[n]) ≥ mpl A under R2 (⟹ ascends A 0 t' false)
+          - ✅ P1_from_struct (asc_false + P1b ⟹ P1, filter 一致で組立)
+          - 🚨 cross-block の残 hypothesis 2本:
+            - 🚨 asc_false ⟸ mpl(A[n]) ≥ mpl A under design regime
+              - ✅ mpl_ge_of_parent_exists (level t 親 ⟹ mpl≥t)
+              - 🚨 last col of A[n] が level mpl A で親を持つ (witness 変動, 存在論法)
             - ✅ P1a_bumped_region_value (bumped 列の値=elem A s t', 候補除外)
-            - 🚨 P1b: ancestry-into-G 同値 (idx_B A n 0 ↔ s_A, clause(i)系)
+            - ✅ P1b_from_clause_i (P1b ⟸ clause(i) j=0 + m_anc_orig_eq)
+            - 🚨 clause (i) = lemma_2_5_i_clause (Stage 4)
+              - 🚨 B→G chain-transfer engine (clause ii B→B@4114 の類似)
         - ✅ R2_endpoint_ancestor (P1 → s' は s_A の m-祖先, m<t')
         - 🚨 interval-density: s' は (s',s_A] 全列の m-祖先
         - 🚨 R2b: bumped 列 domination (bump 非負)
@@ -100,6 +105,8 @@
   - ✅ idx_B_n_zero_gateway_for_earlier_block_ancestor
   - ✅ idx_B_n_zero_gateway_aux
   - 🚨 m_parent_block_n_stays_until_zero
+    - ✅ gateway_from_candidate_Suc (gateway ⟸ G1 bumped-DOM + G2 bumped-ANC)
+    - 🚨 G1/G2 = simultaneous induction invariant (block-n DOM/ANC)
   - ✅ clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G
 
 - 🚨 Stage 3: ∀k.(iii)@k — lemma_2_5_iii_main
@@ -114,6 +121,11 @@
   - 🚨 lemma_2_5_i_clause_step_forward_case_not_ascends
   - 🚨 lemma_2_5_i_clause_step_backward_case_ascends
   - 🚨 lemma_2_5_i_clause_step_backward_case_not_ascends
+  - clause (i) @ j=0 slice (P1b に十分, level 帰納):
+    - ✅ m_anc_eq_of_m_parent_eq (m_parent 一致 ⟹ m_anc 一致)
+    - ✅ clause_i_j0_step_not_asc (not-asc level: P1_from_struct で m_parent 一致)
+    - 🚨 clause_i_j0 asc level (k<mpl A): m_parent 相違・G-anc 一致 = chain-transfer (Hunter case-A bump translation)
+    - 🚨 clause_i_j0 level 帰納 assembly
 
 - 🚨 Stage 5: ∀k.(v)@k — lemma_2_5_v_main
   - ✅ lemma_2_5_v_clause_step
