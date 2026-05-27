@@ -9978,6 +9978,30 @@ text \<open>Domination is downstream of ancestry: @{thm m_ancestor_elem_lt}
 lemma DOM_of_ANC: "ANC A \<Longrightarrow> DOM A"
   unfolding DOM_def ANC_def using m_ancestor_elem_lt by blast
 
+text \<open>\<^bold>\<open>Converse (sorry-free):\<close> ancestry is recoverable from domination on the
+  \<^emph>\<open>same\<close> array via the non-circular @{thm b0_col_ancestor_below_t_from_DOM}
+  (which builds the \<open>m\<close>-parent chain by \<open>less_induct\<close> on the offset, taking
+  \<open>DOM\<close> as an explicit hypothesis rather than calling @{thm elem_lt_below_t}).
+  Together with @{thm DOM_of_ANC} this gives \<open>DOM A \<longleftrightarrow> ANC A\<close>, collapsing
+  the two joint-induction invariants into one.\<close>
+
+lemma ANC_of_DOM: "DOM A \<Longrightarrow> ANC A"
+  unfolding ANC_def
+proof (intro allI impI)
+  fix s t m j
+  assume D: "DOM A"
+     and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+     and m_lt: "m < t" and jp: "0 < j" and jl: "j < l1 A"
+  have DOM': "\<And>m j. m < t \<Longrightarrow> 0 < j \<Longrightarrow> j < l1 A
+                \<Longrightarrow> elem A s m < elem A (s + j) m"
+    using D b0 mp unfolding DOM_def by blast
+  show "m_ancestor A m (s + j) s"
+    using b0_col_ancestor_below_t_from_DOM[OF b0 mp DOM'] m_lt jp jl by blast
+qed
+
+lemma DOM_iff_ANC: "DOM A \<longleftrightarrow> ANC A"
+  using DOM_of_ANC ANC_of_DOM by blast
+
 text \<open>\<open>l\<^sub>1 (seed n) \<le> 1\<close>: \<open>B0_block (seed n) = take (1 - s) (drop s (seed n))\<close>
   has length \<open>\<le> 1\<close> (\<open>last_col_idx (seed n) = 1\<close> by @{thm length_seed}), so the
   seed's \<open>B\<^sub>0\<close>-block is at most one column.  Makes \<open>DOM (seed n)\<close> vacuous.\<close>
@@ -10025,6 +10049,26 @@ next
   have "ANC (A[n])"
     using TRANSFER[OF expand_in_BMS.hyps(1) expand_in_BMS.hyps(2)] .
   thus ?case by (rule DOM_of_ANC)
+qed
+
+text \<open>\<^bold>\<open>Sharper reduction (sorry-free).\<close>  Since @{thm ANC_of_DOM} recovers
+  ancestry from domination on the same array, the expand-transfer hypothesis
+  \<open>DOM A \<Longrightarrow> ANC (A[n])\<close> of @{thm DOM_all_if_transfer} is equivalent to the
+  purely arithmetic \<^bold>\<open>predecessor-domination transfer\<close> \<open>DOM A \<Longrightarrow> DOM (A[n])\<close>.
+  This is the single remaining geometric obligation: that the bad root of the
+  expanded array dominates its own \<open>B\<^sub>0'\<close>-columns at every level below its
+  parent level, given the same property one step back.  It decomposes into the
+  R1 block-start bridge (@{thm dom_transfer_R1}, proven) and the R2 in-\<open>G'\<close>
+  bridge.\<close>
+
+lemma DOM_all_if_DOM_transfer:
+  assumes DT: "\<And>A n. A \<in> BMS \<Longrightarrow> DOM A \<Longrightarrow> DOM (A[n])"
+  assumes "A \<in> BMS"
+  shows "DOM A"
+proof (rule DOM_all_if_transfer[OF _ \<open>A \<in> BMS\<close>])
+  fix A :: array and n :: nat
+  assume "A \<in> BMS" and "DOM A"
+  from DT[OF this] show "ANC (A[n])" by (rule ANC_of_DOM)
 qed
 
 end

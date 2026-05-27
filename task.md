@@ -62,9 +62,11 @@
     - ✅ DOM / ANC / DOM_of_ANC / l1_seed_le_1
     - ✅ DOM_all_if_transfer (off-chain → 単一 TRANSFER obligation に簡約)
     - ✅ b0_col_ancestor_below_t_from_DOM
+    - ✅ ANC_of_DOM / DOM_iff_ANC
+    - ✅ DOM_all_if_DOM_transfer
     - ✅ dom_transfer_R1
     - ✅ dom_transfer_R2 / dom_transfer_R2_via_BMS
-    - 🚨 TRANSFER: DOM A ⟹ ANC (A[n]) (DOM joint induction)
+    - 🚨 DOM_transfer: DOM A ⟹ DOM (A[n]) (R1 済 + R2 in-G' 残)
   - ✅ b0_col_ancestor_below_t
   - ✅ m_anc_Suc_imp_strict_min_on_anc
   - ✅ m_anc_zero_imp_strict_min / m_anc_zero_strict_min
