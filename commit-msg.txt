@@ -1,10 +1,6 @@
-v0.1.48/Reduce R2 domination + clause (i)/(v) ascending to isolated geometric cruxes
+v0.1.49/Port the stratified ancestry-build tools from the 2-row PSS proof
 
-- Add P1_keystone_R2 assembling b0_start(A[n]) = m_parent A t' s in the R2 regime, with height_pre_strip_eq / height_expansion_eq_keep supplying the mpl-level keep/height bounds
-- Add ganc_from_interval_dom reducing GANC to the interval-domination hypothesis dom_intv via the b0_col_ancestor offset induction
-- Add r2b_R2 fully proving the bumped-region domination (block copy = base column + nonnegative bump)
-- Add dom_transfer_R2_modulo_intervaldom capstone reducing the whole R2 transfer to dom_intv alone
-- Add clause_i_ascends_iff_from_blockcopy / block_copy_anc_from_onestep / clause_v_asc_iff_from_onestep unifying clause (i) and (v) ascending cases to the single atomic crux onestep_anc
-- Add verify/probe_{R2_ganc_genuine,R2_interval_dom,blockcopy_anc,gparent_eq,onestep,onestep_all,onestep_jbreak}.py validating the reductions on genuine 2-column-seed BFS
-- Reorder task.md sections into Lemma-number order; mark P1, R2B and the clause-(i) j=0 slice done
-- Bump version v0.1.47 -> v0.1.48
+- Add m_anc_build_Suc (ported from ../pss-proof le1_build): build a level-(Suc m') ancestor from level-m' ancestry plus stratified domination over the m'-ancestor chain, by strong induction on the endpoint, with no dependence on elem_lt_below_t
+- Add m_ancestor_tree_Suc (ported from PSS ancestor_tree_2): a level-(Suc m') ancestor of an endpoint is a level-(Suc m') ancestor of every intermediate column that is itself a level-m' ancestor of the endpoint (stratified interval density, m'-chain only)
+- Add verify/probe_gateway_gen.py validating the general-l1 block-start gateway parent on genuine BMS
+- Bump version v0.1.48 -> v0.1.49

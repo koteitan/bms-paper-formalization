@@ -114,6 +114,8 @@
     - 🚨 onestep_anc (clause(i) asc と共有) + not-asc case (値一致, 別 argument)
 
 - ✅ Lemma 2.5 helpers
+  - ✅ m_anc_build_Suc (PSS le1_build 移植: stratified 支配→高レベル祖先 build, endpoint 帰納; SI ancestry step 用)
+  - ✅ m_ancestor_tree_Suc (PSS ancestor_tree_2 移植: 高レベル stratified 区間密度; 生区間でなく m'-祖先鎖上)
   - ✅ elem_AEn_idx_B_value
   - ✅ elem_AEn_idx_B_block_shift_diff
   - ✅ chain/value helpers [ID 73]

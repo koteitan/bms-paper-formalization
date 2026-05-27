@@ -10262,6 +10262,102 @@ next
   thus "m_ancestor A k Z i" using m_ancestor_trans[OF ZX] by blast
 qed
 
+text \<open>\<^bold>\<open>Build a level-\<open>Suc m'\<close> ancestor from stratified domination (sorry-free).\<close>
+  Ported from the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>le1_build\<close> /
+  \<open>m_5_1_parent_exists_4\<close>): if the candidate \<open>j0\<close> is already a level-\<open>m'\<close>
+  ancestor of \<open>j1\<close> and strictly dominates, \<^emph>\<open>at level \<open>Suc m'\<close>\<close>, every
+  level-\<open>m'\<close> ancestor of \<open>j1\<close> strictly above it (the \<^bold>\<open>stratified\<close>
+  domination — over the \<open>m'\<close>-ancestor chain only, \<^emph>\<open>not\<close> the raw interval),
+  then \<open>j0\<close> is a level-\<open>Suc m'\<close> ancestor of \<open>j1\<close>.  The \<open>(Suc m')\<close>-parent
+  chain is followed by \<^bold>\<open>strong induction on the endpoint \<open>j1\<close>\<close>: \<open>j0\<close> is a
+  candidate (smaller value via \<open>dom_top\<close>, \<open>m'\<close>-ancestry via \<open>anc_low\<close>), so the
+  parent \<open>p\<close> satisfies \<open>j0 \<le> p < j1\<close> (@{thm m_parent_ge_candidate_Suc}); if
+  \<open>p = j0\<close> we are done, else \<open>j0\<close> is an \<open>m'\<close>-ancestor of \<open>p\<close>
+  (@{thm m_anc_below_ancestor_transfer}) and the stratified domination
+  restricts to \<open>p\<close>'s range (@{thm m_ancestor_trans}), so the induction
+  hypothesis applies at \<open>p < j1\<close>.  This is the BMS analogue of the PSS
+  higher-row ancestry build — the \<^emph>\<open>correct\<close> (stratified) form of the
+  ancestry-from-domination engine, avoiding the raw-interval domination that
+  @{thm elem_lt_below_t} would require.\<close>
+
+lemma m_anc_build_Suc:
+  fixes A :: array and m' j0 :: nat
+  shows "m_ancestor A m' j1 j0 \<Longrightarrow> j0 < j1
+       \<Longrightarrow> elem A j0 (Suc m') < elem A j1 (Suc m')
+       \<Longrightarrow> (\<And>j. j0 < j \<Longrightarrow> j < j1 \<Longrightarrow> m_ancestor A m' j1 j
+              \<Longrightarrow> elem A j0 (Suc m') < elem A j (Suc m'))
+       \<Longrightarrow> m_ancestor A (Suc m') j1 j0"
+proof (induct j1 rule: less_induct)
+  case (less j1)
+  obtain p where mp_p: "m_parent A (Suc m') j1 = Some p" and j0_le_p: "j0 \<le> p"
+    using m_parent_ge_candidate_Suc[OF less.prems(2) less.prems(3) less.prems(1)] by blast
+  have p_lt: "p < j1" using m_parent_lt[OF mp_p] .
+  have anc_low_p: "m_ancestor A m' j1 p" using m_parent_Suc_implies_m_ancestor[OF mp_p] .
+  show ?case
+  proof (cases "p = j0")
+    case True thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+  next
+    case False
+    with j0_le_p have j0_lt_p: "j0 < p" by simp
+    have anc_low_j0p: "m_ancestor A m' p j0"
+      using m_anc_below_ancestor_transfer[OF anc_low_p j0_lt_p] less.prems(1) by blast
+    have dom_top_p: "elem A j0 (Suc m') < elem A p (Suc m')"
+      using less.prems(4)[OF j0_lt_p p_lt anc_low_p] .
+    have dom_mid_p: "\<And>j. j0 < j \<Longrightarrow> j < p \<Longrightarrow> m_ancestor A m' p j
+                       \<Longrightarrow> elem A j0 (Suc m') < elem A j (Suc m')"
+    proof -
+      fix j assume a1: "j0 < j" and a2: "j < p" and a3: "m_ancestor A m' p j"
+      have "m_ancestor A m' j1 j" using m_ancestor_trans[OF anc_low_p a3] .
+      thus "elem A j0 (Suc m') < elem A j (Suc m')"
+        using less.prems(4)[OF a1] a2 p_lt by simp
+    qed
+    have "m_ancestor A (Suc m') p j0"
+      using less.hyps[OF p_lt anc_low_j0p j0_lt_p dom_top_p dom_mid_p] .
+    thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+  qed
+qed
+
+text \<open>\<^bold>\<open>Stratified ancestor tree at level \<open>Suc m'\<close> (sorry-free).\<close>  Ported from
+  the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>m_5_1_ancestor_tree_2\<close>): if \<open>j0\<close> is a
+  level-\<open>Suc m'\<close> ancestor of \<open>j1\<close>, then it is a level-\<open>Suc m'\<close> ancestor of
+  \<^emph>\<open>every\<close> intermediate \<open>j\<close> that is itself a level-\<open>m'\<close> ancestor of \<open>j1\<close>
+  (the \<^bold>\<open>stratified\<close> interval-density — restricted to the \<open>m'\<close>-ancestor
+  chain, \<^emph>\<open>not\<close> the raw interval, which is exactly what makes it provable
+  without raw domination).  The \<open>Suc m'\<close>-domination of \<open>j0\<close> over the
+  \<open>m'\<close>-ancestors of \<open>j1\<close> comes from @{thm m_anc_Suc_imp_strict_min_on_anc}
+  (consequence of \<open>j0\<close> being a \<open>Suc m'\<close>-ancestor), and the build is fed to
+  @{thm m_anc_build_Suc} at endpoint \<open>j\<close>.\<close>
+
+lemma m_ancestor_tree_Suc:
+  fixes A :: array and m' j0 j j1 :: nat
+  assumes hi: "m_ancestor A (Suc m') j1 j0"
+      and j0_lt_j: "j0 < j"
+      and lo_j: "m_ancestor A m' j1 j"
+  shows "m_ancestor A (Suc m') j j0"
+proof -
+  have j_lt_j1: "j < j1" using m_ancestor_target_lt[OF lo_j] .
+  have dom_all: "\<forall>c. j0 < c \<and> c < j1 \<and> m_ancestor A m' j1 c
+                     \<longrightarrow> elem A j0 (Suc m') < elem A c (Suc m')"
+    using m_anc_Suc_imp_strict_min_on_anc[OF hi] .
+  \<comment> \<open>\<open>j0\<close> is a level-\<open>m'\<close> ancestor of \<open>j\<close>.\<close>
+  have anc_low_j1: "m_ancestor A m' j1 j0" using m_ancestor_mono[OF _ hi] by simp
+  have anc_low_j: "m_ancestor A m' j j0"
+    using m_anc_below_ancestor_transfer[OF lo_j j0_lt_j] anc_low_j1 by blast
+  \<comment> \<open>top domination at endpoint \<open>j\<close>.\<close>
+  have dom_top: "elem A j0 (Suc m') < elem A j (Suc m')"
+    using dom_all j0_lt_j j_lt_j1 lo_j by blast
+  \<comment> \<open>stratified domination over the \<open>m'\<close>-ancestors of \<open>j\<close>.\<close>
+  have dom_mid: "\<And>c. j0 < c \<Longrightarrow> c < j \<Longrightarrow> m_ancestor A m' j c
+                    \<Longrightarrow> elem A j0 (Suc m') < elem A c (Suc m')"
+  proof -
+    fix c assume c1: "j0 < c" and c2: "c < j" and c3: "m_ancestor A m' j c"
+    have "m_ancestor A m' j1 c" using m_ancestor_trans[OF lo_j c3] .
+    thus "elem A j0 (Suc m') < elem A c (Suc m')"
+      using dom_all c1 c2 j_lt_j1 by simp
+  qed
+  show ?thesis using m_anc_build_Suc[OF anc_low_j j0_lt_j dom_top dom_mid] .
+qed
+
 text \<open>\<^bold>\<open>Consecutive block-start parent in the R2 regime (sorry-free).\<close>  When
   \<open>l\<^sub>1 A = 1\<close>, the leftmost column of block \<open>B_c\<close> (\<open>c \<ge> 1\<close>) has, at every
   ascending level \<open>k < mpl A\<close>, the leftmost column of the \<^emph>\<open>previous\<close> block
