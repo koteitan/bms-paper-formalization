@@ -9944,6 +9944,128 @@ proof -
   show ?thesis by (rule dom_transfer_R2[OF En_ne b0' mpl' m_lt j_pos j_lt ANC])
 qed
 
+text \<open>\<^bold>\<open>Last column of \<open>A[n]\<close> as a block index (sorry-free).\<close>  When \<open>B\<^sub>0\<close>
+  is non-empty, the last column of the expansion is the last (\<open>l\<^sub>1 - 1\<close>)
+  column of the last block \<open>B\<^sub>n\<close>: \<open>last_col_idx (A[n]) = idx_B (A,n,l\<^sub>1-1)\<close>.
+  Pure length arithmetic on @{thm arr_len_expansion_l01}.  This is the
+  starting point for the P1 keystone \<open>b0_start (A[n]) = m_parent A t'
+  (b0_start A)\<close>, which characterizes the \<open>t'\<close>-parent of this column.\<close>
+
+lemma last_col_idx_expansion:
+  fixes A :: array and n :: nat
+  assumes A_ne: "A \<noteq> []" and l1_pos: "0 < l1 A"
+  shows "last_col_idx (A[n]) = idx_B_in_expansion A n (l1 A - 1)"
+proof -
+  have len: "length (A[n]) = l0 A + Suc n * l1 A"
+    using arr_len_expansion_l01[OF A_ne] by simp
+  have "last_col_idx (A[n]) = l0 A + Suc n * l1 A - 1" using len by simp
+  also have "\<dots> = l0 A + n * l1 A + (l1 A - 1)" using l1_pos by simp
+  also have "\<dots> = idx_B_in_expansion A n (l1 A - 1)"
+    unfolding idx_B_in_expansion_def by simp
+  finally show ?thesis .
+qed
+
+text \<open>\<^bold>\<open>\<open>b0_start (A[n])\<close> as a parent of the last block column (sorry-free).\<close>
+  Restates \<open>b0_start (A[n])\<close> via @{thm last_col_idx_expansion}: it is the
+  \<open>t'\<close>-parent (in \<open>A[n]\<close>) of the last column \<open>idx_B (A,n,l\<^sub>1-1)\<close>.  The P1
+  keystone then asserts this equals \<open>m_parent A t' (b0_start A)\<close>.\<close>
+
+lemma b0_start_expansion_as_mparent:
+  fixes A :: array and n t' :: nat
+  assumes A_ne: "A \<noteq> []" and l1_pos: "0 < l1 A"
+      and mplEn: "max_parent_level (A[n]) = Some t'"
+  shows "b0_start (A[n]) = m_parent (A[n]) t' (idx_B_in_expansion A n (l1 A - 1))"
+proof -
+  have "b0_start (A[n]) = m_parent (A[n]) t' (last_col_idx (A[n]))"
+    using mplEn unfolding b0_start_def by simp
+  also have "\<dots> = m_parent (A[n]) t' (idx_B_in_expansion A n (l1 A - 1))"
+    using last_col_idx_expansion[OF A_ne l1_pos] by simp
+  finally show ?thesis .
+qed
+
+text \<open>
+  \<^bold>\<open>R2 assembly (sorry-free, 续43).\<close>  Empirically (\<open>verify/probe_R2_*.py\<close>,
+  all 0-violation on genuine-BMS BFS) the R2 regime (\<open>s' = b0_start (A[n]) <
+  l\<^sub>0 A\<close>) is \<^emph>\<open>closable\<close> and the off-chain residual is VACUOUS there.  The
+  \<open>B\<^sub>0'\<close>-block columns \<open>s'+j\<close> of \<open>A[n]\<close> split by location into:
+    \<^item> \<^bold>\<open>G'-region\<close> (\<open>s'+j < l\<^sub>0 A + l\<^sub>1 A\<close>): there \<open>elem (A[n]) = elem A\<close>
+      verbatim (@{thm elem_orig_eq_AEn_G}), so the domination is the
+      \<open>A\<close>-side ancestry fact \<open>GANC\<close> (\<open>s'\<close> is a level-\<open>m\<close> ancestor in \<open>A\<close> of
+      every such column) discharged via @{thm m_ancestor_elem_lt}.
+    \<^item> \<^bold>\<open>bumped region\<close> (\<open>l\<^sub>0 A + l\<^sub>1 A \<le> s'+j\<close>): handled by the
+      bump-non-negativity hypothesis \<open>R2B\<close>.
+  This lemma performs the location case-split sorry-free, isolating the two
+  genuine geometric obligations (\<open>GANC\<close>, \<open>R2B\<close>) as explicit hypotheses,
+  mirroring the design of @{thm dom_transfer_R1}.\<close>
+
+lemma dom_transfer_R2_from_struct:
+  fixes A :: array and n s' t' m j :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0': "b0_start (A[n]) = Some s'"
+      and j_pos: "0 < j" and j_lt: "j < l1 (A[n])"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and R2: "s' < l0 A"
+      \<comment> \<open>\<open>GANC\<close>: in \<open>A\<close>, \<open>s'\<close> is a level-\<open>m\<close> ancestor of every \<open>G'\<close>-region
+          \<open>B\<^sub>0'\<close>-column (genuine-BMS verified, 0 violations).\<close>
+      and GANC: "\<And>c. s' < c \<Longrightarrow> c < l0 A + l1 A \<Longrightarrow> m_ancestor A m c s'"
+      \<comment> \<open>\<open>R2B\<close>: bumped-region domination at \<open>A[n]\<close> (bump non-negativity).\<close>
+      and R2B: "\<And>c. l0 A + l1 A \<le> c \<Longrightarrow> c < length (A[n])
+                  \<Longrightarrow> elem (A[n]) s' m < elem (A[n]) c m"
+  shows "elem (A[n]) s' m < elem (A[n]) (s' + j) m"
+proof -
+  have En_ne: "A[n] \<noteq> []"
+  proof
+    assume "A[n] = []"
+    hence "b0_start (A[n]) = None" by (simp add: b0_start_def max_parent_level_def)
+    thus False using b0' by simp
+  qed
+  have s'_lt: "s' < l0 A + l1 A" using R2 by simp
+  have s_lt_sj: "s' < s' + j" using j_pos by simp
+  \<comment> \<open>\<open>s'+j\<close> is a genuine column index of \<open>A[n]\<close>.\<close>
+  have l1En: "l1 (A[n]) = last_col_idx (A[n]) - s'"
+    using l1_eq_last_minus_b0[OF En_ne b0'] .
+  have last_lt: "last_col_idx (A[n]) < length (A[n])" using En_ne by (cases "A[n]") auto
+  have sj_lt_len: "s' + j < length (A[n])"
+    using j_lt l1En last_lt by linarith
+  show ?thesis
+  proof (cases "s' + j < l0 A + l1 A")
+    case True
+    have anc: "m_ancestor A m (s' + j) s'" using GANC[OF s_lt_sj True] .
+    have domA: "elem A s' m < elem A (s' + j) m"
+      using m_ancestor_elem_lt[OF anc] .
+    have e_s': "elem A s' m = elem (A[n]) s' m"
+      using elem_orig_eq_AEn_G[OF A_ne s'_lt keep] .
+    have e_sj: "elem A (s' + j) m = elem (A[n]) (s' + j) m"
+      using elem_orig_eq_AEn_G[OF A_ne True keep] .
+    show ?thesis using domA e_s' e_sj by simp
+  next
+    case False
+    hence "l0 A + l1 A \<le> s' + j" by simp
+    thus ?thesis using R2B[OF _ sj_lt_len] by simp
+  qed
+qed
+
+text \<open>\<^bold>\<open>R2 endpoint domination (sorry-free, 续43).\<close>  The P1 keystone
+  \<open>b0_start (A[n]) = m_parent A t' (b0_start A)\<close> (\<open>verify/probe_R2_sprime_rule.py\<close>:
+  111/0) says the expanded bad root \<open>s'\<close> is, in the predecessor \<open>A\<close>, the
+  \<open>t'\<close>-parent of \<open>A\<close>'s own bad root \<open>s\<^sub>A\<close>.  Given that, \<open>s'\<close> is an \<open>m\<close>-ancestor
+  of \<open>s\<^sub>A\<close> in \<open>A\<close> for \<^emph>\<open>every\<close> level \<open>m < t'\<close> (parent \<Rightarrow> ancestor at the
+  level below, then monotone down).  This is the common seed for the
+  \<open>G'\<close>-region ancestry (\<open>GANC\<close>) and the bumped-region bound (\<open>R2B\<close>).\<close>
+
+lemma R2_endpoint_ancestor:
+  fixes A :: array and sA s' t' m :: nat
+  assumes P1: "m_parent A t' sA = Some s'"
+      and m_lt: "m < t'"
+  shows "m_ancestor A m sA s'"
+proof -
+  from m_lt obtain t'' where t_eq: "t' = Suc t''" by (cases t') auto
+  have anc_t'': "m_ancestor A t'' sA s'"
+    using m_parent_Suc_implies_m_ancestor[OF P1[unfolded t_eq]] .
+  have "m \<le> t''" using m_lt t_eq by simp
+  thus ?thesis using m_ancestor_mono anc_t'' by blast
+qed
+
 section \<open>Joint-induction architecture for the domination \<open>elem_lt_below_t\<close> (续31/32)\<close>
 
 text \<open>

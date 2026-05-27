@@ -66,7 +66,18 @@
     - ✅ DOM_all_if_DOM_transfer
     - ✅ dom_transfer_R1
     - ✅ dom_transfer_R2 / dom_transfer_R2_via_BMS
-    - 🚨 DOM_transfer: DOM A ⟹ DOM (A[n]) (R1 済 + R2 in-G' 残)
+    - 🚨 DOM_transfer: DOM A ⟹ DOM (A[n])
+      - ✅ R1 (block-start): dom_transfer_R1
+      - 🚨 R2 (in-G', l1 A=1): closable, off-chain vacuous
+        - 🚨 P1: b0_start(A[n]) = m_parent A t' (b0_start A)
+          - ✅ last_col_idx_expansion
+          - ✅ b0_start_expansion_as_mparent (P1 LHS を idx_B 形に)
+          - 🚨 cross-block: m_parent(A[n]) t' (last col) = m_parent A t' s_A
+        - ✅ R2_endpoint_ancestor (P1 → s' は s_A の m-祖先, m<t')
+        - 🚨 interval-density: s' は (s',s_A] 全列の m-祖先
+        - 🚨 R2b: bumped 列 domination (bump 非負)
+        - ✅ dom_transfer_R2_from_struct (GANC+R2B → R2 dom, 組立)
+      - 🚨 DOM_holds 配線 (elem_lt_below_t@7084 sorry を閉じる, placement 再編)
   - ✅ b0_col_ancestor_below_t
   - ✅ m_anc_Suc_imp_strict_min_on_anc
   - ✅ m_anc_zero_imp_strict_min / m_anc_zero_strict_min
