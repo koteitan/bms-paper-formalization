@@ -25,11 +25,16 @@
   - ✅ lemma_2_5_iii_clause_when_k_ge_m0
   - 🚨 5 main lemmas の AND 構築
 
-- 🚨 Stage 1: ∀k.(ii)@k — lemma_2_5_ii_main_v2
-  - ✅ lemma_2_5_ii_clause_step (6-way dispatch)
-  - ✅ elem_lt_below_t m=0
-  - ✅ elem_lt_below_t m>0 on-chain
-  - 🚨 elem_lt_below_t m>0 off-chain
+- ✅ Stage 1: ∀k.(ii)@k — lemma_2_5_ii_main_v2 (clause ii 忠実化完了, elem_lt 非依存)
+  - ✅ lemma_2_5_ii_clause_step (6-way dispatch; case-B を not_asc engine で直接処理)
+  - ✅ 忠実化: case-B(Suc k', ¬ascends)を elem_lt vacuity でなく not_asc engine で直接処理 (Hunter [2.5.proof-ii] 第2ケース; elem_lt 依存除去)
+    - ✅ m_parent_AEn_idx_B_within_block_at_block0_Suc_k (block-0 within-block parent @Suc k', 無条件)
+    - ✅ last_S_not_asc_when_j_not_asc (Suc k' 伝播補題; nasc_j のみ→within-block parent ¬ascend)
+    - ✅ last_filter_eq_of_implies_subset (bump-monotone containment list 核)
+    - ✅ m_parent_AEn_idx_B_{within,outside}_block_at_Suc_k_when_j_not_asc (nasc_j のみ parent characterization, bump除外)
+    - ✅ m_anc_idx_B_in_block_shift_at_Suc_k_when_j_not_asc (not_asc engine, nasc_j のみ; Hunter case-B 本体)
+    - ✅ dispatcher case-B 配線 → elem_lt 依存消滅
+  - ✅ elem_lt_below_t m=0 / m>0 on-chain (clause ii では不要に; off-chain sorry は旧 DOM 迂回路のみ残存)
     - ✅ DOM / ANC / DOM_of_ANC / l1_seed_le_1
     - ✅ DOM_all_if_transfer (off-chain → 単一 TRANSFER obligation に簡約)
     - ✅ b0_col_ancestor_below_t_from_DOM

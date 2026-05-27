@@ -1,6 +1,9 @@
-v0.1.49/Port the stratified ancestry-build tools from the 2-row PSS proof
+v0.1.50/Close Lemma 2.5 clause (ii) faithfully without elem_lt_below_t
 
-- Add m_anc_build_Suc (ported from ../pss-proof le1_build): build a level-(Suc m') ancestor from level-m' ancestry plus stratified domination over the m'-ancestor chain, by strong induction on the endpoint, with no dependence on elem_lt_below_t
-- Add m_ancestor_tree_Suc (ported from PSS ancestor_tree_2): a level-(Suc m') ancestor of an endpoint is a level-(Suc m') ancestor of every intermediate column that is itself a level-m' ancestor of the endpoint (stratified interval density, m'-chain only)
-- Add verify/probe_gateway_gen.py validating the general-l1 block-start gateway parent on genuine BMS
-- Bump version v0.1.48 -> v0.1.49
+- Add last_filter_eq_of_implies_subset: a finer filter and a coarser one share the same last element when the predicates are pointwise-implied and the coarser last satisfies the finer (bump-monotone containment core)
+- Add m_parent_AEn_idx_B_within_block_at_block0_Suc_k: the level-(Suc k') within-block parent of a block-0 column is its last within-block candidate, unconditionally
+- Add last_S_not_asc_when_j_not_asc: from a non-ascending column alone, its within-block parent offset is also non-ascending (level-(Suc k') analogue of the row-0 propagation)
+- Add m_parent_AEn_idx_B_{within,outside}_block_at_Suc_k_when_j_not_asc: the level-(Suc k') block parents for a non-ascending column, from non-ascent alone via bump-monotone containment (no nasc_chain)
+- Add m_anc_idx_B_in_block_shift_at_Suc_k_when_j_not_asc: the not-ascending clause-(ii) B->B engine needing only the source non-ascent, supplying the per-step propagation from last_S_not_asc
+- Rewire lemma_2_5_ii_clause_step case-B to this engine, removing the elem_lt_below_t dependency so clause (ii) closes faithfully (Hunter [2.5.proof-ii] second case)
+- Bump version v0.1.49 -> v0.1.50
