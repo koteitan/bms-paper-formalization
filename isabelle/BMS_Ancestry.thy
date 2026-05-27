@@ -10326,34 +10326,33 @@ proof -
   show ?thesis using iff H by blast
 qed
 
-lemma lemma_2_5_i_clause_step_forward_case_not_ascends:
-  \<comment> \<open>CASE (B): source column \<open>j\<close> does not ascend at level \<open>k\<close>.\<close>
+text \<open>\<^bold>\<open>Clause (i) B\<rightarrow>G biconditional for a non-ascending source.\<close>  The single
+  iff feeding \<^emph>\<open>both\<close> directions of the non-ascending case (consumed by
+  \<open>lemma_2_5_i_clause_step_forward_case_not_ascends\<close> and its backward dual),
+  so the level-split sorries appear once rather than being duplicated across
+  the two directions.  The \<open>0 < Suc k' < t\<close>
+  regime is the B\<rightarrow>G engine; the \<open>k = 0\<close> (row-0) and \<open>t \<le> Suc k'\<close>
+  (above-max-parent-level) regimes are labelled sorries.\<close>
+
+lemma clause_i_iff_when_not_ascends:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
       and b0: "b0_start A = Some s"
-      and l1_pos: "0 < l1 A"
       and n_pos: "0 < n"
       and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
-      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
-      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
       and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
       and i_lt: "i < l0 A" and j_lt: "j < l1 A"
       and not_asc: "\<not> ascends A j k"
-      and H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
-  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
 proof -
-  \<comment> \<open>Discharged by the B\<rightarrow>G not-ascending engine
-      @{thm m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc} in the
-      \<open>0 < Suc k' < t\<close> regime (the engine's iff transfers \<open>H\<close>); the level-0
-      (\<open>k = 0\<close>) and above-max-parent-level (\<open>t \<le> Suc k'\<close>) regimes are left as
-      labelled sorries (separate level machinery, parallel to clause (ii)).\<close>
   obtain t where mp: "max_parent_level A = Some t"
     using b0 unfolding b0_start_def by (auto split: option.splits)
   show ?thesis
   proof (cases k)
     case 0
     \<comment> \<open>RESIDUAL (not-asc, level \<open>k = 0\<close>): row-0 G-landing, separate machinery.\<close>
-    show ?thesis sorry
+    show ?thesis using \<open>k = 0\<close> sorry
   next
     case (Suc k')
     show ?thesis
@@ -10393,15 +10392,33 @@ proof -
           using length_col_arr[OF is_arr A_ne sx_lt_arr] .
         thus "Suc k' < length (A ! (s + x))" using Sk_lt_HA by simp
       qed
-      have iff: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j) (idx_G A i)
-               \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j) (idx_G A i)"
+      show ?thesis
         using m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc
                 [OF A_BMS A_ne b0 mp Sk_lt_t IH_ii_kp IH_i_kp clause_iv_k' nasc n_pos
-                    x_len_all k_lt_keep i_lt j_lt] .
-      show ?thesis using iff H \<open>k = Suc k'\<close> by blast
+                    x_len_all k_lt_keep i_lt j_lt]
+              \<open>k = Suc k'\<close> by simp
     qed
   qed
 qed
+
+lemma lemma_2_5_i_clause_step_forward_case_not_ascends:
+  \<comment> \<open>CASE (B): source column \<open>j\<close> does not ascend at level \<open>k\<close>.\<close>
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and n_pos: "0 < n"
+      and IH: "\<forall>k'<k. lemma_2_5_at A n k'"
+      and clause_ii_at_k: "lemma_2_5_ii_clause A n k"
+      and clause_iii_at_k: "lemma_2_5_iii_clause A n k"
+      and clause_iv_at_k: "lemma_2_5_iv_clause A n k"
+      and i_lt: "i < l0 A" and j_lt: "j < l1 A"
+      and not_asc: "\<not> ascends A j k"
+      and H: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
+  using clause_i_iff_when_not_ascends
+          [OF A_BMS A_ne b0 n_pos IH clause_iv_at_k i_lt j_lt not_asc] H
+  by blast
 
 lemma lemma_2_5_i_clause_step_forward:
   fixes A :: array and n :: nat
@@ -10516,67 +10533,9 @@ lemma lemma_2_5_i_clause_step_backward_case_not_ascends:
       and not_asc: "\<not> ascends A j k"
       and H: "m_ancestor (A[n]) k (idx_B_in_expansion A n j) (idx_G A i)"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_G A i)"
-proof -
-  \<comment> \<open>Dual of @{thm lemma_2_5_i_clause_step_forward_case_not_ascends}:
-      discharged by the B\<rightarrow>G not-ascending engine
-      @{thm m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc} (its iff transfers
-      \<open>H\<close> backward) in the \<open>0 < Suc k' < t\<close> regime; the \<open>k = 0\<close> and
-      \<open>t \<le> Suc k'\<close> regimes are labelled sorries (separate level machinery).\<close>
-  obtain t where mp: "max_parent_level A = Some t"
-    using b0 unfolding b0_start_def by (auto split: option.splits)
-  show ?thesis
-  proof (cases k)
-    case 0
-    \<comment> \<open>RESIDUAL (not-asc, level \<open>k = 0\<close>): row-0 G-landing, separate machinery.\<close>
-    show ?thesis sorry
-  next
-    case (Suc k')
-    show ?thesis
-    proof (cases "t \<le> Suc k'")
-      case True
-      \<comment> \<open>RESIDUAL (not-asc, \<open>t \<le> Suc k'\<close>): above the max parent level, separate.\<close>
-      show ?thesis using \<open>k = Suc k'\<close> sorry
-    next
-      case False
-      hence Sk_lt_t: "Suc k' < t" by simp
-      have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
-      have IH_kp: "lemma_2_5_at A n k'" using IH k'_lt by blast
-      have IH_ii_kp: "lemma_2_5_ii_clause A n k'"
-        using IH_kp unfolding lemma_2_5_at_def by simp
-      have IH_i_kp: "lemma_2_5_i_clause A n k'"
-        using IH_kp unfolding lemma_2_5_at_def by simp
-      have clause_iv_k': "lemma_2_5_iv_clause A n (Suc k')"
-        using clause_iv_at_k \<open>k = Suc k'\<close> by simp
-      have nasc: "\<not> ascends A j (Suc k')" using not_asc \<open>k = Suc k'\<close> by simp
-      have k_lt_keep: "Suc k' < keep_of (G_block A @ Bs_concat A n)"
-        using Sk_lt_t keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos]
-        by linarith
-      have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
-      have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
-      have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
-      have t_lt_HA: "t < height A" using max_parent_level_lt[OF mp] .
-      have Sk_lt_HA: "Suc k' < height A" using Sk_lt_t t_lt_HA by linarith
-      have x_len_all: "\<forall>x<l1 A. Suc k' < length (A ! (s + x))"
-      proof (intro allI impI)
-        fix x assume x_lt: "x < l1 A"
-        have x_lt_diff: "x < last_col_idx A - s"
-          using x_lt b0 s_lt_last last_lt_arr
-          unfolding l1_def B0_block_def by simp
-        have sx_lt_last: "s + x < last_col_idx A" using x_lt_diff s_lt_last by linarith
-        have sx_lt_arr: "s + x < arr_len A" using sx_lt_last last_lt_arr by linarith
-        have "length (A ! (s + x)) = height A"
-          using length_col_arr[OF is_arr A_ne sx_lt_arr] .
-        thus "Suc k' < length (A ! (s + x))" using Sk_lt_HA by simp
-      qed
-      have iff: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j) (idx_G A i)
-               \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j) (idx_G A i)"
-        using m_anc_idx_B_to_G_shift_at_Suc_k_when_j_not_asc
-                [OF A_BMS A_ne b0 mp Sk_lt_t IH_ii_kp IH_i_kp clause_iv_k' nasc n_pos
-                    x_len_all k_lt_keep i_lt j_lt] .
-      show ?thesis using iff H \<open>k = Suc k'\<close> by blast
-    qed
-  qed
-qed
+  using clause_i_iff_when_not_ascends
+          [OF A_BMS A_ne b0 n_pos IH clause_iv_at_k i_lt j_lt not_asc] H
+  by blast
 
 lemma lemma_2_5_i_clause_step_backward:
   fixes A :: array and n :: nat
