@@ -77,11 +77,12 @@
           - 🚨 cross-block の残 hypothesis 2本:
             - 🚨 asc_false ⟸ mpl(A[n]) ≥ mpl A under design regime
               - ✅ mpl_ge_of_parent_exists (level t 親 ⟹ mpl≥t)
-              - 🚨 last col of A[n] が level mpl A で親を持つ (witness 変動, 存在論法)
+              - ✅ mpl_ge_of_badroot_tparent (s-t-parent + clause_i_j0 → mpl-bound, 非循環)
+              - 🚨 s=b0_start A が (mpl A)-親を持つ (R2 design 63/0)
+              - 🚨 t_lt_H plumbing (Suc t' < height(A[n]) = keep_of P)
             - ✅ P1a_bumped_region_value (bumped 列の値=elem A s t', 候補除外)
             - ✅ P1b_from_clause_i (P1b ⟸ clause(i) j=0 + m_anc_orig_eq)
-            - 🚨 clause (i) = lemma_2_5_i_clause (Stage 4)
-              - 🚨 B→G chain-transfer engine (clause ii B→B@4114 の類似)
+            - ✅ clause_i_j0 (clause(i) j=0 slice 完成, P1b 用)
         - ✅ R2_endpoint_ancestor (P1 → s' は s_A の m-祖先, m<t')
         - 🚨 interval-density: s' は (s',s_A] 全列の m-祖先
         - 🚨 R2b: bumped 列 domination (bump 非負)

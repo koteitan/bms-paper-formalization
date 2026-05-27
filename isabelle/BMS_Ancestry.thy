@@ -10578,6 +10578,96 @@ proof -
   show ?thesis using gen[OF keep col] i_lt by blast
 qed
 
+text \<open>\<^bold>\<open>\<open>mpl\<close> lower bound from a bad-root \<open>t\<close>-parent (sorry-free).\<close>  In the R2
+  regime (\<open>l\<^sub>1 A = 1\<close>), if \<open>A\<close>'s bad root \<open>s\<close> has a \<open>(Suc t')\<close>-parent \<open>q\<close>
+  (\<open>verify/probe_badroot_tparent.py\<close>: 63/0 with \<open>mpl A = Suc t'\<close>), then \<open>q\<close>
+  is a \<open>(Suc t')\<close>-candidate of the last column \<open>idx_B (A,n,0)\<close> of \<open>A[n]\<close>:
+  the level-\<open>(Suc t')\<close> value of the last column equals \<open>elem A s (Suc t')\<close>
+  (it is \^emph>\<open>not\<close> ascending at its own \<open>mpl\<close>), \<open>q\<close> sits in the verbatim
+  \<open>G\<close>-prefix with a strictly smaller value (\<open>q\<close> is \<open>s\<close>'s parent), and the
+  \<open>t'\<close>-ancestry side comes from @{thm clause_i_j0} (the last column inherits
+  \<open>s\<close>'s \<open>G\<close>-ancestry).  Hence the last column has a \<open>(Suc t')\<close>-parent, giving
+  \<open>mpl (A[n]) \<ge> Suc t' = mpl A\<close> via @{thm mpl_ge_of_parent_exists}.  This is
+  the \<open>asc_false\<close> obligation of the P1 keystone — discharged through
+  @{thm clause_i_j0}, hence \<^emph>\<open>without\<close> circular use of P1.\<close>
+
+lemma mpl_ge_of_badroot_tparent:
+  fixes A :: array and n t' q t'b :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some (Suc t')"
+      and l1_eq: "l1 A = 1"
+      and n_pos: "0 < n"
+      and qparent: "m_parent A (Suc t') s = Some q"
+      and keep: "Suc t' < keep_of (G_block A @ Bs_concat A n)"
+      and col: "Suc t' < length (A ! s)"
+      and t_lt_H: "Suc t' < height (A[n])"
+      and mplEn: "max_parent_level (A[n]) = Some t'b"
+  shows "Suc t' \<le> t'b"
+proof -
+  let ?I = "idx_B_in_expansion A n 0"
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
+  have idxB00: "idx_B_in_expansion A 0 0 = s"
+    unfolding idx_B_in_expansion_def using l0_eq by simp
+  have s_lt_sum: "s < l0 A + l1 A" using l0_eq l1_pos by simp
+  have En_ne: "A[n] \<noteq> []"
+  proof
+    assume "A[n] = []"
+    hence "max_parent_level (A[n]) = None" by (simp add: max_parent_level_def)
+    thus False using mplEn by simp
+  qed
+  have lastcol: "last_col_idx (A[n]) = ?I"
+    using last_col_idx_expansion[OF A_ne l1_pos] l1_eq by simp
+  have q_lt_s: "q < s" using m_parent_lt[OF qparent] .
+  have q_lt_l0: "q < l0 A" using q_lt_s l0_eq by simp
+  have q_lt_sum: "q < l0 A + l1 A" using q_lt_l0 by simp
+  have q_lt_I: "q < ?I" using q_lt_l0 unfolding idx_B_in_expansion_def by simp
+  \<comment> \<open>value of the last column at its own (non-ascending) top level\<close>
+  have asc_false: "\<not> ascends A 0 (Suc t')"
+    using b0 mp unfolding ascends_def non_strict_ancestor_def by simp
+  have e_last: "elem (A[n]) ?I (Suc t') = elem A s (Suc t')"
+    using elem_AEn_last_block_start[OF A_ne b0 l1_pos keep col] asc_false
+    by (simp add: elem_def)
+  \<comment> \<open>q is a strictly-smaller \<open>G\<close>-candidate\<close>
+  have e_q: "elem A q (Suc t') = elem (A[n]) q (Suc t')"
+    using elem_orig_eq_AEn_G[OF A_ne q_lt_sum keep] .
+  have eq_lt: "elem A q (Suc t') < elem A s (Suc t')"
+    using m_parent_elem_lt[OF qparent] .
+  have ecand: "elem (A[n]) q (Suc t') < elem (A[n]) ?I (Suc t')"
+    using e_q eq_lt e_last by simp
+  \<comment> \<open>ancestry side via clause (i) j=0\<close>
+  have keep'': "t' < keep_of (G_block A @ Bs_concat A n)" using keep by simp
+  have col'': "t' < length (A ! s)" using col by simp
+  have ci: "m_ancestor (A[n]) t' ?I (idx_G A q)
+          \<longleftrightarrow> m_ancestor (A[n]) t' (idx_B_in_expansion A 0 0) (idx_G A q)"
+    using clause_i_j0[OF A_BMS A_ne b0 mp l1_eq n_pos _ keep'' col'' q_lt_l0] by simp
+  have ancA: "m_ancestor A t' s q"
+    using m_parent_Suc_implies_m_ancestor[OF qparent] .
+  have anc_En_s: "m_ancestor (A[n]) t' s q"
+    using m_anc_orig_eq_AEn_G[OF A_ne keep'' s_lt_sum] ancA by blast
+  have ancand: "m_ancestor (A[n]) t' ?I q"
+    using ci idxB00 anc_En_s by (simp add: idx_G_def)
+  \<comment> \<open>\<open>q\<close> is a candidate, so the last column has a \<open>(Suc t')\<close>-parent\<close>
+  let ?P = "\<lambda>j. elem (A[n]) j (Suc t') < elem (A[n]) ?I (Suc t')
+                 \<and> m_ancestor (A[n]) t' ?I j"
+  have Pq: "?P q" using ecand ancand by simp
+  have mem: "q \<in> set (filter ?P [0..<?I])" using q_lt_I Pq by simp
+  have ne: "filter ?P [0..<?I] \<noteq> []"
+  proof
+    assume "filter ?P [0..<?I] = []"
+    thus False using mem by simp
+  qed
+  have mpne: "m_parent (A[n]) (Suc t') ?I \<noteq> None"
+    using ne by (simp add: Let_def)
+  hence parent_last: "m_parent (A[n]) (Suc t') (last_col_idx (A[n])) \<noteq> None"
+    using lastcol by simp
+  show ?thesis
+    using mpl_ge_of_parent_exists[OF En_ne t_lt_H parent_last mplEn] .
+qed
+
+
 text \<open>\<^bold>\<open>Gateway from a block-start candidate (sorry-free).\<close>  Empirically
   (\<open>verify/probe_gateway_cand.py\<close>: 798/0) the block-\<open>n\<close> start
   \<open>idx_B (A,n,0)\<close> is \<^emph>\<open>itself\<close> a level-\<open>Suc k'\<close> candidate of any later
