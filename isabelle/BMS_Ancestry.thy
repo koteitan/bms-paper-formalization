@@ -3240,11 +3240,95 @@ proof (induct j rule: less_induct)
     show ?thesis
     proof (cases j)
       case 0
-      \<comment> \<open>RESIDUAL (B\<to>G, gateway \<open>j = 0\<close>, above max parent level): the leftmost
-          block-\<open>n\<close> column's m-parent may differ from the block-0 one because the
-          bumped region \<open>[l\<^sub>0..<idx_B(n,0))\<close> can carry candidates for general
-          \<open>l\<^sub>1\<close>.  This is the P1 keystone / clause (iii) \<open>n\<close>-descent, isolated here.\<close>
-      show ?thesis sorry
+      note j_eq = this
+      have l1_pos: "0 < l1 A" using j_lt' j_eq by simp
+      have idx00_eq: "idx_B_in_expansion A 0 0 = l0 A"
+        unfolding idx_B_in_expansion_def by simp
+      have idxn0_eq: "idx_B_in_expansion A n 0 = l0 A + n * l1 A"
+        unfolding idx_B_in_expansion_def by simp
+      let ?v0 = "elem (A[n]) (idx_B_in_expansion A 0 0) (Suc k')"
+      let ?vn = "elem (A[n]) (idx_B_in_expansion A n 0) (Suc k')"
+      let ?cond0 = "\<lambda>p. elem (A[n]) p (Suc k') < ?v0
+                      \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 0) p"
+      let ?condn = "\<lambda>p. elem (A[n]) p (Suc k') < ?vn
+                      \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) p"
+      let ?cands0 = "filter ?cond0 [0..<idx_B_in_expansion A 0 0]"
+      let ?candsn = "filter ?condn [0..<idx_B_in_expansion A n 0]"
+      let ?T = "filter ?condn [l0 A..<idx_B_in_expansion A n 0]"
+      have v_eq: "?v0 = ?vn"
+        using elem_AEn_eq_at_row_k_ge_t_across_blocks
+                [OF A_BMS A_ne b0 mp k_ge_t le0 order.refl l1_pos] .
+      have mp0_eq: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 0)
+                  = (if ?cands0 = [] then None else Some (last ?cands0))"
+        by (simp add: Let_def)
+      have mpn_eq: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0)
+                  = (if ?candsn = [] then None else Some (last ?candsn))"
+        by (simp add: Let_def)
+      have range_n: "[0..<idx_B_in_expansion A n 0]
+                  = [0..<l0 A] @ [l0 A..<idx_B_in_expansion A n 0]"
+        using upt_add_eq_append[OF le0, of "l0 A" "n * l1 A"] idxn0_eq by simp
+      have candsn_split: "?candsn = filter ?condn [0..<l0 A] @ ?T"
+        using range_n by simp
+      have cands0_eq: "?cands0 = filter ?cond0 [0..<l0 A]"
+        using idx00_eq by simp
+      \<comment> \<open>\<^bold>\<open>G-prefix predicate agreement\<close>: value coincides (block-independent at
+          \<open>Suc k' \<ge> t\<close>); the ancestry component is the lower-level gateway, i.e.
+          clause (i) at level \<open>k'\<close>, \<open>j = 0\<close>, supplied by \<open>IH_i_kp\<close>.\<close>
+      have G_agree: "filter ?cond0 [0..<l0 A] = filter ?condn [0..<l0 A]"
+      proof (rule filter_cong[OF refl])
+        fix p assume "p \<in> set [0..<l0 A]"
+        hence p_lt_l0: "p < l0 A" by simp
+        have pG: "p = idx_G A p" unfolding idx_G_def by simp
+        have anc_iff: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 0) p
+                    \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) p"
+        proof -
+          have eq: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 0) (idx_G A p)
+                  \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) (idx_G A p)"
+            using IH_i_kp p_lt_l0 l1_pos unfolding lemma_2_5_i_clause_def by blast
+          show ?thesis using eq pG by simp
+        qed
+        show "?cond0 p \<longleftrightarrow> ?condn p" using v_eq anc_iff by simp
+      qed
+      show ?thesis
+      proof (cases "?T = []")
+        case True
+        \<comment> \<open>\<^bold>\<open>No bump-candidate.\<close>  Parents coincide via the \<open>G\<close>-prefix agreement;
+            \<open>m_ancestor.simps\<close> unfolded once at each side then equality of the
+            parents collapses the two case-expressions.  (Inline of
+            \<open>m_anc_eq_of_m_parent_eq\<close>, which is defined downstream of this engine.)\<close>
+        have candsn_G: "?candsn = filter ?condn [0..<l0 A]"
+          using candsn_split True by simp
+        have cands_eq: "?cands0 = ?candsn"
+          using cands0_eq candsn_G G_agree by simp
+        have peq: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 0)
+                 = m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0)"
+          using mp0_eq mpn_eq cands_eq by simp
+        have "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 0) (idx_G A i)
+            = (case m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 0) of
+                 None \<Rightarrow> False
+               | Some p \<Rightarrow> p = idx_G A i
+                            \<or> m_ancestor (A[n]) (Suc k') p (idx_G A i))"
+          by (subst m_ancestor.simps) (rule refl)
+        also have "\<dots> = (case m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0) of
+                          None \<Rightarrow> False
+                        | Some p \<Rightarrow> p = idx_G A i
+                                     \<or> m_ancestor (A[n]) (Suc k') p (idx_G A i))"
+          using peq by simp
+        also have "\<dots> = m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n 0) (idx_G A i)"
+          by (subst (2) m_ancestor.simps) (rule refl)
+        finally have base: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 0) (idx_G A i)
+                          \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n 0) (idx_G A i)" .
+        show ?thesis using base j_eq by simp
+      next
+        case False
+        \<comment> \<open>RESIDUAL (gateway, bump-tail non-empty): the leftmost block-\<open>n\<close>
+            column's m-parent lies in the bumped region \<open>[l\<^sub>0..<idx_B(n,0))\<close>.
+            Reducing the ancestry through this parent requires relating
+            intermediate-block source columns to block 0 (general-\<open>c\<close> B\<to>G shift),
+            which couples to clause (v) at the same level \<open>Suc k'\<close> and awaits
+            the simultaneous-induction restructure.\<close>
+        show ?thesis sorry
+      qed
     next
       case (Suc j')
       hence j_pos: "0 < j" by simp
@@ -8387,9 +8471,71 @@ proof (induct j rule: less_induct)
     show ?thesis
     proof (cases j)
       case 0
-      \<comment> \<open>RESIDUAL (row-0 gateway \<open>j = 0\<close>, \<open>t = 0\<close>): the leftmost block-\<open>n\<close>
-          column's m-parent vs the block-0 one; general-\<open>l\<^sub>1\<close> bumped region.\<close>
-      show ?thesis sorry
+      note j_eq = this
+      have l1_pos: "0 < l1 A" using j_lt' j_eq by simp
+      have idx00_eq: "idx_B_in_expansion A 0 0 = l0 A"
+        unfolding idx_B_in_expansion_def by simp
+      have idxn0_eq: "idx_B_in_expansion A n 0 = l0 A + n * l1 A"
+        unfolding idx_B_in_expansion_def by simp
+      let ?v0 = "elem (A[n]) (idx_B_in_expansion A 0 0) 0"
+      let ?vn = "elem (A[n]) (idx_B_in_expansion A n 0) 0"
+      let ?cond0 = "\<lambda>p. elem (A[n]) p 0 < ?v0"
+      let ?condn = "\<lambda>p. elem (A[n]) p 0 < ?vn"
+      let ?cands0 = "filter ?cond0 [0..<idx_B_in_expansion A 0 0]"
+      let ?candsn = "filter ?condn [0..<idx_B_in_expansion A n 0]"
+      let ?T = "filter ?condn [l0 A..<idx_B_in_expansion A n 0]"
+      have v_eq: "?v0 = ?vn"
+        using elem_AEn_idx_B_eq_block_zero_at_row_zero_when_m0_zero
+                [OF A_ne b0 mp0 order.refl l1_pos] by simp
+      have mp0_eq: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 0)
+                  = (if ?cands0 = [] then None else Some (last ?cands0))"
+        by (simp add: Let_def)
+      have mpn_eq: "m_parent (A[n]) 0 (idx_B_in_expansion A n 0)
+                  = (if ?candsn = [] then None else Some (last ?candsn))"
+        by (simp add: Let_def)
+      have range_n: "[0..<idx_B_in_expansion A n 0]
+                  = [0..<l0 A] @ [l0 A..<idx_B_in_expansion A n 0]"
+        using upt_add_eq_append[OF le0, of "l0 A" "n * l1 A"] idxn0_eq by simp
+      have candsn_split: "?candsn = filter ?condn [0..<l0 A] @ ?T"
+        using range_n by simp
+      have cands0_eq: "?cands0 = filter ?cond0 [0..<l0 A]"
+        using idx00_eq by simp
+      \<comment> \<open>Row-0 predicates are value-only, so \<open>G\<close>-prefix agreement is just \<open>v_eq\<close>.\<close>
+      have G_agree: "filter ?cond0 [0..<l0 A] = filter ?condn [0..<l0 A]"
+        using v_eq by simp
+      show ?thesis
+      proof (cases "?T = []")
+        case True
+        \<comment> \<open>\<^bold>\<open>No bump-candidate.\<close>  Parents coincide, hence ancestries coincide.\<close>
+        have candsn_G: "?candsn = filter ?condn [0..<l0 A]"
+          using candsn_split True by simp
+        have cands_eq: "?cands0 = ?candsn"
+          using cands0_eq candsn_G G_agree by simp
+        have peq: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 0)
+                 = m_parent (A[n]) 0 (idx_B_in_expansion A n 0)"
+          using mp0_eq mpn_eq cands_eq by simp
+        have "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 0) (idx_G A i)
+            = (case m_parent (A[n]) 0 (idx_B_in_expansion A 0 0) of
+                 None \<Rightarrow> False
+               | Some p \<Rightarrow> p = idx_G A i
+                            \<or> m_ancestor (A[n]) 0 p (idx_G A i))"
+          by (subst m_ancestor.simps) (rule refl)
+        also have "\<dots> = (case m_parent (A[n]) 0 (idx_B_in_expansion A n 0) of
+                          None \<Rightarrow> False
+                        | Some p \<Rightarrow> p = idx_G A i
+                                     \<or> m_ancestor (A[n]) 0 p (idx_G A i))"
+          using peq by simp
+        also have "\<dots> = m_ancestor (A[n]) 0 (idx_B_in_expansion A n 0) (idx_G A i)"
+          by (subst (2) m_ancestor.simps) (rule refl)
+        finally have base: "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 0) (idx_G A i)
+                          \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n 0) (idx_G A i)" .
+        show ?thesis using base j_eq by simp
+      next
+        case False
+        \<comment> \<open>RESIDUAL (row-0 gateway, bump-tail non-empty, \<open>t = 0\<close>): same crux as
+            the k\<ge>t gateway, awaits the simultaneous-induction restructure.\<close>
+        show ?thesis sorry
+      qed
     next
       case (Suc j')
       hence j_pos: "0 < j" by simp
@@ -8616,8 +8762,13 @@ proof (induct j rule: less_induct)
     show ?thesis
     proof (cases j)
       case 0
-      \<comment> \<open>RESIDUAL (row-0 gateway \<open>j = 0\<close>, \<open>t > 0\<close>): general-\<open>l\<^sub>1\<close> bumped region.\<close>
-      show ?thesis sorry
+      \<comment> \<open>Row-0 \<open>j = 0\<close> at \<open>t > 0\<close> is \<^emph>\<open>vacuous\<close>: the bad-root column \<open>d_idx = 0\<close>
+          is a reflexive non-strict ancestor of \<open>s\<close>, so \<open>ascends A 0 0 \<longleftrightarrow> 0 < t\<close>.
+          With \<open>t_pos\<close> this forces \<open>ascends A 0 0\<close>, contradicting \<open>nasc_j\<close>.\<close>
+      hence "ascends A j 0"
+        unfolding ascends_def non_strict_ancestor_def
+        using b0 mp t_pos by simp
+      thus ?thesis using nasc_j by simp
     next
       case (Suc j')
       hence j_pos: "0 < j" by simp
