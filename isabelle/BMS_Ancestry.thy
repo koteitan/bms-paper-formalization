@@ -3205,6 +3205,16 @@ lemma m_anc_idx_B_to_G_shift_at_Suc_k_when_k_ge_t:
       and n_pos: "0 < n"
       and i_lt: "i < l0 A"
       and j_lt: "j < l1 A"
+      \<comment> \<open>Leftmost gateway iff at level \<open>Suc k'\<close> for the engine's fixed target \<open>i\<close>,
+          supplied by the caller.  This is the \<open>j = 0\<close> base case of the iff,
+          carried as a hypothesis because the engine's induction can reach
+          \<open>j = 0\<close> via the within-block recursion and we have no \<open>k\<close>-level
+          downward IH at that base.  At the dispatcher this is discharged for
+          \<open>l\<^sub>1 = 1\<close> via the \<open>clause_i_j0\<close> lemma (proven downstream) and remains a
+          sharpened residual for \<open>l\<^sub>1 > 1\<close> (empirically vacuous: 0/14958 in
+          \<open>verify/probe_no_bump_when_l1_gt1.py\<close>).\<close>
+      and leftmost_iff: "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 0) (idx_G A i)
+                       \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n 0) (idx_G A i)"
   shows "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 j) (idx_G A i)
        \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n j) (idx_G A i)"
   using j_lt
@@ -3321,13 +3331,10 @@ proof (induct j rule: less_induct)
         show ?thesis using base j_eq by simp
       next
         case False
-        \<comment> \<open>RESIDUAL (gateway, bump-tail non-empty): the leftmost block-\<open>n\<close>
-            column's m-parent lies in the bumped region \<open>[l\<^sub>0..<idx_B(n,0))\<close>.
-            Reducing the ancestry through this parent requires relating
-            intermediate-block source columns to block 0 (general-\<open>c\<close> B\<to>G shift),
-            which couples to clause (v) at the same level \<open>Suc k'\<close> and awaits
-            the simultaneous-induction restructure.\<close>
-        show ?thesis sorry
+        \<comment> \<open>Bump-tail non-empty: discharge via the supplied \<open>leftmost_iff\<close>
+            hypothesis.  No sorry inside the engine; the residual lives at the
+            call site, where it can be case-split on \<open>l\<^sub>1\<close>.\<close>
+        show ?thesis using leftmost_iff j_eq by simp
       qed
     next
       case (Suc j')
@@ -8455,6 +8462,11 @@ lemma m_anc_zero_idx_B_to_G_shift_when_t_zero:
       and clause_iv_k: "lemma_2_5_iv_clause A n 0"
       and i_lt: "i < l0 A"
       and j_lt: "j < l1 A"
+      \<comment> \<open>Row-0 leftmost gateway iff supplied by the caller (cf.
+          @{thm m_anc_idx_B_to_G_shift_at_Suc_k_when_k_ge_t}): discharges the
+          \<open>j = 0\<close> bump-tail non-empty base case where the induction can recurse.\<close>
+      and leftmost_iff: "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 0) (idx_G A i)
+                       \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n 0) (idx_G A i)"
   shows "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 j) (idx_G A i)
        \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n j) (idx_G A i)"
   using j_lt
@@ -8532,9 +8544,9 @@ proof (induct j rule: less_induct)
         show ?thesis using base j_eq by simp
       next
         case False
-        \<comment> \<open>RESIDUAL (row-0 gateway, bump-tail non-empty, \<open>t = 0\<close>): same crux as
-            the k\<ge>t gateway, awaits the simultaneous-induction restructure.\<close>
-        show ?thesis sorry
+        \<comment> \<open>Bump-tail non-empty: discharge via the supplied \<open>leftmost_iff\<close>
+            hypothesis.  The residual lives at the call site.\<close>
+        show ?thesis using leftmost_iff j_eq by simp
       qed
     next
       case (Suc j')
@@ -11253,9 +11265,17 @@ proof -
               \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n j) (idx_G A i)"
     proof (cases t)
       case 0
+      \<comment> \<open>Row-0 leftmost gateway iff at level 0, supplied as a named residual
+          (cf. the \<open>Suc k'\<close> engine call below): \<open>l\<^sub>1 = 1\<close> case via downstream
+          \<open>clause_i_j0\<close> once relocated, \<open>l\<^sub>1 > 1\<close> empirically vacuous.\<close>
+      have leftmost_iff_supplied_t0:
+        "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 0) (idx_G A i)
+          \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n 0) (idx_G A i)"
+        sorry
       show ?thesis
         using m_anc_zero_idx_B_to_G_shift_when_t_zero
-                [OF A_BMS A_ne b0 mp[unfolded \<open>t = 0\<close>] clause_iv_0 i_lt j_lt] .
+                [OF A_BMS A_ne b0 mp[unfolded \<open>t = 0\<close>] clause_iv_0 i_lt j_lt
+                    leftmost_iff_supplied_t0] .
     next
       case (Suc t')
       hence t_pos: "0 < t" by simp
@@ -11270,7 +11290,8 @@ proof -
     proof (cases "t \<le> Suc k'")
       case True
       \<comment> \<open>Above the max parent level: the B\<to>G shift engine for \<open>Suc k' \<ge> t\<close>
-          proves \<open>j > 0\<close> and isolates the \<open>j = 0\<close> gateway internally.\<close>
+          proves \<open>j > 0\<close> and reduces the \<open>j = 0\<close> base case to the supplied
+          \<open>leftmost_iff\<close> hypothesis.\<close>
       have k'_lt: "k' < k" using \<open>k = Suc k'\<close> by simp
       have IH_kp: "lemma_2_5_at A n k'" using IH k'_lt by blast
       have IH_ii_kp: "lemma_2_5_ii_clause A n k'"
@@ -11279,9 +11300,18 @@ proof -
         using IH_kp unfolding lemma_2_5_at_def by simp
       have clause_iv_k': "lemma_2_5_iv_clause A n (Suc k')"
         using clause_iv_at_k \<open>k = Suc k'\<close> by simp
+      \<comment> \<open>Leftmost gateway iff at level \<open>Suc k'\<close>: residual awaiting \<open>l\<^sub>1\<close>
+          dispatch (\<open>l\<^sub>1 = 1\<close> via downstream \<open>clause_i_j0\<close> once relocated,
+          \<open>l\<^sub>1 > 1\<close> empirically vacuous per
+          \<open>verify/probe_no_bump_when_l1_gt1.py\<close>).\<close>
+      have leftmost_iff_supplied:
+        "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 0) (idx_G A i)
+          \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n 0) (idx_G A i)"
+        sorry
       show ?thesis
         using m_anc_idx_B_to_G_shift_at_Suc_k_when_k_ge_t
-                [OF A_BMS A_ne b0 mp True IH_ii_kp IH_i_kp clause_iv_k' n_pos i_lt j_lt]
+                [OF A_BMS A_ne b0 mp True IH_ii_kp IH_i_kp clause_iv_k' n_pos i_lt j_lt
+                    leftmost_iff_supplied]
               \<open>k = Suc k'\<close> by simp
     next
       case False
