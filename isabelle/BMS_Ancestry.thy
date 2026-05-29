@@ -11174,6 +11174,134 @@ next
     show ?thesis using m_ancestor_trans[OF step IH] .
   qed
 qed
+text \<open>\<^bold>\<open>Last filtered candidate equals the max index when it qualifies (sorry-free).\<close>
+  If the predicate holds at the top index \<open>N-1\<close>, then it is the last element
+  of \<open>filter P [0..<N]\<close> — used to read off an \<^emph>\<open>exact\<close> \<open>m_parent\<close> when the
+  immediate predecessor is a candidate (the consecutive block-start step).\<close>
+
+lemma last_filter_upt_eq_pred_max:
+  assumes PM: "P (N - 1)" and Npos: "0 < N"
+  shows "last (filter P [0..<N]) = N - 1"
+proof -
+  obtain M where N: "N = Suc M" using Npos by (cases N) auto
+  have "filter P [0..<N] = filter P [0..<M] @ [M]"
+    using N PM by (simp add: upt_Suc_append)
+  thus ?thesis using N by simp
+qed
+
+text \<open>\<^bold>\<open>Consecutive block-start parent in the R2 regime (sorry-free).\<close>  When
+  \<open>l\<^sub>1 A = 1\<close>, the leftmost column of block \<open>B_c\<close> (\<open>c \<ge> 1\<close>) has, at every
+  ascending level \<open>k < mpl A\<close>, the leftmost column of the \<^emph>\<open>previous\<close> block
+  \<open>B_{c-1}\<close> as its \<open>k\<close>-parent: \<open>idx_B (A,c-1,0) = idx_B (A,c,0) - 1\<close> is the
+  immediate predecessor and is a candidate (strictly smaller value by
+  \<open>delta A k > 0\<close>; the \<open>(k-1)\<close>-ancestry side from the IH at the lower level),
+  hence the last (maximal) filtered candidate.  By induction on the level \<open>k\<close>.
+  Iterating gives \<open>idx_B (A,0,0) = s\<close> as a \<open>k\<close>-ancestor of \<open>idx_B (A,n,0)\<close>,
+  the seed of the ascending clause-(i) \<open>j=0\<close> transfer.\<close>
+
+lemma consecutive_block_start_parent:
+  fixes A :: array and n c :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and c_pos: "0 < c" and c_le: "c \<le> n"
+      and k_lt_t: "k < t"
+      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and col: "k < length (A ! s)"
+  shows "m_parent (A[n]) k (idx_B_in_expansion A c 0)
+       = Some (idx_B_in_expansion A (c - 1) 0)"
+proof -
+  let ?X = "idx_B_in_expansion A c 0"
+  let ?Xp = "idx_B_in_expansion A (c - 1) 0"
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have cm_le: "c - 1 \<le> n" using c_le by simp
+  have X_eq: "?X = l0 A + c" unfolding idx_B_in_expansion_def using l1_eq by simp
+  have Xp_eq: "?Xp = l0 A + (c - 1)" unfolding idx_B_in_expansion_def using l1_eq by simp
+  have Xp_succ: "?X = Suc ?Xp" using X_eq Xp_eq c_pos by simp
+  have Xpos: "0 < ?X" using X_eq c_pos by simp
+  \<comment> \<open>The induction carries the level bounds as antecedents.\<close>
+  have main: "\<And>k. k < t \<Longrightarrow> k < keep_of (G_block A @ Bs_concat A n)
+                \<Longrightarrow> k < length (A ! s)
+                \<Longrightarrow> m_parent (A[n]) k ?X = Some ?Xp"
+  proof -
+    fix k
+    show "k < t \<Longrightarrow> k < keep_of (G_block A @ Bs_concat A n) \<Longrightarrow> k < length (A ! s)
+          \<Longrightarrow> m_parent (A[n]) k ?X = Some ?Xp"
+    proof (induct k)
+      case 0
+      have asc0: "ascends A 0 0"
+        using b0 mp \<open>(0::nat) < t\<close>
+        unfolding ascends_def non_strict_ancestor_def by simp
+      have dpos: "0 < delta A 0" using delta_pos_of_lt_m0[OF b0 mp \<open>(0::nat) < t\<close>] .
+      have eX: "elem (A[n]) ?X 0 = (A ! s) ! 0 + c * delta A 0"
+        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 c_le l1_pos
+                  \<open>(0::nat) < keep_of (G_block A @ Bs_concat A n)\<close> _] \<open>(0::nat) < length (A ! s)\<close>
+        by simp
+      have eXp: "elem (A[n]) ?Xp 0 = (A ! s) ! 0 + (c - 1) * delta A 0"
+        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 cm_le l1_pos
+                  \<open>(0::nat) < keep_of (G_block A @ Bs_concat A n)\<close> _] \<open>(0::nat) < length (A ! s)\<close>
+        by simp
+      have lt: "elem (A[n]) ?Xp 0 < elem (A[n]) ?X 0"
+        using eX eXp dpos c_pos by simp
+      let ?P = "\<lambda>j. elem (A[n]) j 0 < elem (A[n]) ?X 0"
+      have PXp: "?P ?Xp" using lt .
+      have PX1: "?P (?X - 1)" using PXp Xp_succ by simp
+      have mem: "?Xp \<in> set (filter ?P [0..<?X])"
+        using PXp Xp_succ Xpos by simp
+      have ne: "filter ?P [0..<?X] \<noteq> []"
+      proof
+        assume "filter ?P [0..<?X] = []"
+        thus False using mem by simp
+      qed
+      have "last (filter ?P [0..<?X]) = ?X - 1"
+        using last_filter_upt_eq_pred_max[of ?P ?X] PX1 Xpos by blast
+      hence "last (filter ?P [0..<?X]) = ?Xp" using Xp_succ by simp
+      thus ?case using ne by (simp add: Let_def)
+    next
+      case (Suc k')
+      have Sk_lt_t: "Suc k' < t" using Suc.prems by simp
+      have k'_lt_t: "k' < t" using Sk_lt_t by simp
+      have Sk_keep: "Suc k' < keep_of (G_block A @ Bs_concat A n)" using Suc.prems by simp
+      have k'_keep: "k' < keep_of (G_block A @ Bs_concat A n)" using Sk_keep by simp
+      have Sk_col: "Suc k' < length (A ! s)" using Suc.prems by simp
+      have k'_col: "k' < length (A ! s)" using Sk_col by simp
+      have IHk': "m_parent (A[n]) k' ?X = Some ?Xp"
+        using Suc.hyps k'_lt_t k'_keep k'_col by blast
+      have asc0: "ascends A 0 (Suc k')"
+        using b0 mp Sk_lt_t
+        unfolding ascends_def non_strict_ancestor_def by simp
+      have dpos: "0 < delta A (Suc k')" using delta_pos_of_lt_m0[OF b0 mp Sk_lt_t] .
+      have eX: "elem (A[n]) ?X (Suc k') = (A ! s) ! (Suc k') + c * delta A (Suc k')"
+        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 c_le l1_pos
+                  Sk_keep _] Sk_col by simp
+      have eXp: "elem (A[n]) ?Xp (Suc k') = (A ! s) ! (Suc k') + (c - 1) * delta A (Suc k')"
+        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 cm_le l1_pos
+                  Sk_keep _] Sk_col by simp
+      have lt: "elem (A[n]) ?Xp (Suc k') < elem (A[n]) ?X (Suc k')"
+        using eX eXp dpos c_pos by simp
+      have anc: "m_ancestor (A[n]) k' ?X ?Xp"
+        using m_anc_via_parent_some[OF IHk'] by simp
+      let ?P = "\<lambda>j. elem (A[n]) j (Suc k') < elem (A[n]) ?X (Suc k')
+                     \<and> m_ancestor (A[n]) k' ?X j"
+      have PXp: "?P ?Xp" using lt anc by simp
+      have PX1: "?P (?X - 1)" using PXp Xp_succ by simp
+      have mem: "?Xp \<in> set (filter ?P [0..<?X])"
+        using PXp Xp_succ Xpos by simp
+      have ne: "filter ?P [0..<?X] \<noteq> []"
+      proof
+        assume "filter ?P [0..<?X] = []"
+        thus False using mem by simp
+      qed
+      have "last (filter ?P [0..<?X]) = ?X - 1"
+        using last_filter_upt_eq_pred_max[of ?P ?X] PX1 Xpos by blast
+      hence "last (filter ?P [0..<?X]) = ?Xp" using Xp_succ by simp
+      thus ?case using ne by (simp add: Let_def)
+    qed
+  qed
+  show ?thesis using main[OF k_lt_t keep col] .
+qed
+
 
 text \<open>\<^bold>\<open>Ascending one-step / atomic bump-chain crux (shared by clauses (i) and (v)).\<close>
   When \<open>j\<close> ascends at \<open>k\<close>, the bumped copy \<open>idx_B(c,j)\<close> reaches the previous
@@ -11194,7 +11322,49 @@ lemma onestep_anc_when_ascends:
       and c_pos: "0 < c"
       and c_le: "c \<le> n"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A (c - 1) j)"
-  sorry
+proof (cases "l1 A = 1")
+  case True
+  \<comment> \<open>\<open>l1 A = 1\<close>: the source column index \<open>j < l1 A = 1\<close> forces \<open>j = 0\<close>,
+      so this is the consecutive block-start one-step ancestry, discharged by
+      @{thm consecutive_block_start_parent} (the direct \<open>k\<close>-parent) followed by
+      @{thm m_anc_via_parent_some}.\<close>
+  have j0: "j = 0" using j_lt True by simp
+  have n_pos: "0 < n" using c_pos c_le by simp
+  \<comment> \<open>Extract \<open>max_parent_level A = Some t\<close> and \<open>k < t\<close> from \<open>ascends A j k\<close>.\<close>
+  obtain t where mp: "max_parent_level A = Some t"
+    using asc unfolding ascends_def using b0
+    by (cases "max_parent_level A") auto
+  have k_lt_t: "k < t"
+    using asc unfolding ascends_def using b0 mp by simp
+  \<comment> \<open>\<open>keep\<close> bound: \<open>k < t \<le> keep_of (\<dots>)\<close>.\<close>
+  have keep_ge_t: "t \<le> keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
+  have keep: "k < keep_of (G_block A @ Bs_concat A n)"
+    using k_lt_t keep_ge_t by linarith
+  \<comment> \<open>\<open>col\<close> bound: \<open>k < t < height A = length (A ! s)\<close>.\<close>
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
+  have len_As: "length (A ! s) = height A"
+    using length_col_arr[OF is_arr A_ne s_lt_arr] .
+  have col: "k < length (A ! s)" using k_lt_t t_lt_H len_As by simp
+  \<comment> \<open>The direct consecutive block-start parent step, then one-step ancestry.\<close>
+  have par: "m_parent (A[n]) k (idx_B_in_expansion A c 0)
+           = Some (idx_B_in_expansion A (c - 1) 0)"
+    using consecutive_block_start_parent[OF A_BMS A_ne b0 mp True c_pos c_le
+            k_lt_t keep col] .
+  have "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A (c - 1) 0)"
+    using m_anc_via_parent_some[OF par] by simp
+  thus ?thesis using j0 by simp
+next
+  case False
+  \<comment> \<open>\<open>l1 A > 1\<close>: the \<open>k\<close>-parent is not directly \<open>idx_B(c-1,j)\<close>; the ancestry is
+      reached via a chain of length up to \<open>lE\<close> (probe
+      \<open>verify/probe_onestep_parent_structure.py\<close>).  Open residual.\<close>
+  show ?thesis sorry
+qed
 
 lemma lemma_2_5_i_clause_step_forward_case_ascends:
   \<comment> \<open>CASE (A): source column \<open>j\<close> ascends at level \<open>k\<close>.  The whole block-copy
@@ -11238,6 +11408,440 @@ text \<open>\<^bold>\<open>Clause (i) B\<rightarrow>G biconditional for a non-as
   the two directions.  The \<open>0 < Suc k' < t\<close>
   regime is the B\<rightarrow>G engine; the \<open>k = 0\<close> (row-0) and \<open>t \<le> Suc k'\<close>
   (above-max-parent-level) regimes are labelled sorries.\<close>
+
+text \<open>\<^bold>\<open>Last column of \<open>A[n]\<close> as a block index (sorry-free).\<close>  When \<open>B\<^sub>0\<close>
+  is non-empty, the last column of the expansion is the last (\<open>l\<^sub>1 - 1\<close>)
+  column of the last block \<open>B\<^sub>n\<close>: \<open>last_col_idx (A[n]) = idx_B (A,n,l\<^sub>1-1)\<close>.
+  Pure length arithmetic on @{thm arr_len_expansion_l01}.  This is the
+  starting point for the P1 keystone \<open>b0_start (A[n]) = m_parent A t'
+  (b0_start A)\<close>, which characterizes the \<open>t'\<close>-parent of this column.\<close>
+
+lemma last_col_idx_expansion:
+  fixes A :: array and n :: nat
+  assumes A_ne: "A \<noteq> []" and l1_pos: "0 < l1 A"
+  shows "last_col_idx (A[n]) = idx_B_in_expansion A n (l1 A - 1)"
+proof -
+  have len: "length (A[n]) = l0 A + Suc n * l1 A"
+    using arr_len_expansion_l01[OF A_ne] by simp
+  have "last_col_idx (A[n]) = l0 A + Suc n * l1 A - 1" using len by simp
+  also have "\<dots> = l0 A + n * l1 A + (l1 A - 1)" using l1_pos by simp
+  also have "\<dots> = idx_B_in_expansion A n (l1 A - 1)"
+    unfolding idx_B_in_expansion_def by simp
+  finally show ?thesis .
+qed
+
+text \<open>\<^bold>\<open>Value of the last block-start column \<open>idx_B (A,n,0)\<close> (sorry-free).\<close>
+  The leftmost column of the last block \<open>B\<^sub>n\<close> is the \<open>n\<close>-fold bumped copy of
+  \<open>B\<^sub>0\<close>'s first column (the bad root \<open>s\<close>): its level-\<open>k\<close> value is
+  \<open>elem A s k\<close> plus \<open>n \<cdot> delta A k\<close> when the bad-root row \<open>k\<close> ascends.
+  Specialization of @{thm elem_AEn_idx_B_value} at \<open>t=n, j=0\<close>; the base
+  column is \<open>A ! s\<close> (so its value is \<open>elem A s k\<close>).  Feeds the candidate
+  analysis of the P1 keystone.\<close>
+
+lemma elem_AEn_last_block_start:
+  fixes A :: array and n k :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s" and l1_pos: "0 < l1 A"
+      and k_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and k_col: "k < length (A ! s)"
+  shows "elem (A[n]) (idx_B_in_expansion A n 0) k
+       = elem A s k + (if ascends A 0 k then n * delta A k else 0)"
+proof -
+  have "elem (A[n]) (idx_B_in_expansion A n 0) k
+      = (A ! (s + 0)) ! k + (if ascends A 0 k then n * delta A k else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 le_refl l1_pos k_keep] k_col by simp
+  thus ?thesis by (simp add: elem_def)
+qed
+
+text \<open>\<^bold>\<open>P1a: bumped-region value collapse (sorry-free).\<close>  In the R2 regime
+  (\<open>l\<^sub>1 A = 1\<close>) the columns strictly between \<open>l\<^sub>0 A\<close> and the last column
+  \<open>idx_B (A,n,0)\<close> are exactly the earlier block-start copies \<open>idx_B (A,c,0)\<close>
+  (\<open>c < n\<close>).  When the bad-root row \<open>t'\<close> does \<^emph>\<open>not\<close> ascend (which holds in
+  R2 because \<open>t' = mpl (A[n]) \<ge> mpl A\<close>, so the bump term vanishes), every
+  such copy carries the \<^emph>\<open>same\<close> level-\<open>t'\<close> value \<open>elem A s t'\<close> as the last
+  column.  Hence none of them satisfies the \<^emph>\<open>strict\<close> \<open>elem\<close>-candidate
+  condition for \<open>m_parent (A[n]) t'\<close>, restricting the candidate set to the
+  \<open>G\<close>-region.  (Bound hypotheses \<open>keep\<close>/\<open>col\<close> isolate the strip/length
+  side-conditions; \<open>asc_false\<close> isolates the \<open>mpl\<close>-bound.)\<close>
+
+lemma P1a_bumped_region_value:
+  fixes A :: array and n p t' :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and l1_eq: "l1 A = 1"
+      and asc_false: "\<not> ascends A 0 t'"
+      and p_ge: "l0 A \<le> p" and p_lt: "p < idx_B_in_expansion A n 0"
+      and keep: "t' < keep_of (G_block A @ Bs_concat A n)"
+      and col: "t' < length (A ! s)"
+  shows "elem (A[n]) p t' = elem A s t'"
+proof -
+  define c where "c = p - l0 A"
+  have idxBn: "idx_B_in_expansion A n 0 = l0 A + n"
+    unfolding idx_B_in_expansion_def using l1_eq by simp
+  have c_lt_n: "c < n" using p_ge p_lt idxBn c_def by linarith
+  have p_eq: "p = idx_B_in_expansion A c 0"
+    unfolding idx_B_in_expansion_def using l1_eq p_ge c_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have "elem (A[n]) (idx_B_in_expansion A c 0) t'
+      = (A ! (s + 0)) ! t' + (if ascends A 0 t' then c * delta A t' else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 less_imp_le[OF c_lt_n] l1_pos keep] col
+    by simp
+  thus ?thesis using p_eq asc_false by (simp add: elem_def)
+qed
+
+text \<open>\<^bold>\<open>\<open>b0_start (A[n])\<close> as a parent of the last block column (sorry-free).\<close>
+  Restates \<open>b0_start (A[n])\<close> via @{thm last_col_idx_expansion}: it is the
+  \<open>t'\<close>-parent (in \<open>A[n]\<close>) of the last column \<open>idx_B (A,n,l\<^sub>1-1)\<close>.  The P1
+  keystone then asserts this equals \<open>m_parent A t' (b0_start A)\<close>.\<close>
+
+lemma b0_start_expansion_as_mparent:
+  fixes A :: array and n t' :: nat
+  assumes A_ne: "A \<noteq> []" and l1_pos: "0 < l1 A"
+      and mplEn: "max_parent_level (A[n]) = Some t'"
+  shows "b0_start (A[n]) = m_parent (A[n]) t' (idx_B_in_expansion A n (l1 A - 1))"
+proof -
+  have "b0_start (A[n]) = m_parent (A[n]) t' (last_col_idx (A[n]))"
+    using mplEn unfolding b0_start_def by simp
+  also have "\<dots> = m_parent (A[n]) t' (idx_B_in_expansion A n (l1 A - 1))"
+    using last_col_idx_expansion[OF A_ne l1_pos] by simp
+  finally show ?thesis .
+qed
+
+text \<open>\<^bold>\<open>P1 from structure (sorry-free).\<close>  Assembles the P1 keystone in the
+  R2 regime (\<open>l\<^sub>1 A = 1\<close>) from the two isolated obligations: \<open>asc_false\<close>
+  (\<open>\<not> ascends A 0 (Suc t')\<close>, equivalently \<open>mpl (A[n]) \<ge> mpl A\<close>) and \<open>P1b\<close>
+  (the \<open>G\<close>-region ancestry equivalence between the last column \<open>idx_B (A,n,0)\<close>
+  of \<open>A[n]\<close> and \<open>A\<close>'s own bad root \<open>s\<close>).  The candidate filter of
+  \<open>m_parent (A[n]) (Suc t') (idx_B (A,n,0))\<close> over \<open>[0..<idx_B (A,n,0)]\<close> splits
+  into the bumped tail \<open>[s..<idx_B (A,n,0)]\<close> (empty by @{thm P1a_bumped_region_value})
+  and the \<open>G\<close>-prefix \<open>[0..<s]\<close> (identical to \<open>A\<close>'s candidate filter by
+  @{thm elem_orig_eq_AEn_G}, @{thm elem_AEn_last_block_start} and \<open>P1b\<close>),
+  so the two \<open>m_parent\<close>s coincide: \<open>b0_start (A[n]) = m_parent A (Suc t') s\<close>.\<close>
+
+lemma P1_from_struct:
+  fixes A :: array and n t' :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_eq: "l1 A = 1"
+      and asc_false: "\<not> ascends A 0 (Suc t')"
+      and keep: "Suc t' < keep_of (G_block A @ Bs_concat A n)"
+      and col: "Suc t' < length (A ! s)"
+      and P1b: "\<And>p. p < l0 A \<Longrightarrow>
+                   m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
+                     \<longleftrightarrow> m_ancestor A t' s p"
+  shows "m_parent (A[n]) (Suc t') (idx_B_in_expansion A n 0)
+       = m_parent A (Suc t') s"
+proof -
+  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  let ?I = "idx_B_in_expansion A n 0"
+  have I_eq: "?I = s + n"
+    unfolding idx_B_in_expansion_def using l1_eq l0_eq by simp
+  have vL: "elem (A[n]) ?I (Suc t') = elem A s (Suc t')"
+    using elem_AEn_last_block_start[OF A_ne b0 l1_pos keep col] asc_false by simp
+  let ?PL = "\<lambda>p. elem (A[n]) p (Suc t') < elem (A[n]) ?I (Suc t')
+                 \<and> m_ancestor (A[n]) t' ?I p"
+  let ?PR = "\<lambda>p. elem A p (Suc t') < elem A s (Suc t') \<and> m_ancestor A t' s p"
+  have mpL: "m_parent (A[n]) (Suc t') ?I
+           = (if filter ?PL [0..<?I] = [] then None
+              else Some (last (filter ?PL [0..<?I])))"
+    by (simp add: Let_def)
+  have mpR: "m_parent A (Suc t') s
+           = (if filter ?PR [0..<s] = [] then None
+              else Some (last (filter ?PR [0..<s])))"
+    by (simp add: Let_def)
+  have range: "[0..<?I] = [0..<s] @ [s..<?I]"
+    using I_eq upt_add_eq_append[OF le0, of s n] by simp
+  have empty_hi: "filter ?PL [s..<?I] = []"
+  proof -
+    have "\<forall>p \<in> set [s..<?I]. \<not> ?PL p"
+    proof
+      fix p assume "p \<in> set [s..<?I]"
+      hence pg: "s \<le> p" and pl: "p < ?I" by auto
+      have pge: "l0 A \<le> p" using pg l0_eq by simp
+      have "elem (A[n]) p (Suc t') = elem A s (Suc t')"
+        using P1a_bumped_region_value[OF A_ne b0 l1_eq asc_false pge pl keep col] .
+      hence "\<not> (elem (A[n]) p (Suc t') < elem (A[n]) ?I (Suc t'))"
+        using vL by simp
+      thus "\<not> ?PL p" by simp
+    qed
+    thus ?thesis by (simp add: filter_empty_conv)
+  qed
+  have lo_eq: "filter ?PL [0..<s] = filter ?PR [0..<s]"
+  proof (rule filter_cong[OF refl])
+    fix p assume "p \<in> set [0..<s]"
+    hence pl: "p < s" by simp
+    have p_lt_sum: "p < l0 A + l1 A" using pl l0_eq by simp
+    have ep: "elem A p (Suc t') = elem (A[n]) p (Suc t')"
+      using elem_orig_eq_AEn_G[OF A_ne p_lt_sum keep] .
+    have anc: "m_ancestor (A[n]) t' ?I p \<longleftrightarrow> m_ancestor A t' s p"
+      using P1b[of p] pl l0_eq by simp
+    show "?PL p = ?PR p" using ep vL anc by simp
+  qed
+  have feq: "filter ?PL [0..<?I] = filter ?PR [0..<s]"
+    using range empty_hi lo_eq by simp
+  show ?thesis using mpL mpR feq by simp
+qed
+
+text \<open>\<^bold>\<open>P1b from clause (i) (sorry-free).\<close>  The \<open>G\<close>-region ancestry
+  equivalence \<open>P1b\<close> needed by @{thm P1_from_struct} is exactly Lemma 2.5
+  clause (i) specialized to \<open>j = 0\<close>: clause (i) equates the level-\<open>t'\<close>
+  \<open>G\<close>-ancestry of the block-\<open>0\<close> column \<open>idx_B (A,0,0) = s\<close> and the block-\<open>n\<close>
+  column \<open>idx_B (A,n,0)\<close>, and @{thm m_anc_orig_eq_AEn_G} transports the
+  block-\<open>0\<close> side back to \<open>A\<close> (since \<open>idx_B (A,0,0) = s < l\<^sub>0 A + l\<^sub>1 A\<close>).
+  This reduces the last open P1 obligation to clause (i).\<close>
+
+lemma P1b_from_clause_i:
+  fixes A :: array and n t' p :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_pos: "0 < l1 A"
+      and keep: "t' < keep_of (G_block A @ Bs_concat A n)"
+      and p_lt: "p < l0 A"
+      and clause_i: "lemma_2_5_i_clause A n t'"
+  shows "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
+       \<longleftrightarrow> m_ancestor A t' s p"
+proof -
+  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
+  have idxB00: "idx_B_in_expansion A 0 0 = s"
+    unfolding idx_B_in_expansion_def using l0_eq by simp
+  have ci: "m_ancestor (A[n]) t' (idx_B_in_expansion A 0 0) (idx_G A p)
+          \<longleftrightarrow> m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) (idx_G A p)"
+    using clause_i p_lt l1_pos unfolding lemma_2_5_i_clause_def by blast
+  have step1: "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
+             \<longleftrightarrow> m_ancestor (A[n]) t' s p"
+    using ci idxB00 by (simp add: idx_G_def)
+  have s_lt_sum: "s < l0 A + l1 A" using l0_eq l1_pos by simp
+  have step2: "m_ancestor A t' s p \<longleftrightarrow> m_ancestor (A[n]) t' s p"
+    using m_anc_orig_eq_AEn_G[OF A_ne keep s_lt_sum] by blast
+  show ?thesis using step1 step2 by blast
+qed
+
+text \<open>\<^bold>\<open>Equal \<open>m_parent\<close> \<Rightarrow> equal \<open>m_ancestor\<close> (sorry-free).\<close>  If two
+  columns have the \<^emph>\<open>same\<close> \<open>k\<close>-parent, they have the same \<open>k\<close>-ancestry to
+  any target (the ancestry relation unfolds once via the parent and then
+  recurses on the shared parent column).  This is the bridge from the P1
+  keystone (\<open>m_parent (A[n]) (Suc t') (idx_B (A,n,0)) = m_parent A (Suc t') s\<close>)
+  to the clause-(i) \<open>j = 0\<close> ancestry equivalence in the non-ascending levels.\<close>
+
+lemma m_anc_eq_of_m_parent_eq:
+  assumes "m_parent A k X = m_parent A k Y"
+  shows "m_ancestor A k X i = m_ancestor A k Y i"
+proof -
+  have "m_ancestor A k X i
+      = (case m_parent A k X of None \<Rightarrow> False
+         | Some p \<Rightarrow> p = i \<or> m_ancestor A k p i)"
+    by (subst m_ancestor.simps) (rule refl)
+  also have "\<dots> = (case m_parent A k Y of None \<Rightarrow> False
+                   | Some p \<Rightarrow> p = i \<or> m_ancestor A k p i)"
+    using assms by simp
+  also have "\<dots> = m_ancestor A k Y i"
+    by (subst (2) m_ancestor.simps) (rule refl)
+  finally show ?thesis .
+qed
+
+text \<open>\<^bold>\<open>Block-0 start is a \<open>k\<close>-ancestor of every later block start (sorry-free).\<close>
+  Iterating @{thm consecutive_block_start_parent} down the blocks (induction on
+  the block index \<open>c\<close>): \<open>idx_B (A,0,0) = s\<close> is a \<open>k\<close>-ancestor of \<open>idx_B (A,c,0)\<close>
+  for every \<open>1 \<le> c \<le> n\<close> at ascending levels \<open>k < mpl A\<close> (R2 regime).\<close>
+
+lemma block_start_anc_zero:
+  fixes A :: array and n c :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and c_pos: "0 < c" and c_le: "c \<le> n"
+      and k_lt_t: "k < t"
+      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and col: "k < length (A ! s)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A 0 0)"
+  using c_pos c_le
+proof (induct c)
+  case 0 thus ?case by simp
+next
+  case (Suc c')
+  have cp: "m_parent (A[n]) k (idx_B_in_expansion A (Suc c') 0)
+          = Some (idx_B_in_expansion A c' 0)"
+    using consecutive_block_start_parent[OF A_BMS A_ne b0 mp l1_eq _ _ k_lt_t keep col]
+          Suc.prems by simp
+  show ?case
+  proof (cases "c' = 0")
+    case True
+    have "m_parent (A[n]) k (idx_B_in_expansion A (Suc c') 0)
+        = Some (idx_B_in_expansion A 0 0)" using cp True by simp
+    thus ?thesis using m_anc_via_parent_some by metis
+  next
+    case False
+    hence c'_pos: "0 < c'" by simp
+    have c'_le: "c' \<le> n" using Suc.prems by simp
+    have IH: "m_ancestor (A[n]) k (idx_B_in_expansion A c' 0) (idx_B_in_expansion A 0 0)"
+      using Suc.hyps c'_pos c'_le by simp
+    show ?thesis using m_anc_via_parent_some[OF cp] IH by blast
+  qed
+qed
+
+text \<open>\<^bold>\<open>Clause (i) \<open>j = 0\<close> ascending level step (sorry-free).\<close>  At an ascending
+  level \<open>k < mpl A\<close>, the bumped block-\<open>n\<close> bad-root copy \<open>idx_B (A,n,0)\<close> has the
+  block-\<open>0\<close> copy \<open>idx_B (A,0,0) = s = l\<^sub>0 A\<close> as a \<open>k\<close>-ancestor (@{thm block_start_anc_zero});
+  every \<open>G\<close>-target \<open>i < l\<^sub>0 A\<close> lies strictly below it, so @{thm m_anc_below_ancestor_transfer}
+  gives the clause-(i) \<open>j = 0\<close> ancestry equivalence.\<close>
+
+lemma clause_i_j0_step_asc:
+  fixes A :: array and n i :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and n_pos: "0 < n"
+      and i_lt: "i < l0 A"
+      and k_lt_t: "k < t"
+      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and col: "k < length (A ! s)"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n 0) (idx_G A i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A 0 0) (idx_G A i)"
+proof -
+  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
+  have idxB00: "idx_B_in_expansion A 0 0 = l0 A"
+    unfolding idx_B_in_expansion_def by simp
+  have fact2: "m_ancestor (A[n]) k (idx_B_in_expansion A n 0) (idx_B_in_expansion A 0 0)"
+    using block_start_anc_zero[OF A_BMS A_ne b0 mp l1_eq n_pos order.refl k_lt_t keep col] .
+  have i_lt_X: "idx_G A i < idx_B_in_expansion A 0 0"
+    using i_lt idxB00 by (simp add: idx_G_def)
+  show ?thesis
+    using m_anc_below_ancestor_transfer[OF fact2 i_lt_X] .
+qed
+
+text \<open>\<^bold>\<open>Clause (i) \<open>j = 0\<close> non-ascending level step (sorry-free).\<close>  At a
+  level \<open>Suc t'\<close> where the bad-root row does \<^emph>\<open>not\<close> ascend (\<open>asc_false\<close>,
+  equivalently \<open>Suc t' \<ge> mpl A\<close>), the block-\<open>n\<close> and block-\<open>0\<close> bad-root copies
+  have the \<^emph>\<open>same\<close> \<open>(Suc t')\<close>-parent: @{thm P1_from_struct} sends the block-\<open>n\<close>
+  parent to \<open>m_parent A (Suc t') s\<close>, and @{thm m_parent_orig_eq_AEn_G} sends
+  the (unbumped) block-\<open>0\<close> parent there too.  Equal parents give equal
+  \<open>G\<close>-ancestry (@{thm m_anc_eq_of_m_parent_eq}), i.e. clause (i) at \<open>j = 0\<close>,
+  level \<open>Suc t'\<close>.  The \<open>P1b\<close> hypothesis is clause (i) at \<open>j = 0\<close>, level \<open>t'\<close>
+  (transported to \<open>A\<close> by @{thm m_anc_orig_eq_AEn_G}): this is the
+  level-induction descent.\<close>
+
+lemma clause_i_j0_step_not_asc:
+  fixes A :: array and n t' i :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_eq: "l1 A = 1"
+      and asc_false: "\<not> ascends A 0 (Suc t')"
+      and keep: "Suc t' < keep_of (G_block A @ Bs_concat A n)"
+      and col: "Suc t' < length (A ! s)"
+      and P1b: "\<And>p. p < l0 A \<Longrightarrow>
+                   m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
+                     \<longleftrightarrow> m_ancestor A t' s p"
+  shows "m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A n 0) (idx_G A i)
+       \<longleftrightarrow> m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A 0 0) (idx_G A i)"
+proof -
+  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
+  have idxB00: "idx_B_in_expansion A 0 0 = s"
+    unfolding idx_B_in_expansion_def using l0_eq by simp
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have s_lt_sum: "s < l0 A + l1 A" using l0_eq l1_pos by simp
+  have P1: "m_parent (A[n]) (Suc t') (idx_B_in_expansion A n 0)
+          = m_parent A (Suc t') s"
+    by (rule P1_from_struct[OF A_ne b0 l1_eq asc_false keep col P1b])
+  have orig: "m_parent A (Suc t') s = m_parent (A[n]) (Suc t') s"
+    by (rule m_parent_orig_eq_AEn_G[OF A_ne keep s_lt_sum])
+  have peq: "m_parent (A[n]) (Suc t') (idx_B_in_expansion A n 0)
+           = m_parent (A[n]) (Suc t') (idx_B_in_expansion A 0 0)"
+    using P1 orig idxB00 by simp
+  show ?thesis using m_anc_eq_of_m_parent_eq[OF peq] by simp
+qed
+
+text \<open>\<^bold>\<open>Clause (i) \<open>j = 0\<close> (sorry-free, R2 regime).\<close>  Assembles the two
+  level-steps by strong induction on the level \<open>k\<close>: ascending levels
+  (\<open>k < mpl A\<close>) via @{thm clause_i_j0_step_asc} (no induction hypothesis),
+  non-ascending levels (\<open>k \<ge> mpl A\<close>, so \<open>k = Suc t'\<close>) via
+  @{thm clause_i_j0_step_not_asc}, whose \<open>P1b\<close> hypothesis is supplied by the
+  induction hypothesis at \<open>t'\<close> (the clause at the lower level, transported to
+  \<open>A\<close> by @{thm m_anc_orig_eq_AEn_G}).  This is the \<open>j = 0\<close> slice of clause (i)
+  that @{thm P1b_from_clause_i} consumes — closing the P1 keystone for the R2
+  domination transfer without circularity (the level descent grounds it).\<close>
+
+lemma clause_i_j0:
+  fixes A :: array and n k i :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and n_pos: "0 < n"
+      and t_pos: "0 < t"
+      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and col: "k < length (A ! s)"
+      and i_lt: "i < l0 A"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n 0) (idx_G A i)
+       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A 0 0) (idx_G A i)"
+proof -
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
+  have idxB00: "idx_B_in_expansion A 0 0 = s"
+    unfolding idx_B_in_expansion_def using l0_eq by simp
+  have s_lt_sum: "s < l0 A + l1 A" using l0_eq l1_pos by simp
+  have gen: "\<And>k0. k0 < keep_of (G_block A @ Bs_concat A n) \<Longrightarrow> k0 < length (A ! s)
+        \<Longrightarrow> (\<forall>i<l0 A. m_ancestor (A[n]) k0 (idx_B_in_expansion A n 0) (idx_G A i)
+                    \<longleftrightarrow> m_ancestor (A[n]) k0 (idx_B_in_expansion A 0 0) (idx_G A i))"
+  proof -
+    fix k0
+    show "k0 < keep_of (G_block A @ Bs_concat A n) \<Longrightarrow> k0 < length (A ! s)
+          \<Longrightarrow> (\<forall>i<l0 A. m_ancestor (A[n]) k0 (idx_B_in_expansion A n 0) (idx_G A i)
+                      \<longleftrightarrow> m_ancestor (A[n]) k0 (idx_B_in_expansion A 0 0) (idx_G A i))"
+    proof (induct k0 rule: nat_less_induct)
+      case (1 k0)
+      show ?case
+      proof (intro allI impI)
+        fix i assume i_lt': "i < l0 A"
+        show "m_ancestor (A[n]) k0 (idx_B_in_expansion A n 0) (idx_G A i)
+            \<longleftrightarrow> m_ancestor (A[n]) k0 (idx_B_in_expansion A 0 0) (idx_G A i)"
+        proof (cases "k0 < t")
+          case True
+          show ?thesis
+            using clause_i_j0_step_asc[OF A_BMS A_ne b0 mp l1_eq n_pos i_lt' True
+                      "1.prems"(1) "1.prems"(2)] .
+        next
+          case False
+          have k0_pos: "0 < k0" using False t_pos by linarith
+          obtain t' where k_eq: "k0 = Suc t'" using k0_pos by (cases k0) auto
+          have asc_false: "\<not> ascends A 0 (Suc t')"
+            using False k_eq b0 mp
+            unfolding ascends_def non_strict_ancestor_def by simp
+          have keepS: "Suc t' < keep_of (G_block A @ Bs_concat A n)"
+            using "1.prems"(1) k_eq by simp
+          have colS: "Suc t' < length (A ! s)" using "1.prems"(2) k_eq by simp
+          have t'_lt: "t' < k0" using k_eq by simp
+          have t'_keep: "t' < keep_of (G_block A @ Bs_concat A n)" using keepS by simp
+          have t'_col: "t' < length (A ! s)" using colS by simp
+          have IHt': "\<forall>i<l0 A. m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) (idx_G A i)
+                                \<longleftrightarrow> m_ancestor (A[n]) t' (idx_B_in_expansion A 0 0) (idx_G A i)"
+            using "1.hyps" t'_lt t'_keep t'_col by blast
+          have P1b: "\<And>p. p < l0 A \<Longrightarrow>
+                       m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
+                         \<longleftrightarrow> m_ancestor A t' s p"
+          proof -
+            fix p assume p_lt: "p < l0 A"
+            have step1: "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
+                       \<longleftrightarrow> m_ancestor (A[n]) t' s p"
+              using IHt' p_lt idxB00 by (simp add: idx_G_def)
+            have step2: "m_ancestor A t' s p \<longleftrightarrow> m_ancestor (A[n]) t' s p"
+              using m_anc_orig_eq_AEn_G[OF A_ne t'_keep s_lt_sum] by blast
+            show "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
+                  \<longleftrightarrow> m_ancestor A t' s p"
+              using step1 step2 by blast
+          qed
+          have "m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A n 0) (idx_G A i)
+              \<longleftrightarrow> m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A 0 0) (idx_G A i)"
+            using clause_i_j0_step_not_asc[OF A_ne b0 l1_eq asc_false keepS colS P1b] .
+          thus ?thesis using k_eq by simp
+        qed
+      qed
+    qed
+  qed
+  show ?thesis using gen[OF keep col] i_lt by blast
+qed
 
 lemma clause_i_iff_when_not_ascends:
   fixes A :: array and n :: nat
@@ -11307,7 +11911,26 @@ proof -
       have leftmost_iff_supplied:
         "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 0) (idx_G A i)
           \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n 0) (idx_G A i)"
-        sorry
+      proof (cases "l1 A = 1 \<and> 0 < t
+                    \<and> Suc k' < keep_of (G_block A @ Bs_concat A n)
+                    \<and> Suc k' < length (A ! s)")
+        case True
+        \<comment> \<open>\<open>l\<^sub>1 = 1\<close> regime within the kept/column bounds: discharge the
+            leftmost (\<open>j = 0\<close>) gateway via the relocated \<open>clause_i_j0\<close>.\<close>
+        hence l1_eq: "l1 A = 1" and t_pos: "0 < t"
+          and keep: "Suc k' < keep_of (G_block A @ Bs_concat A n)"
+          and col: "Suc k' < length (A ! s)" by auto
+        show ?thesis
+          using clause_i_j0[OF A_BMS A_ne b0 mp l1_eq n_pos t_pos keep col i_lt]
+          by blast
+      next
+        case False
+        \<comment> \<open>Outside the \<open>l\<^sub>1 = 1\<close>/in-bounds regime: the leftmost bump-tail is
+            empty (\<open>l\<^sub>1 > 1\<close> empirically vacuous per
+            \<open>verify/probe_no_bump_when_l1_gt1.py\<close>; \<open>t = 0\<close> / out-of-range levels
+            give vacuous \<open>m_parent\<close>).  Residual.\<close>
+        show ?thesis sorry
+      qed
       show ?thesis
         using m_anc_idx_B_to_G_shift_at_Suc_k_when_k_ge_t
                 [OF A_BMS A_ne b0 mp True IH_ii_kp IH_i_kp clause_iv_k' n_pos i_lt j_lt
@@ -12012,101 +12635,9 @@ proof -
   show ?thesis by (rule dom_transfer_R2[OF En_ne b0' mpl' m_lt j_pos j_lt ANC])
 qed
 
-text \<open>\<^bold>\<open>Last column of \<open>A[n]\<close> as a block index (sorry-free).\<close>  When \<open>B\<^sub>0\<close>
-  is non-empty, the last column of the expansion is the last (\<open>l\<^sub>1 - 1\<close>)
-  column of the last block \<open>B\<^sub>n\<close>: \<open>last_col_idx (A[n]) = idx_B (A,n,l\<^sub>1-1)\<close>.
-  Pure length arithmetic on @{thm arr_len_expansion_l01}.  This is the
-  starting point for the P1 keystone \<open>b0_start (A[n]) = m_parent A t'
-  (b0_start A)\<close>, which characterizes the \<open>t'\<close>-parent of this column.\<close>
 
-lemma last_col_idx_expansion:
-  fixes A :: array and n :: nat
-  assumes A_ne: "A \<noteq> []" and l1_pos: "0 < l1 A"
-  shows "last_col_idx (A[n]) = idx_B_in_expansion A n (l1 A - 1)"
-proof -
-  have len: "length (A[n]) = l0 A + Suc n * l1 A"
-    using arr_len_expansion_l01[OF A_ne] by simp
-  have "last_col_idx (A[n]) = l0 A + Suc n * l1 A - 1" using len by simp
-  also have "\<dots> = l0 A + n * l1 A + (l1 A - 1)" using l1_pos by simp
-  also have "\<dots> = idx_B_in_expansion A n (l1 A - 1)"
-    unfolding idx_B_in_expansion_def by simp
-  finally show ?thesis .
-qed
 
-text \<open>\<^bold>\<open>Value of the last block-start column \<open>idx_B (A,n,0)\<close> (sorry-free).\<close>
-  The leftmost column of the last block \<open>B\<^sub>n\<close> is the \<open>n\<close>-fold bumped copy of
-  \<open>B\<^sub>0\<close>'s first column (the bad root \<open>s\<close>): its level-\<open>k\<close> value is
-  \<open>elem A s k\<close> plus \<open>n \<cdot> delta A k\<close> when the bad-root row \<open>k\<close> ascends.
-  Specialization of @{thm elem_AEn_idx_B_value} at \<open>t=n, j=0\<close>; the base
-  column is \<open>A ! s\<close> (so its value is \<open>elem A s k\<close>).  Feeds the candidate
-  analysis of the P1 keystone.\<close>
 
-lemma elem_AEn_last_block_start:
-  fixes A :: array and n k :: nat
-  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s" and l1_pos: "0 < l1 A"
-      and k_keep: "k < keep_of (G_block A @ Bs_concat A n)"
-      and k_col: "k < length (A ! s)"
-  shows "elem (A[n]) (idx_B_in_expansion A n 0) k
-       = elem A s k + (if ascends A 0 k then n * delta A k else 0)"
-proof -
-  have "elem (A[n]) (idx_B_in_expansion A n 0) k
-      = (A ! (s + 0)) ! k + (if ascends A 0 k then n * delta A k else 0)"
-    using elem_AEn_idx_B_value[OF A_ne b0 le_refl l1_pos k_keep] k_col by simp
-  thus ?thesis by (simp add: elem_def)
-qed
-
-text \<open>\<^bold>\<open>P1a: bumped-region value collapse (sorry-free).\<close>  In the R2 regime
-  (\<open>l\<^sub>1 A = 1\<close>) the columns strictly between \<open>l\<^sub>0 A\<close> and the last column
-  \<open>idx_B (A,n,0)\<close> are exactly the earlier block-start copies \<open>idx_B (A,c,0)\<close>
-  (\<open>c < n\<close>).  When the bad-root row \<open>t'\<close> does \<^emph>\<open>not\<close> ascend (which holds in
-  R2 because \<open>t' = mpl (A[n]) \<ge> mpl A\<close>, so the bump term vanishes), every
-  such copy carries the \<^emph>\<open>same\<close> level-\<open>t'\<close> value \<open>elem A s t'\<close> as the last
-  column.  Hence none of them satisfies the \<^emph>\<open>strict\<close> \<open>elem\<close>-candidate
-  condition for \<open>m_parent (A[n]) t'\<close>, restricting the candidate set to the
-  \<open>G\<close>-region.  (Bound hypotheses \<open>keep\<close>/\<open>col\<close> isolate the strip/length
-  side-conditions; \<open>asc_false\<close> isolates the \<open>mpl\<close>-bound.)\<close>
-
-lemma P1a_bumped_region_value:
-  fixes A :: array and n p t' :: nat
-  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
-      and l1_eq: "l1 A = 1"
-      and asc_false: "\<not> ascends A 0 t'"
-      and p_ge: "l0 A \<le> p" and p_lt: "p < idx_B_in_expansion A n 0"
-      and keep: "t' < keep_of (G_block A @ Bs_concat A n)"
-      and col: "t' < length (A ! s)"
-  shows "elem (A[n]) p t' = elem A s t'"
-proof -
-  define c where "c = p - l0 A"
-  have idxBn: "idx_B_in_expansion A n 0 = l0 A + n"
-    unfolding idx_B_in_expansion_def using l1_eq by simp
-  have c_lt_n: "c < n" using p_ge p_lt idxBn c_def by linarith
-  have p_eq: "p = idx_B_in_expansion A c 0"
-    unfolding idx_B_in_expansion_def using l1_eq p_ge c_def by simp
-  have l1_pos: "0 < l1 A" using l1_eq by simp
-  have "elem (A[n]) (idx_B_in_expansion A c 0) t'
-      = (A ! (s + 0)) ! t' + (if ascends A 0 t' then c * delta A t' else 0)"
-    using elem_AEn_idx_B_value[OF A_ne b0 less_imp_le[OF c_lt_n] l1_pos keep] col
-    by simp
-  thus ?thesis using p_eq asc_false by (simp add: elem_def)
-qed
-
-text \<open>\<^bold>\<open>\<open>b0_start (A[n])\<close> as a parent of the last block column (sorry-free).\<close>
-  Restates \<open>b0_start (A[n])\<close> via @{thm last_col_idx_expansion}: it is the
-  \<open>t'\<close>-parent (in \<open>A[n]\<close>) of the last column \<open>idx_B (A,n,l\<^sub>1-1)\<close>.  The P1
-  keystone then asserts this equals \<open>m_parent A t' (b0_start A)\<close>.\<close>
-
-lemma b0_start_expansion_as_mparent:
-  fixes A :: array and n t' :: nat
-  assumes A_ne: "A \<noteq> []" and l1_pos: "0 < l1 A"
-      and mplEn: "max_parent_level (A[n]) = Some t'"
-  shows "b0_start (A[n]) = m_parent (A[n]) t' (idx_B_in_expansion A n (l1 A - 1))"
-proof -
-  have "b0_start (A[n]) = m_parent (A[n]) t' (last_col_idx (A[n]))"
-    using mplEn unfolding b0_start_def by simp
-  also have "\<dots> = m_parent (A[n]) t' (idx_B_in_expansion A n (l1 A - 1))"
-    using last_col_idx_expansion[OF A_ne l1_pos] by simp
-  finally show ?thesis .
-qed
 
 text \<open>\<^bold>\<open>\<open>mpl\<close> lower bound from a parent witness (sorry-free).\<close>  If the last
   column of \<open>A[n]\<close> has \<^emph>\<open>any\<close> parent at level \<open>t\<close>, then \<open>mpl (A[n]) \<ge> t\<close>
@@ -12143,155 +12674,9 @@ proof -
   thus ?thesis using t'_eq by simp
 qed
 
-text \<open>\<^bold>\<open>P1 from structure (sorry-free).\<close>  Assembles the P1 keystone in the
-  R2 regime (\<open>l\<^sub>1 A = 1\<close>) from the two isolated obligations: \<open>asc_false\<close>
-  (\<open>\<not> ascends A 0 (Suc t')\<close>, equivalently \<open>mpl (A[n]) \<ge> mpl A\<close>) and \<open>P1b\<close>
-  (the \<open>G\<close>-region ancestry equivalence between the last column \<open>idx_B (A,n,0)\<close>
-  of \<open>A[n]\<close> and \<open>A\<close>'s own bad root \<open>s\<close>).  The candidate filter of
-  \<open>m_parent (A[n]) (Suc t') (idx_B (A,n,0))\<close> over \<open>[0..<idx_B (A,n,0)]\<close> splits
-  into the bumped tail \<open>[s..<idx_B (A,n,0)]\<close> (empty by @{thm P1a_bumped_region_value})
-  and the \<open>G\<close>-prefix \<open>[0..<s]\<close> (identical to \<open>A\<close>'s candidate filter by
-  @{thm elem_orig_eq_AEn_G}, @{thm elem_AEn_last_block_start} and \<open>P1b\<close>),
-  so the two \<open>m_parent\<close>s coincide: \<open>b0_start (A[n]) = m_parent A (Suc t') s\<close>.\<close>
 
-lemma P1_from_struct:
-  fixes A :: array and n t' :: nat
-  assumes A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and l1_eq: "l1 A = 1"
-      and asc_false: "\<not> ascends A 0 (Suc t')"
-      and keep: "Suc t' < keep_of (G_block A @ Bs_concat A n)"
-      and col: "Suc t' < length (A ! s)"
-      and P1b: "\<And>p. p < l0 A \<Longrightarrow>
-                   m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
-                     \<longleftrightarrow> m_ancestor A t' s p"
-  shows "m_parent (A[n]) (Suc t') (idx_B_in_expansion A n 0)
-       = m_parent A (Suc t') s"
-proof -
-  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
-  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
-  have l1_pos: "0 < l1 A" using l1_eq by simp
-  let ?I = "idx_B_in_expansion A n 0"
-  have I_eq: "?I = s + n"
-    unfolding idx_B_in_expansion_def using l1_eq l0_eq by simp
-  have vL: "elem (A[n]) ?I (Suc t') = elem A s (Suc t')"
-    using elem_AEn_last_block_start[OF A_ne b0 l1_pos keep col] asc_false by simp
-  let ?PL = "\<lambda>p. elem (A[n]) p (Suc t') < elem (A[n]) ?I (Suc t')
-                 \<and> m_ancestor (A[n]) t' ?I p"
-  let ?PR = "\<lambda>p. elem A p (Suc t') < elem A s (Suc t') \<and> m_ancestor A t' s p"
-  have mpL: "m_parent (A[n]) (Suc t') ?I
-           = (if filter ?PL [0..<?I] = [] then None
-              else Some (last (filter ?PL [0..<?I])))"
-    by (simp add: Let_def)
-  have mpR: "m_parent A (Suc t') s
-           = (if filter ?PR [0..<s] = [] then None
-              else Some (last (filter ?PR [0..<s])))"
-    by (simp add: Let_def)
-  have range: "[0..<?I] = [0..<s] @ [s..<?I]"
-    using I_eq upt_add_eq_append[OF le0, of s n] by simp
-  have empty_hi: "filter ?PL [s..<?I] = []"
-  proof -
-    have "\<forall>p \<in> set [s..<?I]. \<not> ?PL p"
-    proof
-      fix p assume "p \<in> set [s..<?I]"
-      hence pg: "s \<le> p" and pl: "p < ?I" by auto
-      have pge: "l0 A \<le> p" using pg l0_eq by simp
-      have "elem (A[n]) p (Suc t') = elem A s (Suc t')"
-        using P1a_bumped_region_value[OF A_ne b0 l1_eq asc_false pge pl keep col] .
-      hence "\<not> (elem (A[n]) p (Suc t') < elem (A[n]) ?I (Suc t'))"
-        using vL by simp
-      thus "\<not> ?PL p" by simp
-    qed
-    thus ?thesis by (simp add: filter_empty_conv)
-  qed
-  have lo_eq: "filter ?PL [0..<s] = filter ?PR [0..<s]"
-  proof (rule filter_cong[OF refl])
-    fix p assume "p \<in> set [0..<s]"
-    hence pl: "p < s" by simp
-    have p_lt_sum: "p < l0 A + l1 A" using pl l0_eq by simp
-    have ep: "elem A p (Suc t') = elem (A[n]) p (Suc t')"
-      using elem_orig_eq_AEn_G[OF A_ne p_lt_sum keep] .
-    have anc: "m_ancestor (A[n]) t' ?I p \<longleftrightarrow> m_ancestor A t' s p"
-      using P1b[of p] pl l0_eq by simp
-    show "?PL p = ?PR p" using ep vL anc by simp
-  qed
-  have feq: "filter ?PL [0..<?I] = filter ?PR [0..<s]"
-    using range empty_hi lo_eq by simp
-  show ?thesis using mpL mpR feq by simp
-qed
 
-text \<open>\<^bold>\<open>P1b from clause (i) (sorry-free).\<close>  The \<open>G\<close>-region ancestry
-  equivalence \<open>P1b\<close> needed by @{thm P1_from_struct} is exactly Lemma 2.5
-  clause (i) specialized to \<open>j = 0\<close>: clause (i) equates the level-\<open>t'\<close>
-  \<open>G\<close>-ancestry of the block-\<open>0\<close> column \<open>idx_B (A,0,0) = s\<close> and the block-\<open>n\<close>
-  column \<open>idx_B (A,n,0)\<close>, and @{thm m_anc_orig_eq_AEn_G} transports the
-  block-\<open>0\<close> side back to \<open>A\<close> (since \<open>idx_B (A,0,0) = s < l\<^sub>0 A + l\<^sub>1 A\<close>).
-  This reduces the last open P1 obligation to clause (i).\<close>
 
-lemma P1b_from_clause_i:
-  fixes A :: array and n t' p :: nat
-  assumes A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and l1_pos: "0 < l1 A"
-      and keep: "t' < keep_of (G_block A @ Bs_concat A n)"
-      and p_lt: "p < l0 A"
-      and clause_i: "lemma_2_5_i_clause A n t'"
-  shows "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
-       \<longleftrightarrow> m_ancestor A t' s p"
-proof -
-  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
-  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
-  have idxB00: "idx_B_in_expansion A 0 0 = s"
-    unfolding idx_B_in_expansion_def using l0_eq by simp
-  have ci: "m_ancestor (A[n]) t' (idx_B_in_expansion A 0 0) (idx_G A p)
-          \<longleftrightarrow> m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) (idx_G A p)"
-    using clause_i p_lt l1_pos unfolding lemma_2_5_i_clause_def by blast
-  have step1: "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
-             \<longleftrightarrow> m_ancestor (A[n]) t' s p"
-    using ci idxB00 by (simp add: idx_G_def)
-  have s_lt_sum: "s < l0 A + l1 A" using l0_eq l1_pos by simp
-  have step2: "m_ancestor A t' s p \<longleftrightarrow> m_ancestor (A[n]) t' s p"
-    using m_anc_orig_eq_AEn_G[OF A_ne keep s_lt_sum] by blast
-  show ?thesis using step1 step2 by blast
-qed
-
-text \<open>\<^bold>\<open>Equal \<open>m_parent\<close> \<Rightarrow> equal \<open>m_ancestor\<close> (sorry-free).\<close>  If two
-  columns have the \<^emph>\<open>same\<close> \<open>k\<close>-parent, they have the same \<open>k\<close>-ancestry to
-  any target (the ancestry relation unfolds once via the parent and then
-  recurses on the shared parent column).  This is the bridge from the P1
-  keystone (\<open>m_parent (A[n]) (Suc t') (idx_B (A,n,0)) = m_parent A (Suc t') s\<close>)
-  to the clause-(i) \<open>j = 0\<close> ancestry equivalence in the non-ascending levels.\<close>
-
-lemma m_anc_eq_of_m_parent_eq:
-  assumes "m_parent A k X = m_parent A k Y"
-  shows "m_ancestor A k X i = m_ancestor A k Y i"
-proof -
-  have "m_ancestor A k X i
-      = (case m_parent A k X of None \<Rightarrow> False
-         | Some p \<Rightarrow> p = i \<or> m_ancestor A k p i)"
-    by (subst m_ancestor.simps) (rule refl)
-  also have "\<dots> = (case m_parent A k Y of None \<Rightarrow> False
-                   | Some p \<Rightarrow> p = i \<or> m_ancestor A k p i)"
-    using assms by simp
-  also have "\<dots> = m_ancestor A k Y i"
-    by (subst (2) m_ancestor.simps) (rule refl)
-  finally show ?thesis .
-qed
-
-text \<open>\<^bold>\<open>Last filtered candidate equals the max index when it qualifies (sorry-free).\<close>
-  If the predicate holds at the top index \<open>N-1\<close>, then it is the last element
-  of \<open>filter P [0..<N]\<close> — used to read off an \<^emph>\<open>exact\<close> \<open>m_parent\<close> when the
-  immediate predecessor is a candidate (the consecutive block-start step).\<close>
-
-lemma last_filter_upt_eq_pred_max:
-  assumes PM: "P (N - 1)" and Npos: "0 < N"
-  shows "last (filter P [0..<N]) = N - 1"
-proof -
-  obtain M where N: "N = Suc M" using Npos by (cases N) auto
-  have "filter P [0..<N] = filter P [0..<M] @ [M]"
-    using N PM by (simp add: upt_Suc_append)
-  thus ?thesis using N by simp
-qed
 
 text \<open>\<^bold>\<open>Build a level-\<open>Suc m'\<close> ancestor from stratified domination (sorry-free).\<close>
   Ported from the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>le1_build\<close> /
@@ -12389,241 +12774,10 @@ proof -
   show ?thesis using m_anc_build_Suc[OF anc_low_j j0_lt_j dom_top dom_mid] .
 qed
 
-text \<open>\<^bold>\<open>Consecutive block-start parent in the R2 regime (sorry-free).\<close>  When
-  \<open>l\<^sub>1 A = 1\<close>, the leftmost column of block \<open>B_c\<close> (\<open>c \<ge> 1\<close>) has, at every
-  ascending level \<open>k < mpl A\<close>, the leftmost column of the \<^emph>\<open>previous\<close> block
-  \<open>B_{c-1}\<close> as its \<open>k\<close>-parent: \<open>idx_B (A,c-1,0) = idx_B (A,c,0) - 1\<close> is the
-  immediate predecessor and is a candidate (strictly smaller value by
-  \<open>delta A k > 0\<close>; the \<open>(k-1)\<close>-ancestry side from the IH at the lower level),
-  hence the last (maximal) filtered candidate.  By induction on the level \<open>k\<close>.
-  Iterating gives \<open>idx_B (A,0,0) = s\<close> as a \<open>k\<close>-ancestor of \<open>idx_B (A,n,0)\<close>,
-  the seed of the ascending clause-(i) \<open>j=0\<close> transfer.\<close>
 
-lemma consecutive_block_start_parent:
-  fixes A :: array and n c :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-      and l1_eq: "l1 A = 1"
-      and c_pos: "0 < c" and c_le: "c \<le> n"
-      and k_lt_t: "k < t"
-      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
-      and col: "k < length (A ! s)"
-  shows "m_parent (A[n]) k (idx_B_in_expansion A c 0)
-       = Some (idx_B_in_expansion A (c - 1) 0)"
-proof -
-  let ?X = "idx_B_in_expansion A c 0"
-  let ?Xp = "idx_B_in_expansion A (c - 1) 0"
-  have l1_pos: "0 < l1 A" using l1_eq by simp
-  have cm_le: "c - 1 \<le> n" using c_le by simp
-  have X_eq: "?X = l0 A + c" unfolding idx_B_in_expansion_def using l1_eq by simp
-  have Xp_eq: "?Xp = l0 A + (c - 1)" unfolding idx_B_in_expansion_def using l1_eq by simp
-  have Xp_succ: "?X = Suc ?Xp" using X_eq Xp_eq c_pos by simp
-  have Xpos: "0 < ?X" using X_eq c_pos by simp
-  \<comment> \<open>The induction carries the level bounds as antecedents.\<close>
-  have main: "\<And>k. k < t \<Longrightarrow> k < keep_of (G_block A @ Bs_concat A n)
-                \<Longrightarrow> k < length (A ! s)
-                \<Longrightarrow> m_parent (A[n]) k ?X = Some ?Xp"
-  proof -
-    fix k
-    show "k < t \<Longrightarrow> k < keep_of (G_block A @ Bs_concat A n) \<Longrightarrow> k < length (A ! s)
-          \<Longrightarrow> m_parent (A[n]) k ?X = Some ?Xp"
-    proof (induct k)
-      case 0
-      have asc0: "ascends A 0 0"
-        using b0 mp \<open>(0::nat) < t\<close>
-        unfolding ascends_def non_strict_ancestor_def by simp
-      have dpos: "0 < delta A 0" using delta_pos_of_lt_m0[OF b0 mp \<open>(0::nat) < t\<close>] .
-      have eX: "elem (A[n]) ?X 0 = (A ! s) ! 0 + c * delta A 0"
-        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 c_le l1_pos
-                  \<open>(0::nat) < keep_of (G_block A @ Bs_concat A n)\<close> _] \<open>(0::nat) < length (A ! s)\<close>
-        by simp
-      have eXp: "elem (A[n]) ?Xp 0 = (A ! s) ! 0 + (c - 1) * delta A 0"
-        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 cm_le l1_pos
-                  \<open>(0::nat) < keep_of (G_block A @ Bs_concat A n)\<close> _] \<open>(0::nat) < length (A ! s)\<close>
-        by simp
-      have lt: "elem (A[n]) ?Xp 0 < elem (A[n]) ?X 0"
-        using eX eXp dpos c_pos by simp
-      let ?P = "\<lambda>j. elem (A[n]) j 0 < elem (A[n]) ?X 0"
-      have PXp: "?P ?Xp" using lt .
-      have PX1: "?P (?X - 1)" using PXp Xp_succ by simp
-      have mem: "?Xp \<in> set (filter ?P [0..<?X])"
-        using PXp Xp_succ Xpos by simp
-      have ne: "filter ?P [0..<?X] \<noteq> []"
-      proof
-        assume "filter ?P [0..<?X] = []"
-        thus False using mem by simp
-      qed
-      have "last (filter ?P [0..<?X]) = ?X - 1"
-        using last_filter_upt_eq_pred_max[of ?P ?X] PX1 Xpos by blast
-      hence "last (filter ?P [0..<?X]) = ?Xp" using Xp_succ by simp
-      thus ?case using ne by (simp add: Let_def)
-    next
-      case (Suc k')
-      have Sk_lt_t: "Suc k' < t" using Suc.prems by simp
-      have k'_lt_t: "k' < t" using Sk_lt_t by simp
-      have Sk_keep: "Suc k' < keep_of (G_block A @ Bs_concat A n)" using Suc.prems by simp
-      have k'_keep: "k' < keep_of (G_block A @ Bs_concat A n)" using Sk_keep by simp
-      have Sk_col: "Suc k' < length (A ! s)" using Suc.prems by simp
-      have k'_col: "k' < length (A ! s)" using Sk_col by simp
-      have IHk': "m_parent (A[n]) k' ?X = Some ?Xp"
-        using Suc.hyps k'_lt_t k'_keep k'_col by blast
-      have asc0: "ascends A 0 (Suc k')"
-        using b0 mp Sk_lt_t
-        unfolding ascends_def non_strict_ancestor_def by simp
-      have dpos: "0 < delta A (Suc k')" using delta_pos_of_lt_m0[OF b0 mp Sk_lt_t] .
-      have eX: "elem (A[n]) ?X (Suc k') = (A ! s) ! (Suc k') + c * delta A (Suc k')"
-        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 c_le l1_pos
-                  Sk_keep _] Sk_col by simp
-      have eXp: "elem (A[n]) ?Xp (Suc k') = (A ! s) ! (Suc k') + (c - 1) * delta A (Suc k')"
-        using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 cm_le l1_pos
-                  Sk_keep _] Sk_col by simp
-      have lt: "elem (A[n]) ?Xp (Suc k') < elem (A[n]) ?X (Suc k')"
-        using eX eXp dpos c_pos by simp
-      have anc: "m_ancestor (A[n]) k' ?X ?Xp"
-        using m_anc_via_parent_some[OF IHk'] by simp
-      let ?P = "\<lambda>j. elem (A[n]) j (Suc k') < elem (A[n]) ?X (Suc k')
-                     \<and> m_ancestor (A[n]) k' ?X j"
-      have PXp: "?P ?Xp" using lt anc by simp
-      have PX1: "?P (?X - 1)" using PXp Xp_succ by simp
-      have mem: "?Xp \<in> set (filter ?P [0..<?X])"
-        using PXp Xp_succ Xpos by simp
-      have ne: "filter ?P [0..<?X] \<noteq> []"
-      proof
-        assume "filter ?P [0..<?X] = []"
-        thus False using mem by simp
-      qed
-      have "last (filter ?P [0..<?X]) = ?X - 1"
-        using last_filter_upt_eq_pred_max[of ?P ?X] PX1 Xpos by blast
-      hence "last (filter ?P [0..<?X]) = ?Xp" using Xp_succ by simp
-      thus ?case using ne by (simp add: Let_def)
-    qed
-  qed
-  show ?thesis using main[OF k_lt_t keep col] .
-qed
 
-text \<open>\<^bold>\<open>Block-0 start is a \<open>k\<close>-ancestor of every later block start (sorry-free).\<close>
-  Iterating @{thm consecutive_block_start_parent} down the blocks (induction on
-  the block index \<open>c\<close>): \<open>idx_B (A,0,0) = s\<close> is a \<open>k\<close>-ancestor of \<open>idx_B (A,c,0)\<close>
-  for every \<open>1 \<le> c \<le> n\<close> at ascending levels \<open>k < mpl A\<close> (R2 regime).\<close>
 
-lemma block_start_anc_zero:
-  fixes A :: array and n c :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
-      and l1_eq: "l1 A = 1"
-      and c_pos: "0 < c" and c_le: "c \<le> n"
-      and k_lt_t: "k < t"
-      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
-      and col: "k < length (A ! s)"
-  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A 0 0)"
-  using c_pos c_le
-proof (induct c)
-  case 0 thus ?case by simp
-next
-  case (Suc c')
-  have cp: "m_parent (A[n]) k (idx_B_in_expansion A (Suc c') 0)
-          = Some (idx_B_in_expansion A c' 0)"
-    using consecutive_block_start_parent[OF A_BMS A_ne b0 mp l1_eq _ _ k_lt_t keep col]
-          Suc.prems by simp
-  show ?case
-  proof (cases "c' = 0")
-    case True
-    have "m_parent (A[n]) k (idx_B_in_expansion A (Suc c') 0)
-        = Some (idx_B_in_expansion A 0 0)" using cp True by simp
-    thus ?thesis using m_anc_via_parent_some by metis
-  next
-    case False
-    hence c'_pos: "0 < c'" by simp
-    have c'_le: "c' \<le> n" using Suc.prems by simp
-    have IH: "m_ancestor (A[n]) k (idx_B_in_expansion A c' 0) (idx_B_in_expansion A 0 0)"
-      using Suc.hyps c'_pos c'_le by simp
-    show ?thesis using m_anc_via_parent_some[OF cp] IH by blast
-  qed
-qed
 
-text \<open>\<^bold>\<open>Clause (i) \<open>j = 0\<close> ascending level step (sorry-free).\<close>  At an ascending
-  level \<open>k < mpl A\<close>, the bumped block-\<open>n\<close> bad-root copy \<open>idx_B (A,n,0)\<close> has the
-  block-\<open>0\<close> copy \<open>idx_B (A,0,0) = s = l\<^sub>0 A\<close> as a \<open>k\<close>-ancestor (@{thm block_start_anc_zero});
-  every \<open>G\<close>-target \<open>i < l\<^sub>0 A\<close> lies strictly below it, so @{thm m_anc_below_ancestor_transfer}
-  gives the clause-(i) \<open>j = 0\<close> ancestry equivalence.\<close>
-
-lemma clause_i_j0_step_asc:
-  fixes A :: array and n i :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
-      and l1_eq: "l1 A = 1"
-      and n_pos: "0 < n"
-      and i_lt: "i < l0 A"
-      and k_lt_t: "k < t"
-      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
-      and col: "k < length (A ! s)"
-  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n 0) (idx_G A i)
-       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A 0 0) (idx_G A i)"
-proof -
-  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
-  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
-  have idxB00: "idx_B_in_expansion A 0 0 = l0 A"
-    unfolding idx_B_in_expansion_def by simp
-  have fact2: "m_ancestor (A[n]) k (idx_B_in_expansion A n 0) (idx_B_in_expansion A 0 0)"
-    using block_start_anc_zero[OF A_BMS A_ne b0 mp l1_eq n_pos order.refl k_lt_t keep col] .
-  have i_lt_X: "idx_G A i < idx_B_in_expansion A 0 0"
-    using i_lt idxB00 by (simp add: idx_G_def)
-  show ?thesis
-    using m_anc_below_ancestor_transfer[OF fact2 i_lt_X] .
-qed
-
-text \<open>\<^bold>\<open>Clause (i) \<open>j = 0\<close> non-ascending level step (sorry-free).\<close>  At a
-  level \<open>Suc t'\<close> where the bad-root row does \<^emph>\<open>not\<close> ascend (\<open>asc_false\<close>,
-  equivalently \<open>Suc t' \<ge> mpl A\<close>), the block-\<open>n\<close> and block-\<open>0\<close> bad-root copies
-  have the \<^emph>\<open>same\<close> \<open>(Suc t')\<close>-parent: @{thm P1_from_struct} sends the block-\<open>n\<close>
-  parent to \<open>m_parent A (Suc t') s\<close>, and @{thm m_parent_orig_eq_AEn_G} sends
-  the (unbumped) block-\<open>0\<close> parent there too.  Equal parents give equal
-  \<open>G\<close>-ancestry (@{thm m_anc_eq_of_m_parent_eq}), i.e. clause (i) at \<open>j = 0\<close>,
-  level \<open>Suc t'\<close>.  The \<open>P1b\<close> hypothesis is clause (i) at \<open>j = 0\<close>, level \<open>t'\<close>
-  (transported to \<open>A\<close> by @{thm m_anc_orig_eq_AEn_G}): this is the
-  level-induction descent.\<close>
-
-lemma clause_i_j0_step_not_asc:
-  fixes A :: array and n t' i :: nat
-  assumes A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and l1_eq: "l1 A = 1"
-      and asc_false: "\<not> ascends A 0 (Suc t')"
-      and keep: "Suc t' < keep_of (G_block A @ Bs_concat A n)"
-      and col: "Suc t' < length (A ! s)"
-      and P1b: "\<And>p. p < l0 A \<Longrightarrow>
-                   m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
-                     \<longleftrightarrow> m_ancestor A t' s p"
-  shows "m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A n 0) (idx_G A i)
-       \<longleftrightarrow> m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A 0 0) (idx_G A i)"
-proof -
-  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
-  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
-  have idxB00: "idx_B_in_expansion A 0 0 = s"
-    unfolding idx_B_in_expansion_def using l0_eq by simp
-  have l1_pos: "0 < l1 A" using l1_eq by simp
-  have s_lt_sum: "s < l0 A + l1 A" using l0_eq l1_pos by simp
-  have P1: "m_parent (A[n]) (Suc t') (idx_B_in_expansion A n 0)
-          = m_parent A (Suc t') s"
-    by (rule P1_from_struct[OF A_ne b0 l1_eq asc_false keep col P1b])
-  have orig: "m_parent A (Suc t') s = m_parent (A[n]) (Suc t') s"
-    by (rule m_parent_orig_eq_AEn_G[OF A_ne keep s_lt_sum])
-  have peq: "m_parent (A[n]) (Suc t') (idx_B_in_expansion A n 0)
-           = m_parent (A[n]) (Suc t') (idx_B_in_expansion A 0 0)"
-    using P1 orig idxB00 by simp
-  show ?thesis using m_anc_eq_of_m_parent_eq[OF peq] by simp
-qed
-
-text \<open>\<^bold>\<open>Clause (i) \<open>j = 0\<close> (sorry-free, R2 regime).\<close>  Assembles the two
-  level-steps by strong induction on the level \<open>k\<close>: ascending levels
-  (\<open>k < mpl A\<close>) via @{thm clause_i_j0_step_asc} (no induction hypothesis),
-  non-ascending levels (\<open>k \<ge> mpl A\<close>, so \<open>k = Suc t'\<close>) via
-  @{thm clause_i_j0_step_not_asc}, whose \<open>P1b\<close> hypothesis is supplied by the
-  induction hypothesis at \<open>t'\<close> (the clause at the lower level, transported to
-  \<open>A\<close> by @{thm m_anc_orig_eq_AEn_G}).  This is the \<open>j = 0\<close> slice of clause (i)
-  that @{thm P1b_from_clause_i} consumes — closing the P1 keystone for the R2
-  domination transfer without circularity (the level descent grounds it).\<close>
 
 text \<open>\<^bold>\<open>Clause (i) ascending case from block-copy ancestry (sorry-free
   reduction, 续59).\<close>  The \<^emph>\<open>ascending\<close> case of clause (i) (both directions
@@ -12688,85 +12842,6 @@ proof -
     using m_anc_below_ancestor_transfer[OF onestep tgt_lt] by blast
 qed
 
-lemma clause_i_j0:
-  fixes A :: array and n k i :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
-      and l1_eq: "l1 A = 1"
-      and n_pos: "0 < n"
-      and t_pos: "0 < t"
-      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
-      and col: "k < length (A ! s)"
-      and i_lt: "i < l0 A"
-  shows "m_ancestor (A[n]) k (idx_B_in_expansion A n 0) (idx_G A i)
-       \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A 0 0) (idx_G A i)"
-proof -
-  have l1_pos: "0 < l1 A" using l1_eq by simp
-  have s_lt: "s < length A" using b0_start_le_length[OF b0 A_ne] .
-  have l0_eq: "l0 A = s" using b0 s_lt unfolding l0_def G_block_def by simp
-  have idxB00: "idx_B_in_expansion A 0 0 = s"
-    unfolding idx_B_in_expansion_def using l0_eq by simp
-  have s_lt_sum: "s < l0 A + l1 A" using l0_eq l1_pos by simp
-  have gen: "\<And>k0. k0 < keep_of (G_block A @ Bs_concat A n) \<Longrightarrow> k0 < length (A ! s)
-        \<Longrightarrow> (\<forall>i<l0 A. m_ancestor (A[n]) k0 (idx_B_in_expansion A n 0) (idx_G A i)
-                    \<longleftrightarrow> m_ancestor (A[n]) k0 (idx_B_in_expansion A 0 0) (idx_G A i))"
-  proof -
-    fix k0
-    show "k0 < keep_of (G_block A @ Bs_concat A n) \<Longrightarrow> k0 < length (A ! s)
-          \<Longrightarrow> (\<forall>i<l0 A. m_ancestor (A[n]) k0 (idx_B_in_expansion A n 0) (idx_G A i)
-                      \<longleftrightarrow> m_ancestor (A[n]) k0 (idx_B_in_expansion A 0 0) (idx_G A i))"
-    proof (induct k0 rule: nat_less_induct)
-      case (1 k0)
-      show ?case
-      proof (intro allI impI)
-        fix i assume i_lt': "i < l0 A"
-        show "m_ancestor (A[n]) k0 (idx_B_in_expansion A n 0) (idx_G A i)
-            \<longleftrightarrow> m_ancestor (A[n]) k0 (idx_B_in_expansion A 0 0) (idx_G A i)"
-        proof (cases "k0 < t")
-          case True
-          show ?thesis
-            using clause_i_j0_step_asc[OF A_BMS A_ne b0 mp l1_eq n_pos i_lt' True
-                      "1.prems"(1) "1.prems"(2)] .
-        next
-          case False
-          have k0_pos: "0 < k0" using False t_pos by linarith
-          obtain t' where k_eq: "k0 = Suc t'" using k0_pos by (cases k0) auto
-          have asc_false: "\<not> ascends A 0 (Suc t')"
-            using False k_eq b0 mp
-            unfolding ascends_def non_strict_ancestor_def by simp
-          have keepS: "Suc t' < keep_of (G_block A @ Bs_concat A n)"
-            using "1.prems"(1) k_eq by simp
-          have colS: "Suc t' < length (A ! s)" using "1.prems"(2) k_eq by simp
-          have t'_lt: "t' < k0" using k_eq by simp
-          have t'_keep: "t' < keep_of (G_block A @ Bs_concat A n)" using keepS by simp
-          have t'_col: "t' < length (A ! s)" using colS by simp
-          have IHt': "\<forall>i<l0 A. m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) (idx_G A i)
-                                \<longleftrightarrow> m_ancestor (A[n]) t' (idx_B_in_expansion A 0 0) (idx_G A i)"
-            using "1.hyps" t'_lt t'_keep t'_col by blast
-          have P1b: "\<And>p. p < l0 A \<Longrightarrow>
-                       m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
-                         \<longleftrightarrow> m_ancestor A t' s p"
-          proof -
-            fix p assume p_lt: "p < l0 A"
-            have step1: "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
-                       \<longleftrightarrow> m_ancestor (A[n]) t' s p"
-              using IHt' p_lt idxB00 by (simp add: idx_G_def)
-            have step2: "m_ancestor A t' s p \<longleftrightarrow> m_ancestor (A[n]) t' s p"
-              using m_anc_orig_eq_AEn_G[OF A_ne t'_keep s_lt_sum] by blast
-            show "m_ancestor (A[n]) t' (idx_B_in_expansion A n 0) p
-                  \<longleftrightarrow> m_ancestor A t' s p"
-              using step1 step2 by blast
-          qed
-          have "m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A n 0) (idx_G A i)
-              \<longleftrightarrow> m_ancestor (A[n]) (Suc t') (idx_B_in_expansion A 0 0) (idx_G A i)"
-            using clause_i_j0_step_not_asc[OF A_ne b0 l1_eq asc_false keepS colS P1b] .
-          thus ?thesis using k_eq by simp
-        qed
-      qed
-    qed
-  qed
-  show ?thesis using gen[OF keep col] i_lt by blast
-qed
 
 text \<open>\<^bold>\<open>\<open>mpl\<close> lower bound from a bad-root \<open>t\<close>-parent (sorry-free).\<close>  In the R2
   regime (\<open>l\<^sub>1 A = 1\<close>), if \<open>A\<close>'s bad root \<open>s\<close> has a \<open>(Suc t')\<close>-parent \<open>q\<close>
