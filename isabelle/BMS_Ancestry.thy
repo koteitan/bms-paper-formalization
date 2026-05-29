@@ -11843,6 +11843,225 @@ proof -
   show ?thesis using gen[OF keep col] i_lt by blast
 qed
 
+text \<open>\<^bold>\<open>Degenerate expansion: \<open>keep_of = 0\<close> makes every row-0 \<open>m\<close>-parent
+  \<open>None\<close> (sorry-free).\<close>  When the pre-strip array trims to zero kept rows, every
+  column of \<open>A[n]\<close> is empty, so all \<open>elem (A[n]) p 0\<close> are \<open>0\<close> and the value-only
+  level-0 candidate filter is empty.  Used to discharge the \<open>t = 0\<close> leftmost
+  gateway in the degenerate regime (e.g. \<open>A = [[0],[0],[1]]\<close>, height 1, where the
+  expansion strips to empty columns).\<close>
+
+lemma m_parent_AEn_zero_None_when_keep_zero:
+  fixes A :: array and n X :: nat
+  assumes A_ne: "A \<noteq> []"
+      and keep0: "keep_of (G_block A @ Bs_concat A n) = 0"
+      and X_lt: "X < length (A[n])"
+  shows "m_parent (A[n]) 0 X = None"
+proof -
+  let ?P = "G_block A @ Bs_concat A n"
+  have An_eq: "A[n] = strip_zero_rows ?P" using A_ne by (simp add: expansion_def)
+  have lenAn: "length (A[n]) = length ?P"
+    using An_eq by (simp add: length_strip_zero_rows)
+  have col_empty: "\<And>p. p < length (A[n]) \<Longrightarrow> (A[n]) ! p = []"
+  proof -
+    fix p assume p_lt: "p < length (A[n])"
+    hence P_ne: "?P \<noteq> []" using lenAn by auto
+    have p_ltP: "p < length ?P" using p_lt lenAn by simp
+    have An_map: "A[n] = map (take (keep_of ?P)) ?P"
+      using An_eq strip_zero_rows_eq_map_take[OF P_ne] by simp
+    have "(A[n]) ! p = take (keep_of ?P) (?P ! p)"
+      by (simp only: An_map nth_map[OF p_ltP])
+    thus "(A[n]) ! p = []" using keep0 by simp
+  qed
+  have X_empty: "(A[n]) ! X = []" using col_empty X_lt .
+  have no_cand: "\<And>p. p < X \<Longrightarrow> \<not> (elem (A[n]) p 0 < elem (A[n]) X 0)"
+  proof -
+    fix p assume "p < X"
+    hence "p < length (A[n])" using X_lt by simp
+    hence "(A[n]) ! p = []" using col_empty by simp
+    hence "elem (A[n]) p 0 = elem (A[n]) X 0" using X_empty unfolding elem_def by simp
+    thus "\<not> (elem (A[n]) p 0 < elem (A[n]) X 0)" by simp
+  qed
+  have mp_eq: "m_parent (A[n]) 0 X
+             = (if [p \<leftarrow> [0..<X]. elem (A[n]) p 0 < elem (A[n]) X 0] = []
+                then None else Some (last [p \<leftarrow> [0..<X]. elem (A[n]) p 0 < elem (A[n]) X 0]))"
+    by (simp add: Let_def)
+  have "[p \<leftarrow> [0..<X]. elem (A[n]) p 0 < elem (A[n]) X 0] = []"
+    using no_cand by (auto simp: filter_empty_conv)
+  thus ?thesis using mp_eq by simp
+qed
+
+text \<open>\<^bold>\<open>Row-0 leftmost gateway iff at \<open>t = 0\<close> (sorry-free).\<close>  Discharges the
+  \<open>j = 0\<close> base case of the row-0 \<open>t = 0\<close> \<open>B\<to>G\<close> shift.  Case-split on
+  \<open>keep_of\<close>: when \<open>0\<close>, both sides are vacuously \<open>False\<close>
+  (@{thm m_parent_AEn_zero_None_when_keep_zero}); when positive, the leftmost
+  bump-tail \<open>filter ?condn [l\<^sub>0..<idx_B(n,0)]\<close> is empty because every column
+  \<open>idx_B(c,j')\<close> there has row-0 value \<open>= elem A (s+j')\<close> (block-independent at
+  \<open>t = 0\<close>, then transferred to the base array), which the row-0 weak minimum
+  \<open>elem A s 0 \<le> elem A (s+j') 0\<close> (@{thm m_anc_zero_imp_strict_min} from the
+  level-0 ancestor chain of the bad root) keeps \<open>\<ge>\<close> the leftmost value.  With
+  the bump-tail empty the two leftmost \<open>m\<close>-parents share the same \<open>G\<close>-prefix
+  candidate list, so they coincide and the \<open>G\<close>-ancestries agree.\<close>
+
+lemma leftmost_gateway_iff_when_t_zero:
+  fixes A :: array and n i :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and n_pos: "0 < n"
+      and i_lt: "i < l0 A"
+  shows "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 0) (idx_G A i)
+       \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n 0) (idx_G A i)"
+proof (cases "keep_of (G_block A @ Bs_concat A n) = 0")
+  case True
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_pos: "0 < l1 A"
+    using b0 s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
+  have lenAn: "length (A[n]) = l0 A + Suc n * l1 A"
+    using A_ne by (simp add: expansion_def length_strip_zero_rows l0_def l1_def length_Bs_concat)
+  have X0_lt: "idx_B_in_expansion A 0 0 < length (A[n])"
+    using lenAn l1_pos unfolding idx_B_in_expansion_def by simp
+  have Xn_lt: "idx_B_in_expansion A n 0 < length (A[n])"
+    using lenAn l1_pos unfolding idx_B_in_expansion_def by simp
+  have N0: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 0) = None"
+    using m_parent_AEn_zero_None_when_keep_zero[OF A_ne True X0_lt] .
+  have Nn: "m_parent (A[n]) 0 (idx_B_in_expansion A n 0) = None"
+    using m_parent_AEn_zero_None_when_keep_zero[OF A_ne True Xn_lt] .
+  show ?thesis
+    using m_anc_via_parent_none[OF N0] m_anc_via_parent_none[OF Nn] by blast
+next
+  case False
+  hence keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)" by simp
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s" using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have last_lt_len: "last_col_idx A < length A" using A_ne by (cases A) auto
+  have l1_pos: "0 < l1 A"
+    using b0 s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
+  have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+    using b0 by (simp add: B0_block_def)
+  have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+    using B0_form by simp
+  also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_len by simp
+  finally have l1_eq: "l1 A = last_col_idx A - s" unfolding l1_def by simp
+  have last_eq: "last_col_idx A = s + l1 A" using l1_eq s_lt_last by simp
+  \<comment> \<open>Base-array row-0 weak minimum at the bad root.\<close>
+  have parent0: "m_parent A 0 (last_col_idx A) = Some s"
+    using b0 mp0 unfolding b0_start_def by simp
+  have manc0: "m_ancestor A 0 (last_col_idx A) s" using parent0 by simp
+  have strict_min: "\<forall>c. s < c \<and> c < last_col_idx A \<longrightarrow> elem A s 0 < elem A c 0"
+    using m_anc_zero_imp_strict_min[OF manc0] .
+  \<comment> \<open>Value transfer: block-0 expansion column row-0 equals the base column.\<close>
+  have transfer: "\<And>x. x < l1 A \<Longrightarrow>
+        elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+  proof -
+    fix x assume x_lt: "x < l1 A"
+    have idx_eq: "idx_B_in_expansion A 0 x = s + x"
+      unfolding idx_B_in_expansion_def using l0_eq by simp
+    have p_lt: "idx_B_in_expansion A 0 x < l0 A + l1 A"
+      using x_lt l0_eq idx_eq by simp
+    have "elem A (idx_B_in_expansion A 0 x) 0 = elem (A[n]) (idx_B_in_expansion A 0 x) 0"
+      using elem_orig_eq_AEn_G[OF A_ne p_lt keep_pos] .
+    thus "elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+      using idx_eq by simp
+  qed
+  \<comment> \<open>Row-0 weak minimum inside the expansion's block 0.\<close>
+  have wmin: "\<And>x. x < l1 A \<Longrightarrow>
+        elem (A[n]) (idx_B_in_expansion A 0 0) 0
+          \<le> elem (A[n]) (idx_B_in_expansion A 0 x) 0"
+  proof -
+    fix x assume x_lt: "x < l1 A"
+    have base_le: "elem A s 0 \<le> elem A (s + x) 0"
+    proof (cases "x = 0")
+      case True thus ?thesis by simp
+    next
+      case False
+      have lt1: "s < s + x" using False by simp
+      have lt2: "s + x < last_col_idx A" using x_lt last_eq by simp
+      have "elem A s 0 < elem A (s + x) 0" using strict_min lt1 lt2 by blast
+      thus ?thesis by simp
+    qed
+    have e0: "elem (A[n]) (idx_B_in_expansion A 0 0) 0 = elem A s 0"
+      using transfer[OF l1_pos] by simp
+    have ex: "elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+      using transfer[OF x_lt] .
+    show "elem (A[n]) (idx_B_in_expansion A 0 0) 0
+            \<le> elem (A[n]) (idx_B_in_expansion A 0 x) 0"
+      using e0 ex base_le by simp
+  qed
+  \<comment> \<open>\<open>m\<close>-parent coincidence of the two leftmost columns.\<close>
+  let ?v0 = "elem (A[n]) (idx_B_in_expansion A 0 0) 0"
+  let ?vn = "elem (A[n]) (idx_B_in_expansion A n 0) 0"
+  let ?cond0 = "\<lambda>p. elem (A[n]) p 0 < ?v0"
+  let ?condn = "\<lambda>p. elem (A[n]) p 0 < ?vn"
+  have v_eq: "?v0 = ?vn"
+    using elem_AEn_idx_B_eq_block_zero_at_row_zero_when_m0_zero
+            [OF A_ne b0 mp0 order.refl l1_pos] by simp
+  have idx00: "idx_B_in_expansion A 0 0 = l0 A"
+    unfolding idx_B_in_expansion_def by simp
+  have idxn0: "idx_B_in_expansion A n 0 = l0 A + n * l1 A"
+    unfolding idx_B_in_expansion_def by simp
+  have cands0_G: "filter ?cond0 [0..<idx_B_in_expansion A 0 0] = filter ?cond0 [0..<l0 A]"
+    using idx00 by simp
+  have split_n: "[0..<idx_B_in_expansion A n 0]
+              = [0..<l0 A] @ [l0 A..<idx_B_in_expansion A n 0]"
+    using upt_add_eq_append[OF le0, of "l0 A" "n * l1 A"] idxn0 by simp
+  have tail_empty: "filter ?condn [l0 A..<idx_B_in_expansion A n 0] = []"
+  proof -
+    have "\<forall>p \<in> set [l0 A..<idx_B_in_expansion A n 0]. \<not> ?condn p"
+    proof
+      fix p assume "p \<in> set [l0 A..<idx_B_in_expansion A n 0]"
+      hence pg: "l0 A \<le> p" and pl: "p < idx_B_in_expansion A n 0" by auto
+      define q where "q = p - l0 A"
+      have p_eq: "p = l0 A + q" using pg q_def by simp
+      have q_lt: "q < n * l1 A" using p_eq pl idxn0 by simp
+      let ?c = "q div l1 A" and ?j = "q mod l1 A"
+      have c_lt_n: "?c < n" using less_mult_imp_div_less[OF q_lt] .
+      have j_lt: "?j < l1 A" using l1_pos by simp
+      have q_eq: "q = ?c * l1 A + ?j" by (simp add: div_mult_mod_eq)
+      have p_as_idxB: "p = idx_B_in_expansion A ?c ?j"
+        unfolding idx_B_in_expansion_def using p_eq q_eq by (simp add: add.assoc)
+      have c_le: "?c \<le> n" using c_lt_n by simp
+      have bind: "elem (A[n]) p 0 = elem (A[n]) (idx_B_in_expansion A 0 ?j) 0"
+        using p_as_idxB
+              elem_AEn_idx_B_eq_block_zero_at_row_zero_when_m0_zero
+                [OF A_ne b0 mp0 c_le j_lt] by simp
+      have ge: "?v0 \<le> elem (A[n]) (idx_B_in_expansion A 0 ?j) 0" using wmin[OF j_lt] .
+      have "?vn \<le> elem (A[n]) p 0" using bind ge v_eq by simp
+      thus "\<not> ?condn p" by simp
+    qed
+    thus ?thesis by (simp add: filter_empty_conv)
+  qed
+  have candsn_G: "filter ?condn [0..<idx_B_in_expansion A n 0] = filter ?condn [0..<l0 A]"
+    using split_n tail_empty by simp
+  have step3: "filter ?cond0 [0..<l0 A] = filter ?condn [0..<l0 A]" using v_eq by simp
+  have cands_eq: "filter ?cond0 [0..<idx_B_in_expansion A 0 0]
+                = filter ?condn [0..<idx_B_in_expansion A n 0]"
+    using cands0_G candsn_G step3 by simp
+  have mp0_eq: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 0)
+              = (if filter ?cond0 [0..<idx_B_in_expansion A 0 0] = [] then None
+                 else Some (last (filter ?cond0 [0..<idx_B_in_expansion A 0 0])))"
+    by (simp add: Let_def)
+  have mpn_eq: "m_parent (A[n]) 0 (idx_B_in_expansion A n 0)
+              = (if filter ?condn [0..<idx_B_in_expansion A n 0] = [] then None
+                 else Some (last (filter ?condn [0..<idx_B_in_expansion A n 0])))"
+    by (simp add: Let_def)
+  have peq: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 0)
+           = m_parent (A[n]) 0 (idx_B_in_expansion A n 0)"
+    using mp0_eq mpn_eq cands_eq by simp
+  have "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 0) (idx_G A i)
+      = (case m_parent (A[n]) 0 (idx_B_in_expansion A 0 0) of None \<Rightarrow> False
+         | Some p \<Rightarrow> p = idx_G A i \<or> m_ancestor (A[n]) 0 p (idx_G A i))"
+    by (subst m_ancestor.simps) (rule refl)
+  also have "\<dots> = (case m_parent (A[n]) 0 (idx_B_in_expansion A n 0) of None \<Rightarrow> False
+                   | Some p \<Rightarrow> p = idx_G A i \<or> m_ancestor (A[n]) 0 p (idx_G A i))"
+    using peq by simp
+  also have "\<dots> = m_ancestor (A[n]) 0 (idx_B_in_expansion A n 0) (idx_G A i)"
+    by (subst (2) m_ancestor.simps) (rule refl)
+  finally show ?thesis .
+qed
+
 lemma clause_i_iff_when_not_ascends:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -11875,7 +12094,8 @@ proof -
       have leftmost_iff_supplied_t0:
         "m_ancestor (A[n]) 0 (idx_B_in_expansion A 0 0) (idx_G A i)
           \<longleftrightarrow> m_ancestor (A[n]) 0 (idx_B_in_expansion A n 0) (idx_G A i)"
-        sorry
+        using leftmost_gateway_iff_when_t_zero
+                [OF A_BMS A_ne b0 mp[unfolded \<open>t = 0\<close>] n_pos i_lt] .
       show ?thesis
         using m_anc_zero_idx_B_to_G_shift_when_t_zero
                 [OF A_BMS A_ne b0 mp[unfolded \<open>t = 0\<close>] clause_iv_0 i_lt j_lt
