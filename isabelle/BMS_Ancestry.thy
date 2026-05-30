@@ -3181,6 +3181,103 @@ proof -
   thus ?thesis using mp0_eq mpn_eq by simp
 qed
 
+text \<open>\<^bold>\<open>Leftmost (\<open>j = 0\<close>) gateway iff when the bump-tail is empty (sorry-free).\<close>
+  The block-start gateway of the \<open>Suc k' \<ge> t\<close> engine, factored out of the
+  engine's own \<open>?T = []\<close> branch.  When the bump-tail \<open>?T\<close> — the level-\<open>Suc k'\<close>
+  parent candidates of \<open>idx_B(n,0)\<close> sitting in the bumped region
+  \<open>[l\<^sub>0 .. idx_B(n,0))\<close> — is empty, the two block-starts \<open>idx_B(0,0) = l\<^sub>0\<close> and
+  \<open>idx_B(n,0)\<close> have \<^emph>\<open>identical\<close> parent-candidate lists: their values agree
+  (block-independent at \<open>Suc k' \<ge> t\<close>, @{thm elem_AEn_eq_at_row_k_ge_t_across_blocks})
+  and the \<open>G\<close>-prefix ancestry component agrees by clause (i) at the lower level
+  \<open>k'\<close> (\<open>IH_i_kp\<close>).  Hence their \<open>m\<close>-parents coincide and the level-\<open>Suc k'\<close>
+  ancestry to \<open>G[i]\<close> collapses identically.  This discharges the leftmost
+  gateway for \<^emph>\<open>all\<close> \<open>l\<^sub>1 > 1\<close> (where the bump-tail is empirically empty,
+  \<open>verify/probe_no_bump_when_l1_gt1.py\<close>: 0/14958) without the \<open>clause_i_j0\<close>
+  route (which remains for the \<open>l\<^sub>1 = 1\<close> bump-tail-nonempty case).\<close>
+
+lemma leftmost_gateway_iff_when_T_empty:
+  fixes A :: array and n k' i :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_ge_t: "t \<le> Suc k'"
+      and IH_i_kp: "lemma_2_5_i_clause A n k'"
+      and i_lt: "i < l0 A"
+      and l1_pos: "0 < l1 A"
+      and T_empty: "filter (\<lambda>p. elem (A[n]) p (Suc k')
+                                  < elem (A[n]) (idx_B_in_expansion A n 0) (Suc k')
+                              \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) p)
+                           [l0 A..<idx_B_in_expansion A n 0] = []"
+  shows "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 0) (idx_G A i)
+       \<longleftrightarrow> m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n 0) (idx_G A i)"
+proof -
+  have idx00_eq: "idx_B_in_expansion A 0 0 = l0 A"
+    unfolding idx_B_in_expansion_def by simp
+  have idxn0_eq: "idx_B_in_expansion A n 0 = l0 A + n * l1 A"
+    unfolding idx_B_in_expansion_def by simp
+  let ?v0 = "elem (A[n]) (idx_B_in_expansion A 0 0) (Suc k')"
+  let ?vn = "elem (A[n]) (idx_B_in_expansion A n 0) (Suc k')"
+  let ?cond0 = "\<lambda>p. elem (A[n]) p (Suc k') < ?v0
+                  \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A 0 0) p"
+  let ?condn = "\<lambda>p. elem (A[n]) p (Suc k') < ?vn
+                  \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) p"
+  let ?cands0 = "filter ?cond0 [0..<idx_B_in_expansion A 0 0]"
+  let ?candsn = "filter ?condn [0..<idx_B_in_expansion A n 0]"
+  let ?T = "filter ?condn [l0 A..<idx_B_in_expansion A n 0]"
+  have v_eq: "?v0 = ?vn"
+    using elem_AEn_eq_at_row_k_ge_t_across_blocks
+            [OF A_BMS A_ne b0 mp k_ge_t le0 order.refl l1_pos] .
+  have mp0_eq: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 0)
+              = (if ?cands0 = [] then None else Some (last ?cands0))"
+    by (simp add: Let_def)
+  have mpn_eq: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0)
+              = (if ?candsn = [] then None else Some (last ?candsn))"
+    by (simp add: Let_def)
+  have range_n: "[0..<idx_B_in_expansion A n 0]
+              = [0..<l0 A] @ [l0 A..<idx_B_in_expansion A n 0]"
+    using upt_add_eq_append[OF le0, of "l0 A" "n * l1 A"] idxn0_eq by simp
+  have candsn_split: "?candsn = filter ?condn [0..<l0 A] @ ?T"
+    using range_n by simp
+  have cands0_eq: "?cands0 = filter ?cond0 [0..<l0 A]"
+    using idx00_eq by simp
+  have G_agree: "filter ?cond0 [0..<l0 A] = filter ?condn [0..<l0 A]"
+  proof (rule filter_cong[OF refl])
+    fix p assume "p \<in> set [0..<l0 A]"
+    hence p_lt_l0: "p < l0 A" by simp
+    have pG: "p = idx_G A p" unfolding idx_G_def by simp
+    have anc_iff: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 0) p
+                \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) p"
+    proof -
+      have eq: "m_ancestor (A[n]) k' (idx_B_in_expansion A 0 0) (idx_G A p)
+              \<longleftrightarrow> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) (idx_G A p)"
+        using IH_i_kp p_lt_l0 l1_pos unfolding lemma_2_5_i_clause_def by blast
+      show ?thesis using eq pG by simp
+    qed
+    show "?cond0 p \<longleftrightarrow> ?condn p" using v_eq anc_iff by simp
+  qed
+  have candsn_G: "?candsn = filter ?condn [0..<l0 A]"
+    using candsn_split T_empty by simp
+  have cands_eq: "?cands0 = ?candsn"
+    using cands0_eq candsn_G G_agree by simp
+  have peq: "m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 0)
+           = m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0)"
+    using mp0_eq mpn_eq cands_eq by simp
+  have "m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A 0 0) (idx_G A i)
+      = (case m_parent (A[n]) (Suc k') (idx_B_in_expansion A 0 0) of
+           None \<Rightarrow> False
+         | Some p \<Rightarrow> p = idx_G A i
+                      \<or> m_ancestor (A[n]) (Suc k') p (idx_G A i))"
+    by (subst m_ancestor.simps) (rule refl)
+  also have "\<dots> = (case m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0) of
+                    None \<Rightarrow> False
+                  | Some p \<Rightarrow> p = idx_G A i
+                               \<or> m_ancestor (A[n]) (Suc k') p (idx_G A i))"
+    using peq by simp
+  also have "\<dots> = m_ancestor (A[n]) (Suc k') (idx_B_in_expansion A n 0) (idx_G A i)"
+    by (subst (2) m_ancestor.simps) (rule refl)
+  finally show ?thesis .
+qed
+
 text \<open>\<^bold>\<open>B\<to>G block-shift at \<open>Suc k' \<ge> t\<close> (sorry-free for \<open>j > 0\<close>).\<close>  The
   \<open>k \<ge> t\<close> analogue of the non-ascending B\<to>G block-shift engine.
   Induction on the within-block offset \<open>j\<close>: when \<open>S \<noteq> []\<close> the source m-parent
@@ -11617,6 +11714,89 @@ proof -
   show ?thesis using step1 step2 by blast
 qed
 
+text \<open>\<^bold>\<open>R2 location lemma (sorry-free): \<open>b0_start (A[n]) = m_parent A (mpl (A[n])) (b0_start A)\<close>.\<close>
+  The closed-form characterization of the expanded bad root in the R2 regime
+  (\<open>l\<^sub>1 A = 1\<close>, which holds for \<^emph>\<open>every\<close> R2 instance,
+  \<open>verify/probe_R2_l1A_mpl.py\<close>: 4737/4737): \<open>b0_start (A[n])\<close> is the
+  \<open>mpl (A[n])\<close>-parent (computed \<^emph>\<open>in \<open>A\<close>\<close>) of \<open>A\<close>'s own bad root \<open>s = b0_start A\<close>
+  — one further step up \<open>A\<close>'s parent chain from \<open>C\<close>, since
+  \<open>s = m_parent A (mpl A) C\<close>.  Assembled from @{thm b0_start_expansion_as_mparent}
+  (\<open>b0_start (A[n])\<close> is the \<open>mpl (A[n])\<close>-parent of the last column \<open>idx_B (A,n,l\<^sub>1-1)\<close>),
+  @{thm P1_from_struct} (that parent equals \<open>m_parent A (mpl (A[n])) s\<close> in the
+  \<open>l\<^sub>1 A = 1\<close> regime) and @{thm P1b_from_clause_i} (the \<open>G\<close>-region ancestry
+  conjunct of P1, supplied by clause (i) at the lower level).  The
+  \<open>asc_false\<close> obligation is the R2 \<open>mpl\<close>-bound \<open>mpl A \<le> mpl (A[n])\<close>
+  (\<open>mpl_bound_from_R2\<close>, proven downstream); \<open>keep\<close>/\<open>col\<close> are the strip/column side-conditions
+  and \<open>clause_i\<close> is the simultaneous-induction conjunct (Hunter's entanglement).\<close>
+
+lemma b0_start_expansion_R2_eq:
+  fixes A :: array and n t'' :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and l1_eq: "l1 A = 1"
+      and mplEn: "max_parent_level (A[n]) = Some (Suc t'')"
+      and asc_false: "\<not> ascends A 0 (Suc t'')"
+      and keep: "Suc t'' < keep_of (G_block A @ Bs_concat A n)"
+      and col: "Suc t'' < length (A ! s)"
+      and clause_i: "lemma_2_5_i_clause A n t''"
+  shows "b0_start (A[n]) = m_parent A (Suc t'') s"
+proof -
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have bexp: "b0_start (A[n])
+            = m_parent (A[n]) (Suc t'') (idx_B_in_expansion A n (l1 A - 1))"
+    using b0_start_expansion_as_mparent[OF A_ne l1_pos mplEn] .
+  have idx_eq: "idx_B_in_expansion A n (l1 A - 1) = idx_B_in_expansion A n 0"
+    unfolding idx_B_in_expansion_def using l1_eq by simp
+  have keep'': "t'' < keep_of (G_block A @ Bs_concat A n)" using keep by simp
+  have P1b: "\<And>p. p < l0 A \<Longrightarrow>
+                m_ancestor (A[n]) t'' (idx_B_in_expansion A n 0) p
+                  \<longleftrightarrow> m_ancestor A t'' s p"
+  proof -
+    fix p assume "p < l0 A"
+    show "m_ancestor (A[n]) t'' (idx_B_in_expansion A n 0) p
+            \<longleftrightarrow> m_ancestor A t'' s p"
+      using P1b_from_clause_i[OF A_ne b0 l1_pos keep'' \<open>p < l0 A\<close> clause_i] .
+  qed
+  have key: "m_parent (A[n]) (Suc t'') (idx_B_in_expansion A n 0)
+           = m_parent A (Suc t'') s"
+    using P1_from_struct[OF A_ne b0 l1_eq asc_false keep col P1b] .
+  show ?thesis using bexp idx_eq key by simp
+qed
+
+text \<open>\<^bold>\<open>R2 \<open>G\<close>-prefix domination from interval ancestry (sorry-free reduction).\<close>
+  The expanded bad root \<open>s' = m_parent A (Suc t'') (b0_start A)\<close> dominates,
+  at every level \<open>m \<le> t''\<close>, every \<open>G\<close>-prefix column \<open>p\<close> strictly between
+  \<open>s'\<close> and \<open>A\<close>'s own bad root \<open>s\<^sub>A\<close> (\<open>verify/probe_R2_gprefix_dom.py\<close>: 0/43515).
+  This is the \<open>G\<close>-column half of \<open>DOM (A[n])\<close> in the R2 regime.  It splits by
+  level: at \<open>m = 0\<close> the domination is unconditional from \<open>m_ancestor A 0 s\<^sub>A s'\<close>
+  (the level-0 specialization of \<open>s'\<close>'s ancestry of \<open>s\<^sub>A\<close>, via
+  @{thm m_ancestor_mono}) through @{thm m_anc_zero_imp_strict_min} (a level-0
+  ancestor strictly dominates the \<^emph>\<open>whole\<close> interval below it); at \<open>m > 0\<close>
+  the raw-interval level-0 argument fails (the off-chain difficulty class), so
+  the domination is taken from the \<^bold>\<open>interval-ancestry\<close> invariant
+  \<open>INTERVAL-ANC\<close>: \<open>s'\<close> is an \<open>m\<close>-ancestor of every \<open>p \<in> (s', s\<^sub>A)\<close>
+  (\<open>verify/probe_R2_sprime_anc_mid.py\<close>: 42624/42624) — the single residual BMS
+  structural fact isolating the R2 crux — through @{thm m_ancestor_elem_lt}.\<close>
+
+lemma R2_gprefix_dom_from_interval_anc:
+  fixes A :: array and s' sA t'' p m :: nat
+  assumes anc_sA: "m_ancestor A (Suc t'') sA s'"
+      and interval_anc: "\<And>q m'. s' < q \<Longrightarrow> q < sA \<Longrightarrow> 0 < m' \<Longrightarrow> m' \<le> t''
+                            \<Longrightarrow> m_ancestor A m' q s'"
+      and p_lo: "s' < p" and p_hi: "p < sA" and m_le: "m \<le> t''"
+  shows "elem A s' m < elem A p m"
+proof (cases m)
+  case 0
+  have anc0: "m_ancestor A 0 sA s'" using m_ancestor_mono[OF le0 anc_sA] .
+  show ?thesis
+    using m_anc_zero_imp_strict_min[OF anc0] p_lo p_hi \<open>m = 0\<close> by blast
+next
+  case (Suc m')
+  hence m_pos: "0 < m" by simp
+  have "m_ancestor A m p s'" using interval_anc[OF p_lo p_hi m_pos m_le] .
+  thus ?thesis by (rule m_ancestor_elem_lt)
+qed
+
 text \<open>\<^bold>\<open>Equal \<open>m_parent\<close> \<Rightarrow> equal \<open>m_ancestor\<close> (sorry-free).\<close>  If two
   columns have the \<^emph>\<open>same\<close> \<open>k\<close>-parent, they have the same \<open>k\<close>-ancestry to
   any target (the ancestry relation unfolds once via the parent and then
@@ -12145,11 +12325,27 @@ proof -
           by blast
       next
         case False
-        \<comment> \<open>Outside the \<open>l\<^sub>1 = 1\<close>/in-bounds regime: the leftmost bump-tail is
-            empty (\<open>l\<^sub>1 > 1\<close> empirically vacuous per
-            \<open>verify/probe_no_bump_when_l1_gt1.py\<close>; \<open>t = 0\<close> / out-of-range levels
-            give vacuous \<open>m_parent\<close>).  Residual.\<close>
-        show ?thesis sorry
+        \<comment> \<open>Outside the \<open>l\<^sub>1 = 1\<close>/in-bounds regime, split on the leftmost
+            bump-tail \<open>?T\<close>.  When \<open>?T = []\<close> (all \<open>l\<^sub>1 > 1\<close>:
+            \<open>verify/probe_no_bump_when_l1_gt1.py\<close> 0/14958; also \<open>t = 0\<close> /
+            out-of-range levels give no bump candidate) the gateway collapses
+            via the \<open>G\<close>-prefix agreement, @{thm leftmost_gateway_iff_when_T_empty}.
+            The sharpened residual \<open>?T \<noteq> []\<close> forces a genuine bump (only
+            \<open>l\<^sub>1 = 1\<close>) outside the in-bounds regime closed above.\<close>
+        have l1_pos: "0 < l1 A" using j_lt by simp
+        show ?thesis
+        proof (cases "filter (\<lambda>p. elem (A[n]) p (Suc k')
+                                    < elem (A[n]) (idx_B_in_expansion A n 0) (Suc k')
+                                \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) p)
+                             [l0 A..<idx_B_in_expansion A n 0] = []")
+          case True
+          show ?thesis
+            by (rule leftmost_gateway_iff_when_T_empty
+                      [OF A_BMS A_ne b0 mp \<open>t \<le> Suc k'\<close> IH_i_kp i_lt l1_pos True])
+        next
+          case False
+          show ?thesis sorry
+        qed
       qed
       show ?thesis
         using m_anc_idx_B_to_G_shift_at_Suc_k_when_k_ge_t
@@ -13779,6 +13975,66 @@ qed
 
 lemma DOM_iff_ANC: "DOM A \<longleftrightarrow> ANC A"
   using DOM_of_ANC ANC_of_DOM by blast
+
+text \<open>\<^bold>\<open>\<open>ASC\<close> from \<open>DOM\<close> (sorry-free).\<close>  The R1 transfer @{thm dom_transfer_R1}
+  takes an \<open>ASC\<close> hypothesis — every \<open>B\<^sub>0\<close> column ascends at level \<open>m < t\<close>.
+  But \<open>ascends A off m\<close> (for \<open>off < l\<^sub>1 A\<close>, \<open>m < t\<close>) is, by definition,
+  \<open>off = 0\<close> (reflexive, \<open>s + 0 = s\<close>) \<^bold>\<open>or\<close> \<open>m_ancestor A m (s+off) s\<close> — and the
+  latter is exactly the ancestry conjunct \<open>ANC A\<close>, recovered from \<open>DOM A\<close> by
+  @{thm ANC_of_DOM}.  Hence the predecessor's \<open>ASC\<close> is not an extra hypothesis:
+  it is the IH \<open>DOM A\<close> in disguise.\<close>
+
+lemma ASC_of_DOM:
+  assumes b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and D: "DOM A" and off_lt: "off < l1 A" and m_lt: "m < t"
+  shows "ascends A off m"
+proof (cases "off = 0")
+  case True
+  thus ?thesis unfolding ascends_def non_strict_ancestor_def
+    using b0 mp m_lt by simp
+next
+  case False
+  hence off_pos: "0 < off" by simp
+  have "m_ancestor A m (s + off) s"
+    using ANC_of_DOM[OF D] b0 mp m_lt off_pos off_lt unfolding ANC_def by blast
+  thus ?thesis unfolding ascends_def non_strict_ancestor_def
+    using b0 mp m_lt by simp
+qed
+
+text \<open>\<^bold>\<open>R1 domination transfer from the bare IH \<open>DOM A\<close> (sorry-free).\<close>  Repackages
+  @{thm dom_transfer_R1} so its three predecessor invariants \<open>DOM\<close>/\<open>ASC\<close>/\<open>DPOS\<close>
+  are all discharged from the single induction hypothesis \<open>DOM A\<close>: \<open>DOM\<close> is the
+  hypothesis itself, \<open>ASC\<close> comes from @{thm ASC_of_DOM}, and \<open>DPOS\<close> from
+  @{thm delta_pos_of_lt_m0} (unconditional below \<open>mpl\<close>).  This shows the R1
+  branch of the predecessor-domination transfer \<open>DOM A \<Longrightarrow> DOM (A[n])\<close> needs
+  \<^emph>\<open>nothing\<close> beyond the IH plus the bump-formula geometric side-conditions
+  (rows kept, columns reach level \<open>m\<close>) — only the R2 in-\<open>G'\<close> branch remains.\<close>
+
+lemma dom_transfer_R1_from_DOM:
+  fixes A :: array and n c\<^sub>0 c'' off'' m :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and m_lt: "m < t"
+      and D: "DOM A"
+      and c0_le: "c\<^sub>0 \<le> c''" and c''_le: "c'' \<le> n"
+      and off_lt: "off'' < l1 A"
+      and later: "c\<^sub>0 < c'' \<or> 0 < off''"
+      and m_keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and m_col0: "m < length (A ! (s + 0))"
+      and m_coloff: "m < length (A ! (s + off''))"
+  shows "elem (A[n]) (idx_B_in_expansion A c\<^sub>0 0) m
+       < elem (A[n]) (idx_B_in_expansion A c'' off'') m"
+proof -
+  have DOMj: "\<And>j. 0 < j \<Longrightarrow> j < l1 A \<Longrightarrow> elem A s m < elem A (s + j) m"
+    using D b0 mp m_lt unfolding DOM_def by blast
+  have ASC: "\<And>off. off < l1 A \<Longrightarrow> ascends A off m"
+    using ASC_of_DOM[OF b0 mp D _ m_lt] by blast
+  have DPOS: "0 < delta A m" using delta_pos_of_lt_m0[OF b0 mp m_lt] .
+  show ?thesis
+    by (rule dom_transfer_R1[OF A_ne b0 mp m_lt DOMj ASC DPOS
+              c0_le c''_le off_lt later m_keep m_col0 m_coloff])
+qed
 
 text \<open>\<open>l\<^sub>1 (seed n) \<le> 1\<close>: \<open>B0_block (seed n) = take (1 - s) (drop s (seed n))\<close>
   has length \<open>\<le> 1\<close> (\<open>last_col_idx (seed n) = 1\<close> by @{thm length_seed}), so the
