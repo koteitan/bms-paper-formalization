@@ -11797,6 +11797,155 @@ next
   thus ?thesis by (rule m_ancestor_elem_lt)
 qed
 
+text \<open>\<^bold>\<open>R2 \<open>G\<close>-prefix domination from the m-parent floor (sorry-free, sharper).\<close>
+  A strictly more local reduction than @{thm R2_gprefix_dom_from_interval_anc}:
+  instead of the full interval-ancestry chain it consumes only the \<^bold>\<open>floor\<close>
+  fact — every \<open>G\<close>-prefix column \<open>q \<in> (s', s\<^sub>A)\<close> has, at each level
+  \<open>0 < m' \<le> t''\<close>, an \<open>m'\<close>-parent that does \<^emph>\<open>not\<close> drop below \<open>s'\<close>
+  (\<open>verify/probe_R2_mid_mparent_floor.py\<close>: 29610/0, no \<open>None\<close>, no \<open>p < s'\<close>).
+  The domination then follows by \<^bold>\<open>strong induction on \<open>q\<close>\<close>: the level-0 case is
+  the unconditional interval domination of a level-0 ancestor
+  (@{thm m_anc_zero_imp_strict_min}); at \<open>m > 0\<close> the floor gives an \<open>m\<close>-parent
+  \<open>p\<close> with \<open>s' \<le> p < q\<close>, so \<open>elem A p m < elem A q m\<close> (@{thm m_parent_elem_lt})
+  and either \<open>p = s'\<close> (done) or \<open>s' < p < s\<^sub>A\<close> (the induction hypothesis at
+  \<open>p\<close> gives \<open>elem A s' m < elem A p m\<close>), chaining to \<open>elem A s' m < elem A q m\<close>.
+  This isolates the residual R2 crux as the \<^emph>\<open>local\<close> m-parent-floor fact rather
+  than the global interval-ancestry invariant.\<close>
+
+lemma R2_gprefix_dom_from_floor:
+  fixes A :: array and s' sA t'' m q0 :: nat
+  assumes anc_sA: "m_ancestor A (Suc t'') sA s'"
+      and floor: "\<And>q m'. s' < q \<Longrightarrow> q < sA \<Longrightarrow> 0 < m' \<Longrightarrow> m' \<le> t''
+                    \<Longrightarrow> (\<exists>p. m_parent A m' q = Some p \<and> s' \<le> p)"
+      and m_le: "m \<le> t''"
+      and q_lo0: "s' < q0" and q_hi0: "q0 < sA"
+  shows "elem A s' m < elem A q0 m"
+proof (cases m)
+  case 0
+  have anc0: "m_ancestor A 0 sA s'" using m_ancestor_mono[OF le0 anc_sA] .
+  show ?thesis
+    using m_anc_zero_imp_strict_min[OF anc0] q_lo0 q_hi0 \<open>m = 0\<close> by blast
+next
+  case (Suc m')
+  hence m_pos: "0 < m" by simp
+  from q_lo0 q_hi0 show ?thesis
+  proof (induct q0 rule: less_induct)
+    case (less q0)
+    obtain p where mp: "m_parent A m q0 = Some p" and p_ge: "s' \<le> p"
+      using floor[OF less.prems(1) less.prems(2) m_pos m_le] by blast
+    have p_lt: "p < q0" using m_parent_lt[OF mp] .
+    have ep: "elem A p m < elem A q0 m" using m_parent_elem_lt[OF mp] .
+    show ?case
+    proof (cases "p = s'")
+      case True thus ?thesis using ep by simp
+    next
+      case False
+      hence s_lt_p: "s' < p" using p_ge by simp
+      have p_hi: "p < sA" using p_lt less.prems(2) by simp
+      have "elem A s' m < elem A p m" using less.hyps[OF p_lt s_lt_p p_hi] .
+      thus ?thesis using ep by simp
+    qed
+  qed
+qed
+
+text \<open>\<^bold>\<open>R2 bumped-copy domination (sorry-free).\<close>  The companion of
+  @{thm R2_gprefix_dom_from_interval_anc}: the bumped half of \<open>DOM (A[n])\<close>
+  in the R2 regime (\<open>l\<^sub>1 A = 1\<close>).  The expanded bad root
+  \<open>s' = m_parent A (Suc t'') s\<^sub>A\<close> (a verbatim \<open>G\<close>-column) dominates, at every
+  level \<open>m \<le> t''\<close>, every bumped block-start copy \<open>idx_B (A,c,0)\<close> (\<open>c \<le> n\<close>):
+  its own value is the verbatim \<open>elem A s' m\<close> (@{thm elem_orig_eq_AEn_G}); the
+  copy's value is \<open>elem A s\<^sub>A m\<close> plus a non-negative bump
+  (@{thm elem_AEn_idx_B_value}); and \<open>s'\<close> strictly dominates \<open>s\<^sub>A\<close> at level
+  \<open>m\<close> because it is an \<open>m\<close>-ancestor of \<open>s\<^sub>A\<close> (monotone from its
+  \<open>(Suc t'')\<close>-ancestry, @{thm m_ancestor_mono} + @{thm m_ancestor_elem_lt}).
+  Unlike the \<open>G\<close>-prefix half this needs \^emph>\<open>no\<close> interval-ancestry invariant —
+  the \<open>s'\<close>-dominates-\<open>s\<^sub>A\<close> step suffices since the bump only adds.\<close>
+
+lemma R2_bumped_dom:
+  fixes A :: array and n s' sA t'' c m :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some sA"
+      and l1_eq: "l1 A = 1"
+      and anc_sA: "m_ancestor A (Suc t'') sA s'"
+      and R2: "s' < sA"
+      and c_le: "c \<le> n"
+      and m_le: "m \<le> t''"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and col: "m < length (A ! sA)"
+  shows "elem (A[n]) s' m < elem (A[n]) (idx_B_in_expansion A c 0) m"
+proof -
+  have s_lt: "sA < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = sA" using b0 s_lt unfolding l0_def G_block_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have sp_lt_sum: "s' < l0 A + l1 A" using R2 l0_eq l1_pos by simp
+  have eL: "elem (A[n]) s' m = elem A s' m"
+    using elem_orig_eq_AEn_G[OF A_ne sp_lt_sum keep] by simp
+  have col': "m < length (A ! (sA + 0))" using col by simp
+  have eR: "elem (A[n]) (idx_B_in_expansion A c 0) m
+          = (A ! (sA + 0)) ! m + (if ascends A 0 m then c * delta A m else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 c_le l1_pos keep col'] .
+  have base: "(A ! (sA + 0)) ! m = elem A sA m" by (simp add: elem_def)
+  have anc_m: "m_ancestor A m sA s'" using m_ancestor_mono[OF le_SucI[OF m_le] anc_sA] .
+  have dom: "elem A s' m < elem A sA m" by (rule m_ancestor_elem_lt[OF anc_m])
+  show ?thesis using eL eR base dom by simp
+qed
+
+text \<open>\<^bold>\<open>R2 predecessor-domination transfer modulo interval-ancestry (sorry-free).\<close>
+  The R2 analogue of \<open>dom_transfer_R1_from_DOM\<close> (proven downstream): assembles the full
+  \<open>DOM (A[n])\<close> for the R2 regime (\<open>l\<^sub>1 A = 1\<close>) by case-splitting each interior
+  \<open>B\<^sub>0'\<close>-column \<open>q \<in> (s', s\<^sub>A + n]\<close> of \<open>A[n]\<close> on its position relative to
+  \<open>s\<^sub>A = l\<^sub>0 A\<close>: \<open>G\<close>-prefix columns \<open>q < s\<^sub>A\<close> are handled by
+  @{thm R2_gprefix_dom_from_interval_anc} (verbatim values, the only place the
+  interval-ancestry invariant is consumed), and bumped block-start copies
+  \<open>q = idx_B (A,c,0) = s\<^sub>A + c\<close> (\<open>c \<le> n\<close>) by @{thm R2_bumped_dom}.  Since the
+  expanded bad root \<open>s'\<close> is a verbatim \<open>G\<close>-column its own value is constant
+  across the split.  This reduces the entire R2 branch of \<open>DOM A \<Longrightarrow> DOM (A[n])\<close>
+  to the single interval-ancestry invariant \<open>INTERVAL-ANC\<close>; together with
+  \<open>dom_transfer_R1_from_DOM\<close> (R1, discharged from the IH) the predecessor
+  transfer is complete modulo \<open>INTERVAL-ANC\<close>.\<close>
+
+lemma dom_transfer_R2_from_interval_anc:
+  fixes A :: array and n s' sA t'' q m :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some sA"
+      and l1_eq: "l1 A = 1"
+      and anc_sA: "m_ancestor A (Suc t'') sA s'"
+      and R2: "s' < sA"
+      and interval_anc: "\<And>r m'. s' < r \<Longrightarrow> r < sA \<Longrightarrow> 0 < m' \<Longrightarrow> m' \<le> t''
+                            \<Longrightarrow> m_ancestor A m' r s'"
+      and q_lo: "s' < q" and q_hi: "q \<le> sA + n"
+      and m_le: "m \<le> t''"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and col: "m < length (A ! sA)"
+  shows "elem (A[n]) s' m < elem (A[n]) q m"
+proof -
+  have s_lt: "sA < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = sA" using b0 s_lt unfolding l0_def G_block_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have sp_lt_sum: "s' < l0 A + l1 A" using R2 l0_eq l1_pos by simp
+  have eLs: "elem (A[n]) s' m = elem A s' m"
+    using elem_orig_eq_AEn_G[OF A_ne sp_lt_sum keep] by simp
+  show ?thesis
+  proof (cases "q < sA")
+    case True
+    have q_lt_sum: "q < l0 A + l1 A" using True l0_eq l1_pos by simp
+    have eLq: "elem (A[n]) q m = elem A q m"
+      using elem_orig_eq_AEn_G[OF A_ne q_lt_sum keep] by simp
+    have "elem A s' m < elem A q m"
+      using R2_gprefix_dom_from_interval_anc[OF anc_sA interval_anc q_lo True m_le] .
+    thus ?thesis using eLs eLq by simp
+  next
+    case False
+    hence q_ge: "sA \<le> q" by simp
+    define c where "c = q - sA"
+    have c_le: "c \<le> n" using q_hi q_ge c_def by linarith
+    have q_eq: "q = idx_B_in_expansion A c 0"
+      unfolding idx_B_in_expansion_def using l0_eq l1_eq q_ge c_def by simp
+    show ?thesis
+      using R2_bumped_dom[OF A_ne b0 l1_eq anc_sA R2 c_le m_le keep col] q_eq by simp
+  qed
+qed
+
 text \<open>\<^bold>\<open>Equal \<open>m_parent\<close> \<Rightarrow> equal \<open>m_ancestor\<close> (sorry-free).\<close>  If two
   columns have the \<^emph>\<open>same\<close> \<open>k\<close>-parent, they have the same \<open>k\<close>-ancestry to
   any target (the ancestry relation unfolds once via the parent and then
