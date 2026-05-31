@@ -9154,7 +9154,42 @@ lemma adjacent_value_monotone:
       and mp: "max_parent_level A = Some t"
       and c_lo: "s < c" and c_hi: "c \<le> last_col_idx A" and m_lt: "m < t - 1"
   shows "elem A (c - 1) m < elem A c m"
-  sorry
+proof -
+  have "\<forall>s t c m. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+          \<longrightarrow> s < c \<longrightarrow> c \<le> last_col_idx A \<longrightarrow> m < t - 1
+          \<longrightarrow> elem A (c - 1) m < elem A c m"
+    using A_BMS
+  proof (induct A rule: BMS.induct)
+    case (seed_in_BMS n)
+    show ?case
+    proof (intro allI impI)
+      fix s' t' c' m'
+      assume b0n: "b0_start (seed n) = Some s'"
+         and mpn: "max_parent_level (seed n) = Some t'"
+         and cs: "s' < c'" and cC: "c' \<le> last_col_idx (seed n)" and mt: "m' < t' - 1"
+      have lc: "last_col_idx (seed n) = 1" by (simp add: length_seed)
+      have n_pos: "0 < n"
+      proof (rule ccontr)
+        assume "\<not> 0 < n"
+        hence "n = 0" by simp
+        hence "max_parent_level (seed n) = None"
+          by (simp add: max_parent_level_def height_seed seed_def)
+        thus False using mpn by simp
+      qed
+      have s0: "s' = 0" using b0_start_seed[OF n_pos] b0n by simp
+      have t_eq: "t' = n - 1" using max_parent_level_seed[OF n_pos] mpn by simp
+      have c1: "c' = 1" using cs cC lc s0 by simp
+      have m_lt_n: "m' < n" using mt t_eq by linarith
+      have "elem (seed n) 0 m' < elem (seed n) 1 m'"
+        using elem_seed_0[OF m_lt_n] elem_seed_1[OF m_lt_n] by simp
+      thus "elem (seed n) (c' - 1) m' < elem (seed n) c' m'" using c1 by simp
+    qed
+  next
+    case (expand_in_BMS A n)
+    show ?case sorry
+  qed
+  thus ?thesis using b0 mp c_lo c_hi m_lt by blast
+qed
 
 lemma elem_lt_below_t:
   fixes A :: array
