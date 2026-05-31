@@ -9147,6 +9147,48 @@ proof (induct m arbitrary: p rule: less_induct)
   qed
 qed
 
+text \<open>\<^bold>\<open>\<open>m\<close>-ancestor coincidence on the \<open>G\<close>-prefix (sorry-free, corollary).\<close>
+  Combines @{thm m_parent_AEn_eq_on_G_prefix} with
+  @{thm m_anc_AEn_eq_of_parent_eq_on_G}: below the strip cutoff, \<open>A[n]\<close> and \<open>A\<close>
+  have the same \<open>m\<close>-ancestry from any \<open>G\<close>-prefix column \<open>i < s\<close>.\<close>
+
+lemma m_anc_AEn_eq_on_G_prefix:
+  fixes A :: array and s m i j n :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and m_lt_keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and i_lt: "i < s"
+  shows "m_ancestor (A[n]) m i j = m_ancestor A m i j"
+proof -
+  have pc: "\<And>q. q < s \<Longrightarrow> m_parent (A[n]) m q = m_parent A m q"
+    using m_parent_AEn_eq_on_G_prefix[OF A_ne b0 m_lt_keep] by blast
+  show ?thesis by (rule m_anc_AEn_eq_of_parent_eq_on_G[OF pc i_lt])
+qed
+
+text \<open>\<^bold>\<open>Ancestry-restriction to the \<open>G\<close>-prefix, modulo the level-descent residual
+  \<open>(R\<hyphen>b)\<close> (sorry-free).\<close>  The \<open>G\<close>-block sub-case of the \<open>ancestor_monotone\<close>
+  self-transfer reduces to: a \<open>G\<close>-prefix \<open>m\<close>-ancestor \<open>q'\<close> of the new bad root
+  \<open>s' = b0_start (A[n])\<close> is an \<open>m\<close>-ancestor of the \<^emph>\<open>old\<close> bad root \<open>s\<close> in \<open>A\<close>.
+  Given the residual \<open>(R\<hyphen>b)\<close> — \<open>s'\<close> is itself an \<open>m\<close>-ancestor of \<open>s\<close> in \<open>A\<close>
+  (the level-descent from the top-level \<open>m_parent\<close> of \<open>b0_start_expansion_R2_eq\<close>;
+  empirically \<open>verify/probe_ar_lean.py\<close>: \<open>2722/2722\<close> at \<open>q' = s'\<close>, full chain
+  \<open>8748/0\<close>) — this lemma discharges the rest: localize the \<open>A[n]\<close>-ancestry of \<open>q'\<close>
+  back to \<open>A\<close> (@{thm m_anc_AEn_eq_on_G_prefix}) and chain through \<open>s'\<close> by
+  @{thm m_ancestor_trans}.\<close>
+
+lemma ancestry_restriction_G_modulo_Rb:
+  fixes A :: array and s m sp qp n :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and m_lt_keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and sp_lt: "sp < s"
+      and Rb: "m_ancestor A m s sp"
+      and ancE: "m_ancestor (A[n]) m sp qp"
+  shows "m_ancestor A m s qp"
+proof -
+  have ancA: "m_ancestor A m sp qp"
+    using m_anc_AEn_eq_on_G_prefix[OF A_ne b0 m_lt_keep sp_lt] ancE by simp
+  show ?thesis by (rule m_ancestor_trans[OF Rb ancA])
+qed
+
 text \<open>\<^bold>\<open>Telescoping: adjacent strict monotonicity \<Rightarrow> interval domination (sorry-free).\<close>
   If at level \<open>m\<close> every adjacent pair \<open>(c-1, c)\<close> in \<open>(s, e]\<close> strictly increases,
   then \<open>s\<close> strictly dominates every \<open>s + j\<close> (\<open>0 < j\<close>, \<open>s + j \<le> e\<close>) at level \<open>m\<close>
