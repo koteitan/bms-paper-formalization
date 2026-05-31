@@ -1,8 +1,8 @@
-v0.1.69/Reduce the ancestry-restriction to the single level-descent residual (R-b)
+v0.1.70/Prove the (R-b) residual: the new bad root is a lower-level m-ancestor of the old one
 
-- Add m_anc_AEn_eq_on_G_prefix: corollary combining the m-parent localization with the parent→ancestor coincidence, so A[n] and A share m-ancestry from any G-prefix column i<s
-- Add ancestry_restriction_G_modulo_Rb: a G-prefix m-ancestor q' of the new bad root s' is an m-ancestor of the old bad root s in A, given only the residual (R-b) "s' is an m-ancestor of s in A" (localize the A[n]-ancestry to A, then m_ancestor_trans through s')
-- Isolate the ancestor_monotone self-transfer G-sub-case down to (R-b) alone; (R-a) localization + (R-c) transitivity are now fully discharged
-- Bump version v0.1.68 -> v0.1.69
+- Add R2_new_root_anc_of_old: in the R2 regime, s'=b0_start(A[n]) is an m-ancestor of A's bad root s in A, for every m≤t''=mpl(A[n])-1
+- Proof is 4 lines from existing lemmas: b0_start_expansion_R2_eq gives s'=m_parent A (Suc t'') s, the candidate guard (m_parent_Suc_implies_m_ancestor) gives the t''-level ancestry, and m_ancestor_mono descends it to all m≤t''
+- This discharges the sole hypothesis of ancestry_restriction_G_modulo_Rb, so the ancestor_monotone self-transfer G-sub-case is now fully supported (the feared deep level-descent was just m_ancestor_mono)
+- Bump version v0.1.69 -> v0.1.70
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

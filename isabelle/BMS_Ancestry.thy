@@ -12102,6 +12102,35 @@ proof -
   show ?thesis using bexp idx_eq key by simp
 qed
 
+text \<open>\<^bold>\<open>Residual \<open>(R\<hyphen>b)\<close>: the new bad root is a lower-level \<open>m\<close>-ancestor of the
+  old one (sorry-free).\<close>  In the R2 regime the new bad root \<open>s'\<close> equals the
+  \<open>(Suc t'')\<close>-parent of \<open>A\<close>'s bad root \<open>s\<close> (@{thm b0_start_expansion_R2_eq}); the
+  candidate guard at level \<open>Suc t''\<close> makes \<open>s'\<close> a \<open>t''\<close>-ancestor of \<open>s\<close>
+  (@{thm m_parent_Suc_implies_m_ancestor}), and level-monotonicity
+  (@{thm m_ancestor_mono}) descends this to every \<open>m \<le> t''\<close>.  This is exactly the
+  \<open>(R\<hyphen>b)\<close> hypothesis of @{thm ancestry_restriction_G_modulo_Rb}
+  (\<open>verify/probe_ar_lean.py\<close>: full-chain \<open>8748/0\<close>; descent \<open>P3\<close> \<open>1206/0\<close>).\<close>
+
+lemma R2_new_root_anc_of_old:
+  fixes A :: array and n t'' m s' :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and l1_eq: "l1 A = 1"
+      and mplEn: "max_parent_level (A[n]) = Some (Suc t'')"
+      and asc_false: "\<not> ascends A 0 (Suc t'')"
+      and keep: "Suc t'' < keep_of (G_block A @ Bs_concat A n)"
+      and col: "Suc t'' < length (A ! s)"
+      and clause_i: "lemma_2_5_i_clause A n t''"
+      and sp: "b0_start (A[n]) = Some s'"
+      and m_le: "m \<le> t''"
+  shows "m_ancestor A m s s'"
+proof -
+  have eq: "b0_start (A[n]) = m_parent A (Suc t'') s"
+    by (rule b0_start_expansion_R2_eq[OF A_ne b0 l1_eq mplEn asc_false keep col clause_i])
+  hence mp_sp: "m_parent A (Suc t'') s = Some s'" using sp by simp
+  have base: "m_ancestor A t'' s s'" by (rule m_parent_Suc_implies_m_ancestor[OF mp_sp])
+  show ?thesis by (rule m_ancestor_mono[OF m_le base])
+qed
+
 text \<open>\<^bold>\<open>R2 \<open>G\<close>-prefix domination from interval ancestry (sorry-free reduction).\<close>
   The expanded bad root \<open>s' = m_parent A (Suc t'') (b0_start A)\<close> dominates,
   at every level \<open>m \<le> t''\<close>, every \<open>G\<close>-prefix column \<open>p\<close> strictly between
