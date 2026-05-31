@@ -11791,6 +11791,62 @@ text \<open>\<^bold>\<open>Adjacent-column value monotonicity below \<open>t-1\<
   remaining gap — a region-restricted value induction over the \<open>BMS\<close> expansion
   structure (bump arithmetic), \<^emph>\<open>not\<close> the ancestry circularity.\<close>
 
+text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
+  Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
+  \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven
+  by @{thm BMS.induct}: the \<open>\<forall>q\<close> quantifier is exactly what makes the expansion
+  step self-transfer — in the R2 regime the new bad root \<open>s'\<close> lies \<^emph>\<open>left\<close> of the
+  old one, so the needed region reaches into the predecessor \<open>G\<close>-block, which only
+  the ancestor-indexed clause (not the bare \<open>(s, C]\<close> statement) covers.
+  \<open>adjacent_value_monotone\<close> is the \<open>q = s\<close> instance.\<close>
+
+lemma ancestor_monotone:
+  assumes A_BMS: "A \<in> BMS"
+  shows "\<forall>s t. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+          \<longrightarrow> (\<forall>m q c. m < t - 1 \<longrightarrow> (q = s \<or> m_ancestor A m s q)
+                \<longrightarrow> q < c \<longrightarrow> c \<le> last_col_idx A
+                \<longrightarrow> elem A (c - 1) m < elem A c m)"
+  using A_BMS
+proof (induct A rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case
+  proof (intro allI impI)
+    fix s' t' m' q' c'
+    assume b0n: "b0_start (seed n) = Some s'"
+       and mpn: "max_parent_level (seed n) = Some t'"
+       and mt: "m' < t' - 1"
+       and qor: "q' = s' \<or> m_ancestor (seed n) m' s' q'"
+       and qc: "q' < c'" and cC: "c' \<le> last_col_idx (seed n)"
+    have lc: "last_col_idx (seed n) = 1" by (simp add: length_seed)
+    have n_pos: "0 < n"
+    proof (rule ccontr)
+      assume "\<not> 0 < n"
+      hence "n = 0" by simp
+      hence "max_parent_level (seed n) = None"
+        by (simp add: max_parent_level_def height_seed seed_def)
+      thus False using mpn by simp
+    qed
+    have s0: "s' = 0" using b0_start_seed[OF n_pos] b0n by simp
+    have t_eq: "t' = n - 1" using max_parent_level_seed[OF n_pos] mpn by simp
+    have q0: "q' = 0"
+    proof (rule disjE[OF qor])
+      assume "q' = s'" thus "q' = 0" using s0 by simp
+    next
+      assume "m_ancestor (seed n) m' s' q'"
+      hence "q' < s'" by (rule m_ancestor_target_lt)
+      thus "q' = 0" using s0 by simp
+    qed
+    have c1: "c' = 1" using qc cC lc q0 by simp
+    have m_lt_n: "m' < n" using mt t_eq by linarith
+    have "elem (seed n) 0 m' < elem (seed n) 1 m'"
+      using elem_seed_0[OF m_lt_n] elem_seed_1[OF m_lt_n] by simp
+    thus "elem (seed n) (c' - 1) m' < elem (seed n) c' m'" using c1 q0 by simp
+  qed
+next
+  case (expand_in_BMS A n)
+  show ?case sorry
+qed
+
 lemma adjacent_value_monotone:
   fixes A :: array and s t c m :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -11798,42 +11854,7 @@ lemma adjacent_value_monotone:
       and mp: "max_parent_level A = Some t"
       and c_lo: "s < c" and c_hi: "c \<le> last_col_idx A" and m_lt: "m < t - 1"
   shows "elem A (c - 1) m < elem A c m"
-proof -
-  have "\<forall>s t c m. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
-          \<longrightarrow> s < c \<longrightarrow> c \<le> last_col_idx A \<longrightarrow> m < t - 1
-          \<longrightarrow> elem A (c - 1) m < elem A c m"
-    using A_BMS
-  proof (induct A rule: BMS.induct)
-    case (seed_in_BMS n)
-    show ?case
-    proof (intro allI impI)
-      fix s' t' c' m'
-      assume b0n: "b0_start (seed n) = Some s'"
-         and mpn: "max_parent_level (seed n) = Some t'"
-         and cs: "s' < c'" and cC: "c' \<le> last_col_idx (seed n)" and mt: "m' < t' - 1"
-      have lc: "last_col_idx (seed n) = 1" by (simp add: length_seed)
-      have n_pos: "0 < n"
-      proof (rule ccontr)
-        assume "\<not> 0 < n"
-        hence "n = 0" by simp
-        hence "max_parent_level (seed n) = None"
-          by (simp add: max_parent_level_def height_seed seed_def)
-        thus False using mpn by simp
-      qed
-      have s0: "s' = 0" using b0_start_seed[OF n_pos] b0n by simp
-      have t_eq: "t' = n - 1" using max_parent_level_seed[OF n_pos] mpn by simp
-      have c1: "c' = 1" using cs cC lc s0 by simp
-      have m_lt_n: "m' < n" using mt t_eq by linarith
-      have "elem (seed n) 0 m' < elem (seed n) 1 m'"
-        using elem_seed_0[OF m_lt_n] elem_seed_1[OF m_lt_n] by simp
-      thus "elem (seed n) (c' - 1) m' < elem (seed n) c' m'" using c1 by simp
-    qed
-  next
-    case (expand_in_BMS A n)
-    show ?case sorry
-  qed
-  thus ?thesis using b0 mp c_lo c_hi m_lt by blast
-qed
+  using ancestor_monotone[OF A_BMS] b0 mp m_lt c_lo c_hi by blast
 
 lemma elem_lt_below_t:
   fixes A :: array

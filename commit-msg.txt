@@ -1,8 +1,9 @@
-v0.1.71/Relocate the adjacent_value_monotone..b0_col_ancestor_below_t cascade below the R2 machinery
+v0.1.72/Restructure adjacent_value_monotone onto the strengthened ancestor_monotone invariant
 
-- Move the block [adjacent_value_monotone, elem_lt_below_t, b0_col_ancestor_below_t, b0_col_ancestor_below_t_from_DOM] to just after R2_new_root_anc_of_old, so adjacent_value_monotone's expand case can reach b0_start_expansion_R2_eq / R2_new_root_anc_of_old / ancestry_restriction_G_modulo_Rb
-- Convert the five now-backward @{thm elem_lt_below_t}/@{thm b0_col_ancestor_below_t} doc antiquotations preceding the new location to plain text (avoid Undefined-fact forward references)
-- Pure scaffolding: sorry count unchanged; the cascade depended only on lemmas above its old position, all of which remain above the new one; the sole real consumers (b0_col_ancestor_below_t at the clause-(ii)/(v) sites) stay below the new location
-- Bump version v0.1.70 -> v0.1.71
+- Add lemma ancestor_monotone: adjacent columns strictly increase over (q,C] for every m-ancestor q of the bad root s (and q=s), at all m<t-1; proven by BMS.induct
+- Prove the seed case for the strengthened ∀q form: column 0 has no m-ancestor (m_ancestor_target_lt), so q collapses to s'=0 and the goal is the old elem_seed_0/1 step
+- Leave the expand step as the sole sorry (the ∀q quantifier is what lets the expansion self-transfer in the R2 regime, where the new bad root lies left of the old one)
+- Redefine adjacent_value_monotone as the thin q=s corollary of ancestor_monotone (same statement, unchanged downstream)
+- Bump version v0.1.71 -> v0.1.72
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
