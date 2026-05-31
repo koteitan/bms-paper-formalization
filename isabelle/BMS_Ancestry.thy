@@ -9028,6 +9028,125 @@ text \<open>Strict-below-\<open>m\<^sub>0\<close> domination of the bad root \<o
   downstream (\<open>b0_col_ancestor_below_t\<close>, the (ii) case-B leaf) is PROVEN
   from it.\<close>
 
+section \<open>G-prefix \<open>m\<close>-parent localization (strengthened-invariant groundwork, 续97)\<close>
+
+text \<open>\<^bold>\<open>Elem coincidence on the \<open>G\<close>-prefix (sorry-free).\<close>  For a column \<open>p\<close>
+  strictly below the bad root \<open>s\<close> and a row \<open>k\<close> below the strip cutoff, \<open>A[n]\<close> and
+  \<open>A\<close> agree: the \<open>G\<close>-block is the verbatim prefix \<open>take s A\<close>
+  (@{thm elem_expansion_G_lt_keep} composed with \<open>G_block A = take s A\<close>).\<close>
+
+lemma elem_AEn_eq_on_G_prefix:
+  fixes A :: array and s p k n :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and p_lt: "p < s" and k_lt_keep: "k < keep_of (G_block A @ Bs_concat A n)"
+  shows "elem (A[n]) p k = elem A p k"
+proof -
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s" using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have p_lt_l0: "p < l0 A" using p_lt l0_eq by simp
+  have eAEn: "elem (A[n]) p k = elem (G_block A) p k"
+    by (rule elem_expansion_G_lt_keep[OF A_ne p_lt_l0 k_lt_keep])
+  have G_eq: "G_block A = take s A" using b0 unfolding G_block_def by simp
+  have G_nth: "G_block A ! p = A ! p" using G_eq p_lt by simp
+  have "elem (G_block A) p k = elem A p k" using G_nth unfolding elem_def by simp
+  thus ?thesis using eAEn by simp
+qed
+
+text \<open>\<^bold>\<open>\<open>m\<close>-ancestor coincidence from \<open>m\<close>-parent coincidence on the \<open>G\<close>-prefix
+  (sorry-free).\<close>  If \<open>A[n]\<close> and \<open>A\<close> share the \<open>m\<close>-parent at every \<open>G\<close>-prefix
+  column \<open>q < s\<close>, then they share the \<open>m\<close>-ancestry from any \<open>G\<close>-prefix column
+  \<open>i < s\<close> (well-founded induction down the strictly-decreasing parent chain, which
+  stays inside the \<open>G\<close>-prefix).\<close>
+
+lemma m_anc_AEn_eq_of_parent_eq_on_G:
+  fixes A :: array and s m i j n :: nat
+  assumes pc: "\<And>q. q < s \<Longrightarrow> m_parent (A[n]) m q = m_parent A m q"
+      and i_lt: "i < s"
+  shows "m_ancestor (A[n]) m i j = m_ancestor A m i j"
+  using i_lt
+proof (induct i rule: less_induct)
+  case (less i)
+  show ?case
+  proof (cases "m_parent A m i")
+    case None
+    hence "m_parent (A[n]) m i = None" using pc[OF less.prems] by simp
+    thus ?thesis using None by (simp add: m_ancestor.simps)
+  next
+    case (Some p)
+    have pE: "m_parent (A[n]) m i = Some p" using pc[OF less.prems] Some by simp
+    have p_lt_i: "p < i" using m_parent_lt[OF Some] .
+    have p_lt_s: "p < s" using p_lt_i less.prems by linarith
+    have IH: "m_ancestor (A[n]) m p j = m_ancestor A m p j"
+      using less.hyps[OF p_lt_i p_lt_s] .
+    have "m_ancestor (A[n]) m i j = (p = j \<or> m_ancestor (A[n]) m p j)"
+      using pE by (simp add: m_ancestor.simps)
+    also have "\<dots> = (p = j \<or> m_ancestor A m p j)" using IH by simp
+    also have "\<dots> = m_ancestor A m i j" using Some by (simp add: m_ancestor.simps)
+    finally show ?thesis .
+  qed
+qed
+
+text \<open>\<^bold>\<open>\<open>m\<close>-parent coincidence on the \<open>G\<close>-prefix (sorry-free).\<close>  Below the strip
+  cutoff, \<open>A[n]\<close> and \<open>A\<close> share the \<open>m\<close>-parent at every \<open>G\<close>-prefix column \<open>p < s\<close>.
+  Strong induction on \<open>m\<close>: the row-\<open>m\<close> values coincide
+  (@{thm elem_AEn_eq_on_G_prefix}) and the \<open>Suc\<close>-level ancestry guard coincides
+  (@{thm m_anc_AEn_eq_of_parent_eq_on_G} fed by the strong-induction IH), so the
+  candidate filters are equal.\<close>
+
+lemma m_parent_AEn_eq_on_G_prefix:
+  fixes A :: array and s m p n :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and m_lt_keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and p_lt: "p < s"
+  shows "m_parent (A[n]) m p = m_parent A m p"
+  using m_lt_keep p_lt
+proof (induct m arbitrary: p rule: less_induct)
+  case (less m)
+  have elem_pre: "\<And>q. q < s \<Longrightarrow> elem (A[n]) q m = elem A q m"
+    using elem_AEn_eq_on_G_prefix[OF A_ne b0 _ less.prems(1)] by blast
+  show ?case
+  proof (cases m)
+    case 0
+    have cong: "[j \<leftarrow> [0..<p]. elem (A[n]) j 0 < elem (A[n]) p 0]
+              = [j \<leftarrow> [0..<p]. elem A j 0 < elem A p 0]"
+    proof (rule filter_cong[OF refl])
+      fix j assume "j \<in> set [0..<p]"
+      hence j_lt_p: "j < p" by simp
+      have j_lt_s: "j < s" using j_lt_p less.prems(2) by linarith
+      show "(elem (A[n]) j 0 < elem (A[n]) p 0) = (elem A j 0 < elem A p 0)"
+        using elem_pre[OF j_lt_s] elem_pre[OF less.prems(2)] 0 by simp
+    qed
+    show ?thesis using 0 cong by (simp add: Let_def)
+  next
+    case (Suc m')
+    have m'_lt: "m' < m" using Suc by simp
+    have m'_lt_keep: "m' < keep_of (G_block A @ Bs_concat A n)"
+      using m'_lt less.prems(1) by linarith
+    have pc': "\<And>q. q < s \<Longrightarrow> m_parent (A[n]) m' q = m_parent A m' q"
+      using less.hyps[OF m'_lt m'_lt_keep] by blast
+    have cong: "[j \<leftarrow> [0..<p]. elem (A[n]) j (Suc m') < elem (A[n]) p (Suc m')
+                                \<and> m_ancestor (A[n]) m' p j]
+              = [j \<leftarrow> [0..<p]. elem A j (Suc m') < elem A p (Suc m')
+                                \<and> m_ancestor A m' p j]"
+    proof (rule filter_cong[OF refl])
+      fix j assume "j \<in> set [0..<p]"
+      hence j_lt_p: "j < p" by simp
+      have j_lt_s: "j < s" using j_lt_p less.prems(2) by linarith
+      have e: "(elem (A[n]) j (Suc m') < elem (A[n]) p (Suc m'))
+             = (elem A j (Suc m') < elem A p (Suc m'))"
+        using elem_pre[OF j_lt_s] elem_pre[OF less.prems(2)] Suc by simp
+      have a: "m_ancestor (A[n]) m' p j = m_ancestor A m' p j"
+        by (rule m_anc_AEn_eq_of_parent_eq_on_G[OF pc' less.prems(2)])
+      show "(elem (A[n]) j (Suc m') < elem (A[n]) p (Suc m') \<and> m_ancestor (A[n]) m' p j)
+          = (elem A j (Suc m') < elem A p (Suc m') \<and> m_ancestor A m' p j)"
+        using e a by simp
+    qed
+    show ?thesis using Suc cong by (simp add: Let_def)
+  qed
+qed
+
 text \<open>\<^bold>\<open>Telescoping: adjacent strict monotonicity \<Rightarrow> interval domination (sorry-free).\<close>
   If at level \<open>m\<close> every adjacent pair \<open>(c-1, c)\<close> in \<open>(s, e]\<close> strictly increases,
   then \<open>s\<close> strictly dominates every \<open>s + j\<close> (\<open>0 < j\<close>, \<open>s + j \<le> e\<close>) at level \<open>m\<close>

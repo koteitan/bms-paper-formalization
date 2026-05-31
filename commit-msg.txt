@@ -1,9 +1,9 @@
-v0.1.50/Close Lemma 2.5 clause (ii) faithfully without elem_lt_below_t
+v0.1.68/Prove the G-prefix m-parent localization (groundwork for the ancestor_monotone strengthened invariant)
 
-- Add last_filter_eq_of_implies_subset: a finer filter and a coarser one share the same last element when the predicates are pointwise-implied and the coarser last satisfies the finer (bump-monotone containment core)
-- Add m_parent_AEn_idx_B_within_block_at_block0_Suc_k: the level-(Suc k') within-block parent of a block-0 column is its last within-block candidate, unconditionally
-- Add last_S_not_asc_when_j_not_asc: from a non-ascending column alone, its within-block parent offset is also non-ascending (level-(Suc k') analogue of the row-0 propagation)
-- Add m_parent_AEn_idx_B_{within,outside}_block_at_Suc_k_when_j_not_asc: the level-(Suc k') block parents for a non-ascending column, from non-ascent alone via bump-monotone containment (no nasc_chain)
-- Add m_anc_idx_B_in_block_shift_at_Suc_k_when_j_not_asc: the not-ascending clause-(ii) B->B engine needing only the source non-ascent, supplying the per-step propagation from last_S_not_asc
-- Rewire lemma_2_5_ii_clause_step case-B to this engine, removing the elem_lt_below_t dependency so clause (ii) closes faithfully (Hunter [2.5.proof-ii] second case)
-- Bump version v0.1.49 -> v0.1.50
+- Add elem_AEn_eq_on_G_prefix: A[n] and A agree at columns p<s, rows below the strip cutoff (G_block = take s A)
+- Add m_anc_AEn_eq_of_parent_eq_on_G: shared m-parent on the G-prefix ⟹ shared m-ancestry there (well-founded induction down the parent chain)
+- Add m_parent_AEn_eq_on_G_prefix: A[n] and A share the m-parent at every G-prefix column (strong induction on m via elem coincidence + ancestry-guard coincidence)
+- Record in doc/ the workflow-chosen invariant ancestor_monotone (monotone over (q,C] for every m-ancestor q of s); R2 needs the region left of s since s'<s always, which the bare-target/prefix/chain-boundary alternatives cannot cover
+- Verify independently (verify/probe_ar_lean.py) the full-chain ancestry-restriction residual: 8748/0 (the workflow only probed the q'=s' base instance)
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

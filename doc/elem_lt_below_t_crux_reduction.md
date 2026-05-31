@@ -91,6 +91,59 @@ carries no ancestry circularity):
 The R2/`G`-block case is the genuine remaining work — a recursion into `A'`'s
 `G`-block structure (or a strengthened invariant covering it).
 
+## Update (2026-05-31, autonomous): strengthened invariant chosen = `ancestor_monotone`
+
+A 5-agent workflow (`wepq9a5l7`) designed + probe-verified four candidate
+strengthened invariants; synthesis (with independent re-runs) selected:
+
+    ancestor_monotone(A) :=  for s = b0_start A, t = mpl A, C = last_col_idx A:
+      ∀m < t-1. ∀q. (q = s ∨ m_ancestor A m s q) → ∀c ∈ (q, C]. elem A (c-1) m < elem A c m
+
+i.e. adjacent columns strictly increase over `(q, C]` for **every m-ancestor `q`
+of the bad root `s`** (and `q = s` itself). Why this beats the alternatives:
+
+- **(a) implies target**: instantiate `q = s` → exactly `adjacent_value_monotone`
+  (no ancestry needed for this instance).
+- **(b) covers R2 — decisive**: in R2, `s' = b0_start(A[n]) < s` *always*
+  (probe 1304/1304), so the needed region `(s', l0 A)` reaches **left of `s`** —
+  this is exactly why the bare target (and any `(boundary, C]` invariant with
+  boundary ≥ a prefix's own bad root) cannot self-cover R2. But `s'` **is** an
+  m-ancestor of `s` (probe 2722/2722, matching `b0_start_expansion_R2_eq`), so
+  the `q = s'` clause of `ancestor_monotone(A)` gives monotone over `(s', C'] ⊇
+  (s', l0 A)`. Genuine implication, not a probe artifact.
+- **(c) self-transfers**: empirically 4460/4460 (properly conditioned on INV(A)).
+
+Eliminated: candidate "bare target" (R2 region `⊄ (s,C]` since `s'<s`);
+candidates "prefix_adjacent_monotone" and "mparent_chain_boundary" both **over-claimed**
+R2 coverage — their probes silently clamped past the left-gap (`2048/3002` R2 cases
+reach left of the prefix bad root). `ancestor_monotone` has no such gap.
+
+### Independent verification of the one formal residual (the ancestry-restriction lemma)
+
+`ancestor_monotone`'s self-transfer reduces to one genuinely-new lemma for the
+G-block sub-case:
+
+    ancestry_restriction:  m_ancestor (A[n]) m s' q'  ∧  q' < l0 A  ⟹  m_ancestor A m s q'
+
+(a G-block m-ancestor of the new bad root is an m-ancestor of the *old* bad root,
+so the IH `ancestor_monotone A` supplies monotone over `(q', C_A]` verbatim).
+The workflow only probed the `q' = s'` base instance. **Independently verified in
+FULL (all chain depths)**: `verify/probe_ar_lean.py` — basic `ancestor_monotone`
+113015/0, **ancestry-restriction full-chain 8748/0**. So the residual lemma holds.
+
+### Isabelle building blocks already in BMS_Ancestry.thy
+- `m_anc_eq_of_m_parent_eq` (parent-equality → ancestor-equality)
+- `m_anc_below_ancestor_transfer`, `m_ancestor_trans`, `m_ancestor_chain_linear`
+- `block_start_anc_zero`, `block_copy_anc_from_onestep` (block ancestry chaining)
+- `b0_start_expansion_R2_eq` (s' = m_parent A (mpl A[n]) s)
+- R1 machinery: `elem_expansion_B_lt_same_block`, `delta_pos_of_lt_m0`
+
+### Plan: prove `ancestor_monotone` by BMS.induct, derive `adjacent_value_monotone`
+- SEED: q-ancestors of s=0 collapse, interval (q,1]={1}, 0<1 via elem_seed.
+- EXPAND, split q' vs l0 A: B-sub-case (q'≥l0 A) via R1 machinery; G-sub-case
+  (q'<l0 A) via ancestry_restriction + IH (ancestor_monotone A), lifted across the
+  l0 A boundary by the same cross-block delta step.
+
 ## Probes (verify/)
 
 `probe_interiorB0_anc_of_C.py`, `probe_C_chain_over_B0.py`,
