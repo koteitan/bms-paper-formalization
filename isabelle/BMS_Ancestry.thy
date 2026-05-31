@@ -9028,6 +9028,134 @@ text \<open>Strict-below-\<open>m\<^sub>0\<close> domination of the bad root \<o
   downstream (\<open>b0_col_ancestor_below_t\<close>, the (ii) case-B leaf) is PROVEN
   from it.\<close>
 
+text \<open>\<^bold>\<open>Telescoping: adjacent strict monotonicity \<Rightarrow> interval domination (sorry-free).\<close>
+  If at level \<open>m\<close> every adjacent pair \<open>(c-1, c)\<close> in \<open>(s, e]\<close> strictly increases,
+  then \<open>s\<close> strictly dominates every \<open>s + j\<close> (\<open>0 < j\<close>, \<open>s + j \<le> e\<close>) at level \<open>m\<close>
+  by chaining the adjacent steps.  Pure arithmetic; the bridge that turns the
+  non-circular adjacent-value monotonicity (\<open>verify/probe_adjacent_value_monotone.py\<close>:
+  \<open>m < t-1\<close> gives 0/53470) into the \<open>elem_lt_below_t\<close> domination below \<open>t-1\<close>.\<close>
+
+lemma elem_lt_from_adjacent:
+  fixes A :: array and s m e :: nat
+  assumes mono: "\<And>c. s < c \<Longrightarrow> c \<le> e \<Longrightarrow> elem A (c - 1) m < elem A c m"
+      and j_pos: "0 < j" and je: "s + j \<le> e"
+  shows "elem A s m < elem A (s + j) m"
+  using j_pos je
+proof (induct j)
+  case 0 thus ?case by simp
+next
+  case (Suc j')
+  show ?case
+  proof (cases "j' = 0")
+    case True
+    have c_gt: "s < s + Suc j'" by simp
+    show ?thesis using mono[OF c_gt Suc.prems(2)] True by simp
+  next
+    case False
+    hence j'_pos: "0 < j'" by simp
+    have ih: "elem A s m < elem A (s + j') m"
+      using Suc.hyps j'_pos Suc.prems(2) by simp
+    have c_gt: "s < s + Suc j'" by simp
+    have step: "elem A (s + j') m < elem A (s + Suc j') m"
+      using mono[OF c_gt Suc.prems(2)] by simp
+    show ?thesis using ih step by simp
+  qed
+qed
+
+text \<open>\<^bold>\<open>Consecutive m-parent from adjacent monotonicity (sorry-free reduction).\<close>
+  Given the adjacent strict monotonicity over \<open>(s, C]\<close> at all levels \<open>m' < t-1\<close>
+  (the \<open>adjacent_value_monotone\<close> invariant), the \<open>m'\<close>-parent of every column
+  \<open>c \<in> (s, C]\<close> is its immediate predecessor \<open>c-1\<close>.  Proof by strong induction on
+  the level \<open>m'\<close>: \<open>c-1\<close> is a candidate of \<open>c\<close> — value-smaller by the monotonicity,
+  and (for \<open>m' = Suc m''\<close>) an \<open>m''\<close>-ancestor of \<open>c\<close> by the IH \<open>m_parent A m'' c
+  = Some (c-1)\<close> — so @{thm m_parent_ge_candidate_zero}/@{thm m_parent_ge_candidate_Suc}
+  give \<open>m_parent A m' c \<ge> c-1\<close>, and @{thm m_parent_lt} gives \<open>< c\<close>, pinning it to
+  \<open>c-1\<close>.  (\<open>verify/probe_C_chain_over_B0.py\<close>: \<open>m_parent = c-1\<close> at 53470/0.)\<close>
+
+lemma consecutive_parent_from_mono:
+  fixes A :: array and s C t c :: nat
+  assumes mono: "\<And>d m'. s < d \<Longrightarrow> d \<le> C \<Longrightarrow> m' < t - 1
+                    \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+      and cs: "s < c" and cC: "c \<le> C"
+  shows "m < t - 1 \<Longrightarrow> m_parent A m c = Some (c - 1)"
+proof (induct m rule: less_induct)
+  case (less m)
+  have mt: "m < t - 1" by fact
+  have cm1_lt: "c - 1 < c" using cs by simp
+  have ev: "elem A (c - 1) m < elem A c m" using mono[OF cs cC mt] .
+  show ?case
+  proof (cases m)
+    case 0
+    obtain p where mp: "m_parent A 0 c = Some p" and pge: "c - 1 \<le> p"
+      using m_parent_ge_candidate_zero[OF cm1_lt] ev 0 by auto
+    have "p < c" using m_parent_lt[OF mp] .
+    hence "p = c - 1" using pge cs by simp
+    thus ?thesis using mp 0 by simp
+  next
+    case (Suc m'')
+    have m''_lt: "m'' < m" using Suc by simp
+    have m''_t: "m'' < t - 1" using mt Suc by simp
+    have anc: "m_ancestor A m'' c (c - 1)"
+      using m_anc_via_parent_some[OF less.hyps[OF m''_lt m''_t]] by blast
+    obtain p where mp: "m_parent A (Suc m'') c = Some p" and pge: "c - 1 \<le> p"
+      using m_parent_ge_candidate_Suc[OF cm1_lt _ anc] ev Suc by auto
+    have "p < c" using m_parent_lt[OF mp] .
+    hence "p = c - 1" using pge cs by simp
+    thus ?thesis using mp Suc by simp
+  qed
+qed
+
+text \<open>\<^bold>\<open>Ancestry from a consecutive parent chain (sorry-free).\<close>  If the \<open>m\<close>-parent
+  of every \<open>c \<in> (s, C]\<close> is \<open>c-1\<close>, then every \<open>d \<in> [s, e)\<close> is an \<open>m\<close>-ancestor of
+  \<open>e\<close> (for \<open>e \<le> C\<close>), by walking the chain \<open>e \<to> e-1 \<to> \<dots> \<to> d\<close>.  Strong
+  induction on \<open>e\<close> via @{thm m_anc_via_parent_some}.\<close>
+
+lemma m_anc_of_consecutive_chain:
+  fixes A :: array and s C m :: nat
+  assumes consec: "\<And>c. s < c \<Longrightarrow> c \<le> C \<Longrightarrow> m_parent A m c = Some (c - 1)"
+  shows "s \<le> d \<Longrightarrow> d < e \<Longrightarrow> e \<le> C \<Longrightarrow> m_ancestor A m e d"
+proof (induct e rule: less_induct)
+  case (less e)
+  have sd: "s \<le> d" and de: "d < e" and eC: "e \<le> C" by fact+
+  have se: "s < e" using sd de by simp
+  have mp: "m_parent A m e = Some (e - 1)" using consec[OF se eC] .
+  show ?case
+  proof (cases "d = e - 1")
+    case True
+    thus ?thesis using m_anc_via_parent_some[OF mp] by blast
+  next
+    case False
+    hence d_lt: "d < e - 1" using de by simp
+    have e1_lt: "e - 1 < e" using de by simp
+    have e1C: "e - 1 \<le> C" using eC by simp
+    have "m_ancestor A m (e - 1) d" using less.hyps[OF e1_lt sd d_lt e1C] .
+    thus ?thesis using m_anc_via_parent_some[OF mp] by blast
+  qed
+qed
+
+text \<open>\<^bold>\<open>Adjacent-column value monotonicity below \<open>t-1\<close> (foundational, non-circular).\<close>
+  For \<open>A \<in> BMS\<close>, at every level \<open>m < t - 1\<close> (\<open>t = mpl A\<close>), adjacent columns
+  in the \<open>B\<^sub>0\<close>-region \<open>(s, C]\<close> strictly increase: \<open>elem A (c-1) m < elem A c m\<close>.
+  This is a \<^bold>\<open>pure value\<close> statement (no ancestry, no \<open>m_parent\<close>) — it sidesteps
+  the domination\<leftrightarrow>ancestry circularity that blocked every prior route, and is the
+  single foundation from which the whole \<open>elem_lt_below_t\<close> off-chain residual
+  follows (via @{thm consecutive_parent_from_mono}, @{thm m_anc_of_consecutive_chain},
+  making every interior \<open>B\<^sub>0\<close> column an \<open>m\<close>-ancestor of \<open>C\<close>, so the off-chain
+  case is vacuous).  Empirically exact: \<open>verify/probe_adjacent_value_monotone.py\<close>
+  gives 0/53470 for \<open>m < t-1\<close> (and plateaus appear only at the top level
+  \<open>m = t-1\<close>, which is outside this statement).  The proof is the genuine
+  remaining gap — a region-restricted value induction over the \<open>BMS\<close> expansion
+  structure (bump arithmetic), \<^emph>\<open>not\<close> the ancestry circularity.\<close>
+
+lemma adjacent_value_monotone:
+  fixes A :: array and s t c m :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and c_lo: "s < c" and c_hi: "c \<le> last_col_idx A" and m_lt: "m < t - 1"
+  shows "elem A (c - 1) m < elem A c m"
+  sorry
+
 lemma elem_lt_below_t:
   fixes A :: array
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -9099,9 +9227,24 @@ next
     thus ?thesis using Suc by simp
   next
     case False
-    \<comment> \<open>Off-chain interior column (NOT an \<open>m'\<close>-ancestor of \<open>C\<close>): residual open
-        gap, needs the simultaneous (i)--(v) induction.\<close>
-    show ?thesis sorry
+    \<comment> \<open>Off-chain interior column (NOT an \<open>m'\<close>-ancestor of \<open>C\<close>): \<^bold>\<open>vacuous\<close>.
+        Since \<open>Suc m' < t\<close> gives \<open>m' < t-1\<close>, the adjacent-value monotonicity
+        @{thm adjacent_value_monotone} makes the \<open>m'\<close>-parent of each column in
+        \<open>(s, C]\<close> its predecessor (@{thm consecutive_parent_from_mono}), so the
+        consecutive chain (@{thm m_anc_of_consecutive_chain}) makes every interior
+        \<open>B\<^sub>0\<close> column \<open>s+j\<close> an \<open>m'\<close>-ancestor of \<open>C\<close> — contradicting the off-chain
+        assumption.  Hence this case cannot occur and the on-chain proof covers
+        all interior columns.\<close>
+    have m'_lt_t1: "m' < t - 1" using m_lt' by simp
+    have mono_A: "\<And>d m''. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m'' < t - 1
+                    \<Longrightarrow> elem A (d - 1) m'' < elem A d m''"
+      using adjacent_value_monotone[OF A_BMS A_ne b0 mp] by blast
+    have consec: "\<And>c. s < c \<Longrightarrow> c \<le> last_col_idx A
+                    \<Longrightarrow> m_parent A m' c = Some (c - 1)"
+      using consecutive_parent_from_mono[OF mono_A _ _ m'_lt_t1] by blast
+    have anc_sj: "m_ancestor A m' (last_col_idx A) (s + j)"
+      using m_anc_of_consecutive_chain[OF consec le_add1 sj_lt_C order.refl] .
+    with False show ?thesis by simp
   qed
 qed
 
