@@ -96,3 +96,39 @@ The R2/`G`-block case is the genuine remaining work — a recursion into `A'`'s
 `probe_interiorB0_anc_of_C.py`, `probe_C_chain_over_B0.py`,
 `probe_adjacent_value_monotone.py`, `probe_row0_global_monotone.py`,
 `probe_R2_*` (location/floor/interval-anc). All genuine 2-row-seed BFS.
+
+## Update (2026-05-31, autonomous): expand-case structure fully clarified
+
+The expand case of `adjacent_value_monotone` (`A[n]` expands predecessor `A`,
+IH = `adjacent_value_monotone A`) splits on `b0_start(A[n])` vs `l0 A` **only**
+(no location dichotomy / R3 exclusion needed):
+
+- **R1** (`b0_start(A[n]) ≥ l0 A`): the region `(s', C']` lies entirely in the
+  B-region. Verified facts that make it provable:
+  - `mpl(A[n]) - mpl(A) ∈ {0,1}` (`probe_expand_mpl_vs_pred.py`: 0/10464), so
+    `m < mpl(A[n]) - 1 ⟹ m < mpl(A)`.
+  - `diff=1 ⟹ l1 A = 1` and `l1 A > 1 ⟹ diff=0` (`probe_diff1_implies_l1A1.py`: 0 viol).
+  - **`l1 A = 1`**: every B-region column is a block-start `idx_B(A,blk,0)`; adjacent
+    pairs are consecutive block-starts. Same base `(A!s)!m`, bump `blk·δ` vs
+    `(blk-1)·δ`, `ascends A 0 m` is reflexive (`m < mpl A`), `δ = delta A m > 0`
+    (`delta_pos_of_lt_m0`, `m < mpl A`) ⟹ strict. Covers all `m < mpl(A[n])-1`
+    including the `m = mpl(A)-1` top level (which only occurs when `l1 A=1`).
+    The earlier "within-block plateau at top level" worry is void: `l1 A=1` has
+    **no** within-block pairs (`probe_within_block_top_level.py`: 0).
+  - **`l1 A > 1`** (⟹ diff=0, so `m < mpl(A)-1`): base adjacency holds (IH) and
+    the cascade gives `s` an `m`-ancestor of B0 columns, so ascends holds and the
+    bump is uniform within a block. *within-block*: `elem_expansion_B_lt_same_block`
+    + IH base adjacency. *cross-block* (`idx_B(A,c,l1-1) → idx_B(A,c+1,0)`):
+    `bigBase + c·δ < smallBase + (c+1)·δ ⟺ bigBase - smallBase < δ`, and
+    `bigBase = elem A (s+l1-1) m < elem A C m` (IH adjacency at the last step) gives
+    `bigBase - smallBase < δ`.
+
+  So **R1 is fully provable from the IH** (substantial but routine Isar).
+
+- **R2** (`b0_start(A[n]) < l0 A`): `(s', C']` includes verbatim `A` `G`-block
+  columns `[s'+1, l0 A)`, needing adjacent monotonicity over (part of) `A`'s
+  `G`-block — **not** covered by the single-step IH (`A`'s B0 region). This is the
+  **genuine remaining crux**: it needs either a strengthened induction invariant
+  covering the relevant `G`-prefix, or a recursion into `A`'s `G`-block structure.
+  (`s' = m_parent A (mpl (A[n])) (b0_start A)` by `b0_start_expansion_R2_eq` when
+  `l1 A=1`.)
