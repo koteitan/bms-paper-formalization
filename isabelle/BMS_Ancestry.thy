@@ -9294,360 +9294,6 @@ proof (induct e rule: less_induct)
   qed
 qed
 
-text \<open>\<^bold>\<open>Adjacent-column value monotonicity below \<open>t-1\<close> (foundational, non-circular).\<close>
-  For \<open>A \<in> BMS\<close>, at every level \<open>m < t - 1\<close> (\<open>t = mpl A\<close>), adjacent columns
-  in the \<open>B\<^sub>0\<close>-region \<open>(s, C]\<close> strictly increase: \<open>elem A (c-1) m < elem A c m\<close>.
-  This is a \<^bold>\<open>pure value\<close> statement (no ancestry, no \<open>m_parent\<close>) — it sidesteps
-  the domination\<leftrightarrow>ancestry circularity that blocked every prior route, and is the
-  single foundation from which the whole \<open>elem_lt_below_t\<close> off-chain residual
-  follows (via @{thm consecutive_parent_from_mono}, @{thm m_anc_of_consecutive_chain},
-  making every interior \<open>B\<^sub>0\<close> column an \<open>m\<close>-ancestor of \<open>C\<close>, so the off-chain
-  case is vacuous).  Empirically exact: \<open>verify/probe_adjacent_value_monotone.py\<close>
-  gives 0/53470 for \<open>m < t-1\<close> (and plateaus appear only at the top level
-  \<open>m = t-1\<close>, which is outside this statement).  The proof is the genuine
-  remaining gap — a region-restricted value induction over the \<open>BMS\<close> expansion
-  structure (bump arithmetic), \<^emph>\<open>not\<close> the ancestry circularity.\<close>
-
-lemma adjacent_value_monotone:
-  fixes A :: array and s t c m :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-      and c_lo: "s < c" and c_hi: "c \<le> last_col_idx A" and m_lt: "m < t - 1"
-  shows "elem A (c - 1) m < elem A c m"
-proof -
-  have "\<forall>s t c m. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
-          \<longrightarrow> s < c \<longrightarrow> c \<le> last_col_idx A \<longrightarrow> m < t - 1
-          \<longrightarrow> elem A (c - 1) m < elem A c m"
-    using A_BMS
-  proof (induct A rule: BMS.induct)
-    case (seed_in_BMS n)
-    show ?case
-    proof (intro allI impI)
-      fix s' t' c' m'
-      assume b0n: "b0_start (seed n) = Some s'"
-         and mpn: "max_parent_level (seed n) = Some t'"
-         and cs: "s' < c'" and cC: "c' \<le> last_col_idx (seed n)" and mt: "m' < t' - 1"
-      have lc: "last_col_idx (seed n) = 1" by (simp add: length_seed)
-      have n_pos: "0 < n"
-      proof (rule ccontr)
-        assume "\<not> 0 < n"
-        hence "n = 0" by simp
-        hence "max_parent_level (seed n) = None"
-          by (simp add: max_parent_level_def height_seed seed_def)
-        thus False using mpn by simp
-      qed
-      have s0: "s' = 0" using b0_start_seed[OF n_pos] b0n by simp
-      have t_eq: "t' = n - 1" using max_parent_level_seed[OF n_pos] mpn by simp
-      have c1: "c' = 1" using cs cC lc s0 by simp
-      have m_lt_n: "m' < n" using mt t_eq by linarith
-      have "elem (seed n) 0 m' < elem (seed n) 1 m'"
-        using elem_seed_0[OF m_lt_n] elem_seed_1[OF m_lt_n] by simp
-      thus "elem (seed n) (c' - 1) m' < elem (seed n) c' m'" using c1 by simp
-    qed
-  next
-    case (expand_in_BMS A n)
-    show ?case sorry
-  qed
-  thus ?thesis using b0 mp c_lo c_hi m_lt by blast
-qed
-
-lemma elem_lt_below_t:
-  fixes A :: array
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-      and m_lt: "m < t"
-      and j_pos: "0 < j" and j_lt: "j < l1 A"
-  shows "elem A s m < elem A (s + j) m"
-proof (cases m)
-  case 0
-  \<comment> \<open>Row-0 case (= the former long-open \<open>bms_b0_row0_strict_min\<close>).  The bad
-      root \<open>s\<close> is the \<open>t\<close>-parent of the last column \<open>C\<close>, hence a
-      \<open>(t-1)\<close>-ancestor of \<open>C\<close> and (monotone) a \<open>0\<close>-ancestor of \<open>C\<close>.  By
-      @{thm m_anc_zero_imp_strict_min} it strictly dominates the whole open
-      interval \<open>(s, C)\<close> at row 0, which contains every interior \<open>B\<^sub>0\<close>
-      column \<open>s + j\<close> (\<open>0 < j < l\<^sub>1 = C - s\<close>).\<close>
-  have t_pos: "0 < t" using m_lt 0 by simp
-  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
-  have mpC: "m_parent A t (last_col_idx A) = Some s"
-    using b0 mp unfolding b0_start_def by simp
-  have anc_t': "m_ancestor A t' (last_col_idx A) s"
-    using m_parent_Suc_implies_m_ancestor[OF mpC[unfolded t_eq]] .
-  have anc0: "m_ancestor A 0 (last_col_idx A) s"
-    using m_ancestor_mono[OF le0 anc_t'] .
-  have strict: "\<forall>c. s < c \<and> c < last_col_idx A \<longrightarrow> elem A s 0 < elem A c 0"
-    using m_anc_zero_imp_strict_min[OF anc0] .
-  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
-  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
-  have l1_eq: "l1 A = last_col_idx A - s"
-    using s_lt_last b0 last_lt_arr unfolding l1_def B0_block_def by simp
-  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq by linarith
-  have s_lt_sj: "s < s + j" using j_pos by simp
-  have "elem A s 0 < elem A (s + j) 0" using strict s_lt_sj sj_lt_C by blast
-  thus ?thesis using 0 by simp
-next
-  case (Suc m')
-  \<comment> \<open>Levels \<open>0 < m < t\<close>.  The bad root \<open>s\<close> is the \<open>t\<close>-parent of \<open>C\<close>, hence a
-      \<open>(t-1)\<close>-ancestor and (monotone, \<open>Suc m' \<le> t-1\<close>) a \<open>(Suc m')\<close>-ancestor
-      of \<open>C\<close>.  For an interior column \<open>s + j\<close> that is also an \<open>m'\<close>-ancestor of
-      \<open>C\<close>, @{thm m_anc_Suc_imp_strict_min_on_anc} gives the domination directly.
-      The residual gap is the OFF-CHAIN interior columns (not \<open>m'\<close>-ancestors of
-      \<open>C\<close>): there the \<open>m\<close>-ancestor / elem-\<open><\<close> equivalence is circular and Hunter
-      weaves it into the simultaneous (i)--(v) \<open>k\<close>-induction.  Empirically the
-      whole statement is true (\<open>verify/probe_vacuity_refute.py\<close>: 500+ BMSs,
-      \<open>t \<ge> 2\<close>, 0 violations); off-chain columns are rare
-      (\<open>verify/probe_mgt0_handle.py\<close>: P_a 262/1).\<close>
-  have m_lt': "Suc m' < t" using m_lt Suc by simp
-  obtain t'' where t_eq2: "t = Suc t''" using m_lt' by (cases t) auto
-  have mpC: "m_parent A t (last_col_idx A) = Some s"
-    using b0 mp unfolding b0_start_def by simp
-  have anc_t'': "m_ancestor A t'' (last_col_idx A) s"
-    using m_parent_Suc_implies_m_ancestor[OF mpC[unfolded t_eq2]] .
-  have Sm'_le: "Suc m' \<le> t''" using m_lt' t_eq2 by simp
-  have endpoint: "m_ancestor A (Suc m') (last_col_idx A) s"
-    using m_ancestor_mono[OF Sm'_le anc_t''] .
-  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
-  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
-  have l1_eq: "l1 A = last_col_idx A - s"
-    using s_lt_last b0 last_lt_arr unfolding l1_def B0_block_def by simp
-  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq by linarith
-  have s_lt_sj: "s < s + j" using j_pos by simp
-  show ?thesis
-  proof (cases "m_ancestor A m' (last_col_idx A) (s + j)")
-    case True
-    \<comment> \<open>\<open>s + j\<close> is an \<open>m'\<close>-ancestor of \<open>C\<close>: dominated by \<open>s\<close> at level
-        \<open>Suc m'\<close> via @{thm m_anc_Suc_imp_strict_min_on_anc}.\<close>
-    have "elem A s (Suc m') < elem A (s + j) (Suc m')"
-      using m_anc_Suc_imp_strict_min_on_anc[OF endpoint] s_lt_sj sj_lt_C True by blast
-    thus ?thesis using Suc by simp
-  next
-    case False
-    \<comment> \<open>Off-chain interior column (NOT an \<open>m'\<close>-ancestor of \<open>C\<close>): \<^bold>\<open>vacuous\<close>.
-        Since \<open>Suc m' < t\<close> gives \<open>m' < t-1\<close>, the adjacent-value monotonicity
-        @{thm adjacent_value_monotone} makes the \<open>m'\<close>-parent of each column in
-        \<open>(s, C]\<close> its predecessor (@{thm consecutive_parent_from_mono}), so the
-        consecutive chain (@{thm m_anc_of_consecutive_chain}) makes every interior
-        \<open>B\<^sub>0\<close> column \<open>s+j\<close> an \<open>m'\<close>-ancestor of \<open>C\<close> — contradicting the off-chain
-        assumption.  Hence this case cannot occur and the on-chain proof covers
-        all interior columns.\<close>
-    have m'_lt_t1: "m' < t - 1" using m_lt' by simp
-    have mono_A: "\<And>d m''. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m'' < t - 1
-                    \<Longrightarrow> elem A (d - 1) m'' < elem A d m''"
-      using adjacent_value_monotone[OF A_BMS A_ne b0 mp] by blast
-    have consec: "\<And>c. s < c \<Longrightarrow> c \<le> last_col_idx A
-                    \<Longrightarrow> m_parent A m' c = Some (c - 1)"
-      using consecutive_parent_from_mono[OF mono_A _ _ m'_lt_t1] by blast
-    have anc_sj: "m_ancestor A m' (last_col_idx A) (s + j)"
-      using m_anc_of_consecutive_chain[OF consec le_add1 sj_lt_C order.refl] .
-    with False show ?thesis by simp
-  qed
-qed
-
-text \<open>Below \<open>m\<^sub>0\<close>, the bad root \<open>s\<close> is a level-\<open>m\<close> m-ancestor of every
-  interior \<open>B\<^sub>0\<close> column \<open>s + j\<close>.  Proved (mirroring the former
-  \<open>bms_b0_col_r_ancestor_all\<close>, but bounded to \<open>m < t\<close>) by induction on the
-  level \<open>m\<close> (outer) and the column offset \<open>j\<close> (inner, strong): at each level
-  the strict domination @{thm elem_lt_below_t} makes \<open>s\<close> a parent-candidate
-  of \<open>s + j\<close>, and the inner induction walks the parent chain down to \<open>s\<close>.
-  This makes Lemma 2.5 (ii) case-B (\<open>Suc k' < t\<close>, \<open>\<not> ascends\<close>) VACUOUS.\<close>
-
-lemma b0_col_ancestor_below_t:
-  fixes A :: array
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-  shows "m < t \<longrightarrow> (\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m (s + j) s)"
-proof (induct m)
-  case 0
-  show ?case
-  proof
-    assume t_pos: "0 < t"
-    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A 0 (s + j) s"
-    proof (intro allI impI)
-      fix j assume j_pos0: "0 < j" and j_lt0: "j < l1 A"
-      show "m_ancestor A 0 (s + j) s"
-        using j_pos0 j_lt0
-      proof (induct j rule: less_induct)
-        case (less j)
-        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
-        have e_lt: "elem A s 0 < elem A (s + j) 0"
-          by (rule elem_lt_below_t[OF A_BMS A_ne b0 mp t_pos j_pos j_lt])
-        have s_lt: "s < s + j" using j_pos by simp
-        obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
-          using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
-        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
-        show "m_ancestor A 0 (s + j) s"
-        proof (cases "p = s")
-          case True
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        next
-          case False
-          from False s_le_p have s_lt_p: "s < p" by simp
-          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
-          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
-          have j'_lt_j: "j' < j" using p_lt p_eq by simp
-          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
-          have "m_ancestor A 0 (s + j') s"
-            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
-          hence "m_ancestor A 0 p s" using p_eq by simp
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        qed
-      qed
-    qed
-  qed
-next
-  case (Suc m')
-  show ?case
-  proof
-    assume Sm_lt: "Suc m' < t"
-    have m'_lt: "m' < t" using Sm_lt by simp
-    have IH_all: "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m' (s + j) s"
-      using Suc.hyps m'_lt by blast
-    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A (Suc m') (s + j) s"
-    proof (intro allI impI)
-      fix j assume j_posS: "0 < j" and j_ltS: "j < l1 A"
-      show "m_ancestor A (Suc m') (s + j) s"
-        using j_posS j_ltS
-      proof (induct j rule: less_induct)
-        case (less j)
-        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
-        have e_lt: "elem A s (Suc m') < elem A (s + j) (Suc m')"
-          by (rule elem_lt_below_t[OF A_BMS A_ne b0 mp Sm_lt j_pos j_lt])
-        have s_lt: "s < s + j" using j_pos by simp
-        have anc_r': "m_ancestor A m' (s + j) s" using IH_all j_pos j_lt by blast
-        obtain p where mp_p: "m_parent A (Suc m') (s + j) = Some p" and s_le_p: "s \<le> p"
-          using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
-        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
-        show "m_ancestor A (Suc m') (s + j) s"
-        proof (cases "p = s")
-          case True
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        next
-          case False
-          from False s_le_p have s_lt_p: "s < p" by simp
-          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
-          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
-          have j'_lt_j: "j' < j" using p_lt p_eq by simp
-          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
-          have "m_ancestor A (Suc m') (s + j') s"
-            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
-          hence "m_ancestor A (Suc m') p s" using p_eq by simp
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        qed
-      qed
-    qed
-  qed
-qed
-
-text \<open>
-  \<^bold>\<open>Non-circular ancestry-from-domination\<close> (joint-induction keystone, 续30).
-
-  @{thm b0_col_ancestor_below_t} proves the ancestry \<open>m_ancestor A m (s+j) s\<close>
-  (\<open>m < t\<close>) by \<^emph>\<open>calling\<close> @{thm elem_lt_below_t} for the strict domination
-  \<open>elem A s m < elem A (s+j) m\<close> at each level (lines for the m=0 / Suc m'
-  parent-candidate steps).  Since \<open>elem_lt_below_t\<close> still has the off-chain
-  \<open>sorry\<close>, that route cannot be used to \<^emph>\<open>close\<close> \<open>elem_lt_below_t\<close> — the
-  classic Hunter entanglement.
-
-  This variant takes the domination as an \<^bold>\<open>explicit hypothesis\<close> \<open>DOM\<close>
-  (the conjunct that the joint simultaneous induction carries) instead of
-  calling \<open>elem_lt_below_t\<close>.  The proof body is otherwise identical.  Given
-  \<open>DOM A\<close> at the predecessor (supplied by the BMS-induction hypothesis), it
-  yields ancestry \<^emph>\<open>without any reference to\<close> \<open>elem_lt_below_t\<close>, so it is
-  sound to use inside the joint induction that establishes \<open>DOM\<close>.  In
-  particular it discharges the \<open>ascends \<equiv> ancestry\<close> (\<open>ascends_def\<close> =
-  \<open>non_strict_ancestor\<close>) side conditions of \<open>dom_transfer_R1\<close> (stated later
-  in this theory) from the IH \<open>DOM\<close>, making the R1 branch self-contained.\<close>
-
-lemma b0_col_ancestor_below_t_from_DOM:
-  fixes A :: array
-  assumes b0: "b0_start A = Some s"
-      and mp: "max_parent_level A = Some t"
-      and DOM: "\<And>m j. m < t \<Longrightarrow> 0 < j \<Longrightarrow> j < l1 A
-                  \<Longrightarrow> elem A s m < elem A (s + j) m"
-  shows "m < t \<longrightarrow> (\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m (s + j) s)"
-proof (induct m)
-  case 0
-  show ?case
-  proof
-    assume t_pos: "0 < t"
-    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A 0 (s + j) s"
-    proof (intro allI impI)
-      fix j assume j_pos0: "0 < j" and j_lt0: "j < l1 A"
-      show "m_ancestor A 0 (s + j) s"
-        using j_pos0 j_lt0
-      proof (induct j rule: less_induct)
-        case (less j)
-        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
-        have e_lt: "elem A s 0 < elem A (s + j) 0"
-          by (rule DOM[OF t_pos j_pos j_lt])
-        have s_lt: "s < s + j" using j_pos by simp
-        obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
-          using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
-        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
-        show "m_ancestor A 0 (s + j) s"
-        proof (cases "p = s")
-          case True
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        next
-          case False
-          from False s_le_p have s_lt_p: "s < p" by simp
-          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
-          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
-          have j'_lt_j: "j' < j" using p_lt p_eq by simp
-          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
-          have "m_ancestor A 0 (s + j') s"
-            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
-          hence "m_ancestor A 0 p s" using p_eq by simp
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        qed
-      qed
-    qed
-  qed
-next
-  case (Suc m')
-  show ?case
-  proof
-    assume Sm_lt: "Suc m' < t"
-    have m'_lt: "m' < t" using Sm_lt by simp
-    have IH_all: "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m' (s + j) s"
-      using Suc.hyps m'_lt by blast
-    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A (Suc m') (s + j) s"
-    proof (intro allI impI)
-      fix j assume j_posS: "0 < j" and j_ltS: "j < l1 A"
-      show "m_ancestor A (Suc m') (s + j) s"
-        using j_posS j_ltS
-      proof (induct j rule: less_induct)
-        case (less j)
-        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
-        have e_lt: "elem A s (Suc m') < elem A (s + j) (Suc m')"
-          by (rule DOM[OF Sm_lt j_pos j_lt])
-        have s_lt: "s < s + j" using j_pos by simp
-        have anc_r': "m_ancestor A m' (s + j) s" using IH_all j_pos j_lt by blast
-        obtain p where mp_p: "m_parent A (Suc m') (s + j) = Some p" and s_le_p: "s \<le> p"
-          using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
-        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
-        show "m_ancestor A (Suc m') (s + j) s"
-        proof (cases "p = s")
-          case True
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        next
-          case False
-          from False s_le_p have s_lt_p: "s < p" by simp
-          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
-          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
-          have j'_lt_j: "j' < j" using p_lt p_eq by simp
-          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
-          have "m_ancestor A (Suc m') (s + j') s"
-            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
-          hence "m_ancestor A (Suc m') p s" using p_eq by simp
-          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-        qed
-      qed
-    qed
-  qed
-qed
 
 text \<open>Hunter-faithful per-\<open>k\<close> step for clause (ii) (paper page 5).
   Fixing \<open>i, j < l\<^sub>1\<close> and using the induction hypothesis ((ii) at every
@@ -9671,13 +9317,13 @@ text \<open>Hunter-faithful per-\<open>k\<close> step for clause (ii) (paper pag
     ascend chain via @{thm bms_ascend_propagates_to_chain_ancestor}.
   \<^item> \<open>i < j, k = Suc k', Suc k' < t, \<not> ascends A j (Suc k')\<close>: this case is
     VACUOUS.  Below \<open>m\<^sub>0 = t\<close> the bad root \<open>s\<close> is a \<open>(Suc k')\<close>-ancestor of
-    every interior \<open>B\<^sub>0\<close> column (@{thm b0_col_ancestor_below_t}), i.e.
+    every interior \<open>B\<^sub>0\<close> column (\<open>b0_col_ancestor_below_t\<close>), i.e.
     \<open>ascends A j (Suc k')\<close> always holds for \<open>j > 0\<close>, contradicting the case
     hypothesis.  (This avoids the old, now-removed \<open>nasc_chain0\<close> reduction,
     which was empirically refuted, and the \<open>bms_S_empty_case_B_at_block_0
     \<rightarrow> elem_lt\<close> route, which was machine-checked FALSE.)  The vacuity rests
-    on @{thm b0_col_ancestor_below_t}, hence ultimately on the single sound
-    \<open>sorry\<close> @{thm elem_lt_below_t}.\<close>
+    on \<open>b0_col_ancestor_below_t\<close>, hence ultimately on the single sound
+    \<open>sorry\<close> \<open>elem_lt_below_t\<close>.\<close>
 
 lemma lemma_2_5_ii_clause_step:
   fixes A :: array
@@ -9835,7 +9481,7 @@ next
               \<comment> \<open>Hunter case-B (\<open>j\<close> does not ascend): handled \<^emph>\<open>directly\<close> by the
                   faithful not-ascending engine (no new \<open>(Suc k')\<close>-ancestors in
                   \<open>B\<^sub>n\<close>), needing only \<open>\<not> ascends A j (Suc k')\<close> — \<^bold>\<open>no\<close> dependence
-                  on @{thm elem_lt_below_t} / the raw bad-root domination.\<close>
+                  on \<open>elem_lt_below_t\<close> / the raw bad-root domination.\<close>
               show ?thesis
                 using m_anc_idx_B_in_block_shift_at_Suc_k_when_j_not_asc
                         [OF A_BMS A_ne b0 mp Sk_lt_t IH_kp False n_pos
@@ -9852,7 +9498,7 @@ qed
 text \<open>\<open>\<forall>k. (ii) at k\<close> by strong induction on \<open>k\<close>, each step discharged by
   @{thm lemma_2_5_ii_clause_step} (which depends only on IH(ii) at smaller
   \<open>k\<close>).  The whole of clause (ii) is now PROVEN modulo the single sound
-  foundational \<open>sorry\<close> @{thm elem_lt_below_t} (strict domination of the bad
+  foundational \<open>sorry\<close> \<open>elem_lt_below_t\<close> (strict domination of the bad
   root below \<open>m\<^sub>0\<close>); every other leaf of the \<open>k\<close>-step --- including the
   former ascend-dichotomy case-A at row 0 and the case-B vacuity at
   \<open>Suc k'\<close> --- is discharged by a proven block-shift / ancestry lemma.\<close>
@@ -12129,6 +11775,361 @@ proof -
   hence mp_sp: "m_parent A (Suc t'') s = Some s'" using sp by simp
   have base: "m_ancestor A t'' s s'" by (rule m_parent_Suc_implies_m_ancestor[OF mp_sp])
   show ?thesis by (rule m_ancestor_mono[OF m_le base])
+qed
+
+text \<open>\<^bold>\<open>Adjacent-column value monotonicity below \<open>t-1\<close> (foundational, non-circular).\<close>
+  For \<open>A \<in> BMS\<close>, at every level \<open>m < t - 1\<close> (\<open>t = mpl A\<close>), adjacent columns
+  in the \<open>B\<^sub>0\<close>-region \<open>(s, C]\<close> strictly increase: \<open>elem A (c-1) m < elem A c m\<close>.
+  This is a \<^bold>\<open>pure value\<close> statement (no ancestry, no \<open>m_parent\<close>) — it sidesteps
+  the domination\<leftrightarrow>ancestry circularity that blocked every prior route, and is the
+  single foundation from which the whole \<open>elem_lt_below_t\<close> off-chain residual
+  follows (via @{thm consecutive_parent_from_mono}, @{thm m_anc_of_consecutive_chain},
+  making every interior \<open>B\<^sub>0\<close> column an \<open>m\<close>-ancestor of \<open>C\<close>, so the off-chain
+  case is vacuous).  Empirically exact: \<open>verify/probe_adjacent_value_monotone.py\<close>
+  gives 0/53470 for \<open>m < t-1\<close> (and plateaus appear only at the top level
+  \<open>m = t-1\<close>, which is outside this statement).  The proof is the genuine
+  remaining gap — a region-restricted value induction over the \<open>BMS\<close> expansion
+  structure (bump arithmetic), \<^emph>\<open>not\<close> the ancestry circularity.\<close>
+
+lemma adjacent_value_monotone:
+  fixes A :: array and s t c m :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and c_lo: "s < c" and c_hi: "c \<le> last_col_idx A" and m_lt: "m < t - 1"
+  shows "elem A (c - 1) m < elem A c m"
+proof -
+  have "\<forall>s t c m. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+          \<longrightarrow> s < c \<longrightarrow> c \<le> last_col_idx A \<longrightarrow> m < t - 1
+          \<longrightarrow> elem A (c - 1) m < elem A c m"
+    using A_BMS
+  proof (induct A rule: BMS.induct)
+    case (seed_in_BMS n)
+    show ?case
+    proof (intro allI impI)
+      fix s' t' c' m'
+      assume b0n: "b0_start (seed n) = Some s'"
+         and mpn: "max_parent_level (seed n) = Some t'"
+         and cs: "s' < c'" and cC: "c' \<le> last_col_idx (seed n)" and mt: "m' < t' - 1"
+      have lc: "last_col_idx (seed n) = 1" by (simp add: length_seed)
+      have n_pos: "0 < n"
+      proof (rule ccontr)
+        assume "\<not> 0 < n"
+        hence "n = 0" by simp
+        hence "max_parent_level (seed n) = None"
+          by (simp add: max_parent_level_def height_seed seed_def)
+        thus False using mpn by simp
+      qed
+      have s0: "s' = 0" using b0_start_seed[OF n_pos] b0n by simp
+      have t_eq: "t' = n - 1" using max_parent_level_seed[OF n_pos] mpn by simp
+      have c1: "c' = 1" using cs cC lc s0 by simp
+      have m_lt_n: "m' < n" using mt t_eq by linarith
+      have "elem (seed n) 0 m' < elem (seed n) 1 m'"
+        using elem_seed_0[OF m_lt_n] elem_seed_1[OF m_lt_n] by simp
+      thus "elem (seed n) (c' - 1) m' < elem (seed n) c' m'" using c1 by simp
+    qed
+  next
+    case (expand_in_BMS A n)
+    show ?case sorry
+  qed
+  thus ?thesis using b0 mp c_lo c_hi m_lt by blast
+qed
+
+lemma elem_lt_below_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and m_lt: "m < t"
+      and j_pos: "0 < j" and j_lt: "j < l1 A"
+  shows "elem A s m < elem A (s + j) m"
+proof (cases m)
+  case 0
+  \<comment> \<open>Row-0 case (= the former long-open \<open>bms_b0_row0_strict_min\<close>).  The bad
+      root \<open>s\<close> is the \<open>t\<close>-parent of the last column \<open>C\<close>, hence a
+      \<open>(t-1)\<close>-ancestor of \<open>C\<close> and (monotone) a \<open>0\<close>-ancestor of \<open>C\<close>.  By
+      @{thm m_anc_zero_imp_strict_min} it strictly dominates the whole open
+      interval \<open>(s, C)\<close> at row 0, which contains every interior \<open>B\<^sub>0\<close>
+      column \<open>s + j\<close> (\<open>0 < j < l\<^sub>1 = C - s\<close>).\<close>
+  have t_pos: "0 < t" using m_lt 0 by simp
+  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
+  have mpC: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  have anc_t': "m_ancestor A t' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mpC[unfolded t_eq]] .
+  have anc0: "m_ancestor A 0 (last_col_idx A) s"
+    using m_ancestor_mono[OF le0 anc_t'] .
+  have strict: "\<forall>c. s < c \<and> c < last_col_idx A \<longrightarrow> elem A s 0 < elem A c 0"
+    using m_anc_zero_imp_strict_min[OF anc0] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+    using s_lt_last b0 last_lt_arr unfolding l1_def B0_block_def by simp
+  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq by linarith
+  have s_lt_sj: "s < s + j" using j_pos by simp
+  have "elem A s 0 < elem A (s + j) 0" using strict s_lt_sj sj_lt_C by blast
+  thus ?thesis using 0 by simp
+next
+  case (Suc m')
+  \<comment> \<open>Levels \<open>0 < m < t\<close>.  The bad root \<open>s\<close> is the \<open>t\<close>-parent of \<open>C\<close>, hence a
+      \<open>(t-1)\<close>-ancestor and (monotone, \<open>Suc m' \<le> t-1\<close>) a \<open>(Suc m')\<close>-ancestor
+      of \<open>C\<close>.  For an interior column \<open>s + j\<close> that is also an \<open>m'\<close>-ancestor of
+      \<open>C\<close>, @{thm m_anc_Suc_imp_strict_min_on_anc} gives the domination directly.
+      The residual gap is the OFF-CHAIN interior columns (not \<open>m'\<close>-ancestors of
+      \<open>C\<close>): there the \<open>m\<close>-ancestor / elem-\<open><\<close> equivalence is circular and Hunter
+      weaves it into the simultaneous (i)--(v) \<open>k\<close>-induction.  Empirically the
+      whole statement is true (\<open>verify/probe_vacuity_refute.py\<close>: 500+ BMSs,
+      \<open>t \<ge> 2\<close>, 0 violations); off-chain columns are rare
+      (\<open>verify/probe_mgt0_handle.py\<close>: P_a 262/1).\<close>
+  have m_lt': "Suc m' < t" using m_lt Suc by simp
+  obtain t'' where t_eq2: "t = Suc t''" using m_lt' by (cases t) auto
+  have mpC: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  have anc_t'': "m_ancestor A t'' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mpC[unfolded t_eq2]] .
+  have Sm'_le: "Suc m' \<le> t''" using m_lt' t_eq2 by simp
+  have endpoint: "m_ancestor A (Suc m') (last_col_idx A) s"
+    using m_ancestor_mono[OF Sm'_le anc_t''] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+    using s_lt_last b0 last_lt_arr unfolding l1_def B0_block_def by simp
+  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq by linarith
+  have s_lt_sj: "s < s + j" using j_pos by simp
+  show ?thesis
+  proof (cases "m_ancestor A m' (last_col_idx A) (s + j)")
+    case True
+    \<comment> \<open>\<open>s + j\<close> is an \<open>m'\<close>-ancestor of \<open>C\<close>: dominated by \<open>s\<close> at level
+        \<open>Suc m'\<close> via @{thm m_anc_Suc_imp_strict_min_on_anc}.\<close>
+    have "elem A s (Suc m') < elem A (s + j) (Suc m')"
+      using m_anc_Suc_imp_strict_min_on_anc[OF endpoint] s_lt_sj sj_lt_C True by blast
+    thus ?thesis using Suc by simp
+  next
+    case False
+    \<comment> \<open>Off-chain interior column (NOT an \<open>m'\<close>-ancestor of \<open>C\<close>): \<^bold>\<open>vacuous\<close>.
+        Since \<open>Suc m' < t\<close> gives \<open>m' < t-1\<close>, the adjacent-value monotonicity
+        @{thm adjacent_value_monotone} makes the \<open>m'\<close>-parent of each column in
+        \<open>(s, C]\<close> its predecessor (@{thm consecutive_parent_from_mono}), so the
+        consecutive chain (@{thm m_anc_of_consecutive_chain}) makes every interior
+        \<open>B\<^sub>0\<close> column \<open>s+j\<close> an \<open>m'\<close>-ancestor of \<open>C\<close> — contradicting the off-chain
+        assumption.  Hence this case cannot occur and the on-chain proof covers
+        all interior columns.\<close>
+    have m'_lt_t1: "m' < t - 1" using m_lt' by simp
+    have mono_A: "\<And>d m''. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m'' < t - 1
+                    \<Longrightarrow> elem A (d - 1) m'' < elem A d m''"
+      using adjacent_value_monotone[OF A_BMS A_ne b0 mp] by blast
+    have consec: "\<And>c. s < c \<Longrightarrow> c \<le> last_col_idx A
+                    \<Longrightarrow> m_parent A m' c = Some (c - 1)"
+      using consecutive_parent_from_mono[OF mono_A _ _ m'_lt_t1] by blast
+    have anc_sj: "m_ancestor A m' (last_col_idx A) (s + j)"
+      using m_anc_of_consecutive_chain[OF consec le_add1 sj_lt_C order.refl] .
+    with False show ?thesis by simp
+  qed
+qed
+
+text \<open>Below \<open>m\<^sub>0\<close>, the bad root \<open>s\<close> is a level-\<open>m\<close> m-ancestor of every
+  interior \<open>B\<^sub>0\<close> column \<open>s + j\<close>.  Proved (mirroring the former
+  \<open>bms_b0_col_r_ancestor_all\<close>, but bounded to \<open>m < t\<close>) by induction on the
+  level \<open>m\<close> (outer) and the column offset \<open>j\<close> (inner, strong): at each level
+  the strict domination @{thm elem_lt_below_t} makes \<open>s\<close> a parent-candidate
+  of \<open>s + j\<close>, and the inner induction walks the parent chain down to \<open>s\<close>.
+  This makes Lemma 2.5 (ii) case-B (\<open>Suc k' < t\<close>, \<open>\<not> ascends\<close>) VACUOUS.\<close>
+
+lemma b0_col_ancestor_below_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+  shows "m < t \<longrightarrow> (\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m (s + j) s)"
+proof (induct m)
+  case 0
+  show ?case
+  proof
+    assume t_pos: "0 < t"
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A 0 (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_pos0: "0 < j" and j_lt0: "j < l1 A"
+      show "m_ancestor A 0 (s + j) s"
+        using j_pos0 j_lt0
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s 0 < elem A (s + j) 0"
+          by (rule elem_lt_below_t[OF A_BMS A_ne b0 mp t_pos j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A 0 (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A 0 (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A 0 p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+next
+  case (Suc m')
+  show ?case
+  proof
+    assume Sm_lt: "Suc m' < t"
+    have m'_lt: "m' < t" using Sm_lt by simp
+    have IH_all: "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m' (s + j) s"
+      using Suc.hyps m'_lt by blast
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A (Suc m') (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_posS: "0 < j" and j_ltS: "j < l1 A"
+      show "m_ancestor A (Suc m') (s + j) s"
+        using j_posS j_ltS
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s (Suc m') < elem A (s + j) (Suc m')"
+          by (rule elem_lt_below_t[OF A_BMS A_ne b0 mp Sm_lt j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        have anc_r': "m_ancestor A m' (s + j) s" using IH_all j_pos j_lt by blast
+        obtain p where mp_p: "m_parent A (Suc m') (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A (Suc m') (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A (Suc m') (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A (Suc m') p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+qed
+
+text \<open>
+  \<^bold>\<open>Non-circular ancestry-from-domination\<close> (joint-induction keystone, 续30).
+
+  @{thm b0_col_ancestor_below_t} proves the ancestry \<open>m_ancestor A m (s+j) s\<close>
+  (\<open>m < t\<close>) by \<^emph>\<open>calling\<close> @{thm elem_lt_below_t} for the strict domination
+  \<open>elem A s m < elem A (s+j) m\<close> at each level (lines for the m=0 / Suc m'
+  parent-candidate steps).  Since \<open>elem_lt_below_t\<close> still has the off-chain
+  \<open>sorry\<close>, that route cannot be used to \<^emph>\<open>close\<close> \<open>elem_lt_below_t\<close> — the
+  classic Hunter entanglement.
+
+  This variant takes the domination as an \<^bold>\<open>explicit hypothesis\<close> \<open>DOM\<close>
+  (the conjunct that the joint simultaneous induction carries) instead of
+  calling \<open>elem_lt_below_t\<close>.  The proof body is otherwise identical.  Given
+  \<open>DOM A\<close> at the predecessor (supplied by the BMS-induction hypothesis), it
+  yields ancestry \<^emph>\<open>without any reference to\<close> \<open>elem_lt_below_t\<close>, so it is
+  sound to use inside the joint induction that establishes \<open>DOM\<close>.  In
+  particular it discharges the \<open>ascends \<equiv> ancestry\<close> (\<open>ascends_def\<close> =
+  \<open>non_strict_ancestor\<close>) side conditions of \<open>dom_transfer_R1\<close> (stated later
+  in this theory) from the IH \<open>DOM\<close>, making the R1 branch self-contained.\<close>
+
+lemma b0_col_ancestor_below_t_from_DOM:
+  fixes A :: array
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and DOM: "\<And>m j. m < t \<Longrightarrow> 0 < j \<Longrightarrow> j < l1 A
+                  \<Longrightarrow> elem A s m < elem A (s + j) m"
+  shows "m < t \<longrightarrow> (\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m (s + j) s)"
+proof (induct m)
+  case 0
+  show ?case
+  proof
+    assume t_pos: "0 < t"
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A 0 (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_pos0: "0 < j" and j_lt0: "j < l1 A"
+      show "m_ancestor A 0 (s + j) s"
+        using j_pos0 j_lt0
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s 0 < elem A (s + j) 0"
+          by (rule DOM[OF t_pos j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A 0 (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A 0 (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A 0 p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+next
+  case (Suc m')
+  show ?case
+  proof
+    assume Sm_lt: "Suc m' < t"
+    have m'_lt: "m' < t" using Sm_lt by simp
+    have IH_all: "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m' (s + j) s"
+      using Suc.hyps m'_lt by blast
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A (Suc m') (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_posS: "0 < j" and j_ltS: "j < l1 A"
+      show "m_ancestor A (Suc m') (s + j) s"
+        using j_posS j_ltS
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s (Suc m') < elem A (s + j) (Suc m')"
+          by (rule DOM[OF Sm_lt j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        have anc_r': "m_ancestor A m' (s + j) s" using IH_all j_pos j_lt by blast
+        obtain p where mp_p: "m_parent A (Suc m') (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A (Suc m') (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A (Suc m') (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A (Suc m') p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
 qed
 
 text \<open>\<^bold>\<open>R2 \<open>G\<close>-prefix domination from interval ancestry (sorry-free reduction).\<close>
