@@ -1,9 +1,8 @@
-v0.1.78/Route the G-to-B boundary through the ancestor (not the value side) in the expand steps
+v0.1.79/Discharge the B-region adjacent monotonicity (Hbr) of the expand step
 
-- Add elem_AEn_eq_le_l0: elem coincidence for c<=l0 A (extends elem_AEn_eq_on_G_prefix to the block-0 start idx_B(A,0,0)=l0 A, which is unbumped)
-- Revise ancestor_monotone_expand_step_R1/_R2 to route c<=sA (G-prefix incl. the G-to-B boundary c=sA) through the IH-at-q path, and c>sA (pure B-region) through Hbr
-- Necessary because the boundary pair (sA-1,sA) is NOT unconditionally monotone (it plateaus at the row-0 level, probe 80 viol all at t=1/m=0); it must be discharged via the ancestor q (R1_gprefix/R2), which the value-side Hbr lacks
-- Hbr's hypothesis weakened to sA<c' (pure B-region), where adjacent monotonicity is genuinely a value fact (no top-level/row-0 issue)
-- Bump version v0.1.77 -> v0.1.78
+- Add B_region_adj_monotone: for a pure B-region target c'>l0 A at an IH-clean level m<t-1, the expansion's adjacent columns strictly increase; this is exactly the Hbr hypothesis of the R1/R2 expand-step lemmas
+- Decompose c'=idx_B(A,t',j'): j'>0 within-block via elem_expansion_B_lt_same_block lifting the IH base adjacency (shared bump t'·delta); j'=0,l1=1 consecutive block starts via elem_expansion_B_lt_step_same_j (delta>0); j'=0,l1>1 cross-block reduces to the IH last pair elem A (C_A-1) m < elem A C_A m with (A!s)+delta = elem A C_A m (telescoped IH)
+- No new sorry beyond the onestep residual
+- Bump version v0.1.78 -> v0.1.79
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

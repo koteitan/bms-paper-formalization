@@ -12116,6 +12116,162 @@ next
   thus ?thesis using e_c1 e_c by simp
 qed
 
+text \<open>\<^bold>\<open>\<open>B\<close>-region adjacent monotonicity (discharges \<open>Hbr\<close>, sorry-free).\<close>  For a
+  pure \<open>B\<close>-region target \<open>c' > l\<^sub>0 A\<close> at an IH-clean level \<open>m < t - 1\<close>, the
+  expansion's adjacent columns strictly increase.  Decompose \<open>c' = idx_B (A,t',j')\<close>:
+  \<^item> \<open>j' > 0\<close> (within block): @{thm elem_expansion_B_lt_same_block} lifts the IH base
+    adjacency \<open>(A!(s+j'-1)) < (A!(s+j'))\<close> (both copies share the bump \<open>t'\<cdot>\<delta>\<close>);
+  \<^item> \<open>j' = 0\<close>, \<open>l\<^sub>1 A = 1\<close> (consecutive block starts): @{thm elem_expansion_B_lt_step_same_j}
+    (\<open>\<delta> > 0\<close>);
+  \<^item> \<open>j' = 0\<close>, \<open>l\<^sub>1 A > 1\<close> (cross block): \<open>(A!(s+l\<^sub>1-1)) + (t'-1)\<delta> < (A!s) + t'\<delta>\<close>
+    reduces to \<open>elem A (C_A-1) m < elem A C_A m\<close> (IH last pair) with
+    \<open>(A!s) + \<delta> = elem A C_A m\<close> (telescoped IH, @{thm elem_lt_from_adjacent}).\<close>
+
+lemma B_region_adj_monotone:
+  fixes A :: array and s t m c' n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and IH: "\<forall>s t. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+                 \<longrightarrow> (\<forall>m q c. m < t - 1 \<longrightarrow> (q = s \<or> m_ancestor A m s q)
+                       \<longrightarrow> q < c \<longrightarrow> c \<le> last_col_idx A
+                       \<longrightarrow> elem A (c - 1) m < elem A c m)"
+      and m_lt: "m < t - 1"
+      and asc: "\<And>j'. 0 < j' \<Longrightarrow> j' < l1 A \<Longrightarrow> ascends A j' m"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and c'_gt: "l0 A < c'"
+      and c'_le: "c' \<le> last_col_idx (A[n])"
+  shows "elem (A[n]) (c' - 1) m < elem (A[n]) c' m"
+proof -
+  have m_lt_t: "m < t" using m_lt by simp
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s" using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne b0] s_lt_last by linarith
+  have l1_last: "l1 A = last_col_idx A - s" using l1_eq_last_minus_b0[OF A_ne b0] .
+  have CA_eq: "last_col_idx A = s + l1 A" using l1_last s_lt_last by simp
+  have m_lt_H: "m < height A" using m_lt_t max_parent_level_lt[OF mp] by linarith
+  have asc0: "ascends A 0 m"
+    unfolding ascends_def non_strict_ancestor_def by (simp add: b0 mp m_lt_t)
+  \<comment> \<open>IH adjacency over \<open>(s, C_A]\<close>.\<close>
+  have IH_adj: "\<And>c. s < c \<Longrightarrow> c \<le> last_col_idx A \<Longrightarrow> elem A (c - 1) m < elem A c m"
+    using IH b0 mp m_lt by blast
+  \<comment> \<open>length of every column is \<open>height A\<close> (below \<open>arr_len\<close>).\<close>
+  have col_len: "\<And>x. x < arr_len A \<Longrightarrow> length (A ! x) = height A"
+    using length_col_arr[OF is_arr A_ne] by blast
+  \<comment> \<open>Decompose the \<open>B\<close>-region target.\<close>
+  define r where "r = c' - l0 A"
+  define t' where "t' = r div l1 A"
+  define j' where "j' = r mod l1 A"
+  have r_pos: "0 < r" using c'_gt r_def by simp
+  have r_eq: "r = t' * l1 A + j'" using t'_def j'_def by (simp add: div_mult_mod_eq mult.commute)
+  have j'_lt: "j' < l1 A" using j'_def l1_pos by simp
+  have c'_eq: "c' = idx_B_in_expansion A t' j'"
+    using r_def c'_gt r_eq l0_eq by (simp add: idx_B_in_expansion_def mult.commute)
+  have arrE: "arr_len (A[n]) = l0 A + Suc n * l1 A"
+    using A_ne by (simp add: arr_len_expansion_l01 l0_def l1_def)
+  have En_ne: "A[n] \<noteq> []" using c'_le c'_gt by (cases "A[n]") auto
+  have r_lt: "r < Suc n * l1 A"
+  proof -
+    have "0 < length (A[n])" using En_ne by simp
+    hence "c' < length (A[n])" using c'_le by linarith
+    thus ?thesis using arrE r_def c'_gt l0_eq by simp
+  qed
+  have t'_le: "t' \<le> n"
+  proof -
+    have "t' < Suc n" using less_mult_imp_div_less[OF r_lt] t'_def by simp
+    thus ?thesis by simp
+  qed
+  show ?thesis
+  proof (cases "0 < j'")
+    case True
+    \<comment> \<open>Within block \<open>t'\<close>: \<open>c'-1 = idx_B (A,t',j'-1)\<close>.\<close>
+    have c1_eq: "c' - 1 = idx_B_in_expansion A t' (j' - 1)"
+      using c'_eq True by (simp add: idx_B_in_expansion_def)
+    have j1_lt: "j' - 1 < l1 A" using j'_lt by simp
+    have asc_j: "ascends A j' m" using asc[OF True j'_lt] .
+    have asc_j1: "ascends A (j' - 1) m"
+    proof (cases "0 < j' - 1")
+      case True show ?thesis by (rule asc[OF True j1_lt])
+    next
+      case False thus ?thesis using asc0 by simp
+    qed
+    have sj_lt: "s + j' < arr_len A" using j'_lt CA_eq last_lt_arr by simp
+    have sj1_lt: "s + (j' - 1) < arr_len A" using sj_lt by simp
+    have jlen: "m < length (A ! (s + (j' - 1)))" using col_len[OF sj1_lt] m_lt_H by simp
+    have ilen: "m < length (A ! (s + j'))" using col_len[OF sj_lt] m_lt_H by simp
+    have base_lt: "(A ! (s + (j' - 1))) ! m < (A ! (s + j')) ! m"
+    proof -
+      have "s < s + j'" using True by simp
+      moreover have "s + j' \<le> last_col_idx A" using j'_lt CA_eq by simp
+      ultimately have "elem A (s + j' - 1) m < elem A (s + j') m" using IH_adj by blast
+      thus ?thesis using True unfolding elem_def by simp
+    qed
+    show ?thesis
+      using elem_expansion_B_lt_same_block[OF A_ne b0 t'_le j1_lt j'_lt asc_j1 asc_j keep jlen ilen base_lt]
+            c'_eq c1_eq by simp
+  next
+    case False
+    hence j0: "j' = 0" by simp
+    have t'_pos: "0 < t'" using r_pos r_eq j0 l1_pos by (cases t') auto
+    show ?thesis
+    proof (cases "l1 A = 1")
+      case True
+      \<comment> \<open>Consecutive block starts (\<open>l\<^sub>1 = 1\<close>): \<open>c'-1 = idx_B (A,t'-1,0)\<close>.\<close>
+      have c1_eq: "c' - 1 = idx_B_in_expansion A (t' - 1) 0"
+        using c'_eq j0 True t'_pos by (simp add: idx_B_in_expansion_def)
+      have slen: "m < length (A ! (s + 0))" using col_len[OF s_lt_arr] m_lt_H by simp
+      have step: "elem (A[n]) (idx_B_in_expansion A (t' - 1) 0) m
+                < elem (A[n]) (idx_B_in_expansion A t' 0) m"
+        using elem_expansion_B_lt_step_same_j[OF A_ne b0 l1_pos _ t'_le asc0 keep slen] t'_pos
+        by simp
+      show ?thesis using step c'_eq c1_eq j0 by simp
+    next
+      case False
+      hence l1_gt: "1 < l1 A" using l1_pos by simp
+      \<comment> \<open>Cross block (\<open>l\<^sub>1 > 1\<close>): \<open>c'-1 = idx_B (A,t'-1,l\<^sub>1-1)\<close>.\<close>
+      have t'l1: "t' * l1 A = (t' - 1) * l1 A + l1 A" using t'_pos by (cases t') auto
+      have c1_eq: "c' - 1 = idx_B_in_expansion A (t' - 1) (l1 A - 1)"
+        using c'_eq j0 t'l1 l1_gt by (simp add: idx_B_in_expansion_def)
+      have l1m1_lt: "l1 A - 1 < l1 A" using l1_pos by simp
+      have asc_l1m1: "ascends A (l1 A - 1) m" using asc[OF _ l1m1_lt] l1_gt by simp
+      have sl1_lt: "s + (l1 A - 1) < arr_len A" using l1_pos CA_eq last_lt_arr by simp
+      have t'1_le: "t' - 1 \<le> n" using t'_le by simp
+      have slen: "m < length (A ! (s + 0))" using col_len[OF s_lt_arr] m_lt_H by simp
+      have sl1len: "m < length (A ! (s + (l1 A - 1)))" using col_len[OF sl1_lt] m_lt_H by simp
+      \<comment> \<open>Values.\<close>
+      have v_c': "elem (A[n]) c' m = (A ! s) ! m + t' * delta A m"
+        using elem_AEn_idx_B_value[OF A_ne b0 t'_le l1_pos keep slen] c'_eq j0 asc0 by simp
+      have v_c1: "elem (A[n]) (c' - 1) m = (A ! (s + (l1 A - 1))) ! m + (t' - 1) * delta A m"
+        using elem_AEn_idx_B_value[OF A_ne b0 t'1_le l1m1_lt keep sl1len] c1_eq asc_l1m1 by simp
+      \<comment> \<open>\<open>(A!(s+l\<^sub>1-1)) < (A!s) + \<delta>\<close>.\<close>
+      have delta_eq: "delta A m = elem A (last_col_idx A) m - elem A s m"
+        unfolding delta_def using b0 by simp
+      have s_lt_CA: "elem A s m < elem A (last_col_idx A) m"
+      proof -
+        have "elem A s m < elem A (s + l1 A) m"
+          using elem_lt_from_adjacent[OF IH_adj l1_pos] CA_eq by simp
+        thus ?thesis using CA_eq by simp
+      qed
+      have last_pair: "elem A (last_col_idx A - 1) m < elem A (last_col_idx A) m"
+        using IH_adj[OF s_lt_last order.refl] .
+      have key: "(A ! (s + (l1 A - 1))) ! m < (A ! s) ! m + delta A m"
+      proof -
+        have lhs: "(A ! (s + (l1 A - 1))) ! m = elem A (last_col_idx A - 1) m"
+          using CA_eq l1_pos unfolding elem_def by simp
+        have "(A ! s) ! m + delta A m = elem A (last_col_idx A) m"
+          using delta_eq s_lt_CA unfolding elem_def by simp
+        thus ?thesis using lhs last_pair by simp
+      qed
+      have t'd: "t' * delta A m = (t' - 1) * delta A m + delta A m"
+        using t'_pos by (cases t') auto
+      show ?thesis using v_c' v_c1 key t'd by linarith
+    qed
+  qed
+qed
+
 text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
   Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
   \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven
