@@ -1,9 +1,9 @@
-v0.1.73/Add the general-l1 block-start ancestry lemma (R1-G-prefix groundwork)
+v0.1.74/Add badroot_block_anc_zero: the block-0 start is an ancestor of every later B-column
 
-- Add block_start_anc_zero_genl1: for k<t, idx_B(A,0,0) is a k-ancestor of every later block start idx_B(A,c,0), with NO l1 A=1 restriction (the existing block_start_anc_zero needs l1 A=1)
-- Proof: ascends A 0 k (reflexive non-strict ancestor at offset 0, from k<mpl) feeds onestep_anc_when_ascends for the j=0 one-step ancestry, chained by block_copy_anc_from_onestep
-- Introduces no new sorry; inherits onestep_anc_when_ascends's single l1>1 residual (the shared crux onto which the whole ancestor_monotone expand case is being collapsed)
-- This supplies the block-start case of the R1-G-prefix keystone S1 (b0_start A is an m-ancestor of b0_start(A[n]) in A[n]); the non-block-start case routes via the induction hypothesis (non-circular)
-- Bump version v0.1.72 -> v0.1.73
+- Add badroot_block_anc_zero: for k<t and given that every interior offset ascends at level k, idx_B(A,0,0)=b0_start A is a k-ancestor of EVERY later B-region column idx_B(A,c,j), not only block starts
+- j=0: block_start_anc_zero_genl1; j>0: block-copy to idx_B(A,0,j) (onestep_anc_when_ascends + block_copy_anc_from_onestep), then idx_B(A,0,j)->idx_B(A,0,0) is the verbatim (s+j)->s ancestry of A transported by m_anc_orig_eq_AEn_G (block 0 is unbumped)
+- This is the structural core of the R1-G-prefix keystone S1 (b0_start A is an m-ancestor of b0_start(A[n])), now covering the non-block-start bad roots (~9% of R1) that block_start_anc_zero_genl1 alone misses
+- The ascends hypothesis is vacuous when l1 A=1 (the diff=1 / top-level case) and is otherwise dischargeable from the induction hypothesis since l1 A>1 forces mpl(A[n])=mpl(A); introduces no new sorry beyond the onestep residual
+- Bump version v0.1.73 -> v0.1.74
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

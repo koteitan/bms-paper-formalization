@@ -11819,6 +11819,64 @@ proof -
   show ?thesis by (rule block_copy_anc_from_onestep[OF onestep c_pos c_le])
 qed
 
+text \<open>\<^bold>\<open>General-\<open>l\<^sub>1\<close> bad-root-block ancestry (R1-G-prefix keystone S1, modulo IH-content).\<close>
+  For ascending levels \<open>k < t\<close>, the block-0 start \<open>idx_B (A,0,0) = b0_start A\<close> is a
+  \<open>k\<close>-ancestor of \<^emph>\<open>every\<close> later \<open>B\<close>-region column \<open>idx_B (A,c,j)\<close> (not just block
+  starts), GIVEN that every interior offset ascends at level \<open>k\<close> (the IH-content \<open>asc\<close>,
+  supplied in the \<open>ancestor_monotone\<close> expand case from the induction hypothesis via the
+  cascade).  \<open>j = 0\<close>: @{thm block_start_anc_zero_genl1}.  \<open>j > 0\<close>: block-copy to
+  \<open>idx_B (A,0,j)\<close> (@{thm onestep_anc_when_ascends} + @{thm block_copy_anc_from_onestep}),
+  then \<open>idx_B (A,0,j) \<leadsto> idx_B (A,0,0)\<close>, which is the verbatim \<open>(s+j) \<leadsto> s\<close>
+  ancestry of \<open>A\<close> transported by @{thm m_anc_orig_eq_AEn_G} (block 0 is unbumped).
+  Introduces no new \<open>sorry\<close> beyond the @{thm onestep_anc_when_ascends} residual.\<close>
+
+lemma badroot_block_anc_zero:
+  fixes A :: array and n c j k :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and k_lt_t: "k < t"
+      and asc: "\<And>j'. 0 < j' \<Longrightarrow> j' < l1 A \<Longrightarrow> ascends A j' k"
+      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and c_le: "c \<le> n" and j_lt: "j < l1 A"
+      and nz: "0 < c \<or> 0 < j"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A 0 0)"
+proof (cases "j = 0")
+  case True
+  hence c_pos: "0 < c" using nz by simp
+  have "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A 0 0)"
+    by (rule block_start_anc_zero_genl1[OF A_BMS A_ne b0 mp c_pos c_le k_lt_t])
+  thus ?thesis using True by simp
+next
+  case False
+  hence j_pos: "0 < j" by simp
+  have ascj: "ascends A j k" using asc[OF j_pos j_lt] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s" using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have idx0j: "idx_B_in_expansion A 0 j = s + j" using l0_eq by (simp add: idx_B_in_expansion_def)
+  have idx00: "idx_B_in_expansion A 0 0 = s" using l0_eq by (simp add: idx_B_in_expansion_def)
+  have mancA: "m_ancestor A k (s + j) s"
+    using ascj b0 mp j_pos by (auto simp: ascends_def non_strict_ancestor_def split: option.splits)
+  have p_lt: "s + j < l0 A + l1 A" using l0_eq j_lt by simp
+  have wb0: "m_ancestor (A[n]) k (idx_B_in_expansion A 0 j) (idx_B_in_expansion A 0 0)"
+    using m_anc_orig_eq_AEn_G[OF A_ne keep p_lt, of s] mancA idx0j idx00 by simp
+  show ?thesis
+  proof (cases "c = 0")
+    case True
+    thus ?thesis using wb0 by simp
+  next
+    case False
+    hence c_pos: "0 < c" by simp
+    have onestep: "\<And>c'. 0 < c' \<Longrightarrow> c' \<le> n \<Longrightarrow>
+         m_ancestor (A[n]) k (idx_B_in_expansion A c' j) (idx_B_in_expansion A (c' - 1) j)"
+      using onestep_anc_when_ascends[OF A_BMS A_ne b0 ascj j_lt] by blast
+    have bc: "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A 0 j)"
+      by (rule block_copy_anc_from_onestep[OF onestep c_pos c_le])
+    show ?thesis by (rule m_ancestor_trans[OF bc wb0])
+  qed
+qed
+
 text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
   Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
   \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven
