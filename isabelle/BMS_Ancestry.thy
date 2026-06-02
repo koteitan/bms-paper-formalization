@@ -11939,6 +11939,80 @@ proof -
   show ?thesis using m_anc_orig_eq_AEn_G[OF A_ne keep sA_lt] S2 by simp
 qed
 
+text \<open>\<^bold>\<open>Expand-case obligation, R1 regime, IH-clean level (assembly).\<close>  Proves the
+  per-\<open>(m,q,c)\<close> goal of the \<open>ancestor_monotone\<close> expand step in the R1 regime
+  (\<open>sA \<le> sE = b0_start (A[n])\<close>) at an IH-clean level \<open>m < tA - 1\<close>, given the
+  \<open>B\<close>-region adjacent monotonicity \<open>Hbr\<close> as a hypothesis (the value-side residual).
+  Pointwise on \<open>c\<close>: \<open>c \<ge> sA\<close> (boundary + \<open>B\<close>-region) is \<open>Hbr\<close>; \<open>c < sA\<close>
+  (\<open>G\<close>-prefix) transfers via @{thm elem_AEn_eq_on_G_prefix} to \<open>A\<close>, where
+  @{thm R1_gprefix_anc_to_old} makes \<open>q\<close> an \<open>m\<close>-ancestor of \<open>sA\<close> and the IH
+  supplies the monotonicity over \<open>(q, C_A] \<ni> c\<close>.  Isolates exactly the level
+  bound (\<open>m < tA-1\<close>) and the \<open>B\<close>-region value fact; no new \<open>sorry\<close>.\<close>
+
+lemma ancestor_monotone_expand_step_R1:
+  fixes A :: array and sA tA sE m q c n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0A: "b0_start A = Some sA" and mpA: "max_parent_level A = Some tA"
+      and IH: "\<forall>s t. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+                 \<longrightarrow> (\<forall>m q c. m < t - 1 \<longrightarrow> (q = s \<or> m_ancestor A m s q)
+                       \<longrightarrow> q < c \<longrightarrow> c \<le> last_col_idx A
+                       \<longrightarrow> elem A (c - 1) m < elem A c m)"
+      and b0E: "b0_start (A[n]) = Some sE"
+      and R1: "sA \<le> sE"
+      and m_lt: "m < tA - 1"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and asc: "\<And>j'. 0 < j' \<Longrightarrow> j' < l1 A \<Longrightarrow> ascends A j' m"
+      and qor: "q = sE \<or> m_ancestor (A[n]) m sE q"
+      and q_lt: "q < c" and c_le: "c \<le> last_col_idx (A[n])"
+      and Hbr: "\<And>c'. sA \<le> c' \<Longrightarrow> c' \<le> last_col_idx (A[n])
+                  \<Longrightarrow> elem (A[n]) (c' - 1) m < elem (A[n]) c' m"
+  shows "elem (A[n]) (c - 1) m < elem (A[n]) c m"
+proof (cases "c < sA")
+  case False
+  hence "sA \<le> c" by simp
+  thus ?thesis using Hbr[OF _ c_le] by simp
+next
+  case True
+  \<comment> \<open>\<open>G\<close>-prefix pair: \<open>c - 1 < c < sA\<close>; values agree with \<open>A\<close>.\<close>
+  have En_ne: "A[n] \<noteq> []"
+  proof (rule ccontr)
+    assume "\<not> A[n] \<noteq> []"
+    hence "A[n] = []" by simp
+    hence "b0_start (A[n]) = None" by (simp add: b0_start_def max_parent_level_def)
+    thus False using b0E by simp
+  qed
+  have c_lt_sA: "c < sA" using True .
+  have c1_lt_sA: "c - 1 < sA" using c_lt_sA by simp
+  have e_c1: "elem (A[n]) (c - 1) m = elem A (c - 1) m"
+    by (rule elem_AEn_eq_on_G_prefix[OF A_ne b0A c1_lt_sA keep])
+  have e_c: "elem (A[n]) c m = elem A c m"
+    by (rule elem_AEn_eq_on_G_prefix[OF A_ne b0A c_lt_sA keep])
+  have m_lt_tA: "m < tA" using m_lt by simp
+  \<comment> \<open>\<open>q\<close> is an \<open>m\<close>-ancestor of \<open>sA\<close> in \<open>A\<close>.\<close>
+  have q_ne_sE: "q \<noteq> sE" using q_lt c_lt_sA R1 by linarith
+  have ancE: "m_ancestor (A[n]) m sE q" using qor q_ne_sE by simp
+  have q_lt_sA: "q < sA" using q_lt c_lt_sA by simp
+  have sE_lt: "sE < l0 A + Suc n * l1 A"
+  proof -
+    have "sE < last_col_idx (A[n])" by (rule b0_start_lt[OF b0E En_ne])
+    also have "last_col_idx (A[n]) < arr_len (A[n])" using En_ne by (cases "A[n]") auto
+    also have "arr_len (A[n]) = l0 A + Suc n * l1 A"
+      using A_ne by (simp add: arr_len_expansion_l01 l0_def l1_def)
+    finally show ?thesis .
+  qed
+  have qancA: "m_ancestor A m sA q"
+    by (rule R1_gprefix_anc_to_old[OF A_BMS A_ne b0A mpA m_lt_tA asc keep R1 sE_lt ancE q_lt_sA])
+  \<comment> \<open>Invoke the IH at \<open>q\<close> (an ancestor of \<open>sA\<close>) over \<open>(q, C_A] \<ni> c\<close>.\<close>
+  have c_le_CA: "c \<le> last_col_idx A"
+  proof -
+    have "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
+    thus ?thesis using c_lt_sA by linarith
+  qed
+  have "elem A (c - 1) m < elem A c m"
+    using IH b0A mpA m_lt qancA q_lt c_le_CA by blast
+  thus ?thesis using e_c1 e_c by simp
+qed
+
 text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
   Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
   \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven

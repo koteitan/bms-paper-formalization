@@ -1,9 +1,8 @@
-v0.1.75/Assemble the R1-G-prefix ancestry restriction (modulo IH-content)
+v0.1.76/Assemble the R1-regime expand-case obligation (modulo level bound + B-region)
 
-- Add R1_gprefix_anc_to_old: in the R1 regime (sA<=sE=b0_start(A[n])), a G-prefix m-ancestor q<sA of sE in A[n] is an m-ancestor of the old bad root sA in A
-- Boundary sE=sA: the A[n]-conclusion is the hypothesis, transported by m_anc_orig_eq_AEn_G
-- Strict sE>sA: decompose sE=idx_B(A,c,j) (c=(sE-l0)/l1, j=(sE-l0)%l1), get sA as a k-ancestor of sE via badroot_block_anc_zero, descend to q by m_anc_below_ancestor_transfer, transport to A by m_anc_orig_eq_AEn_G (sA=l0 A < l0 A + l1 A)
-- The asc / m<tA premises are induction-hypothesis content to be discharged in the ancestor_monotone expand case; no new sorry beyond the onestep residual
-- Bump version v0.1.74 -> v0.1.75
+- Add ancestor_monotone_expand_step_R1: proves the per-(m,q,c) goal of the ancestor_monotone expand step in the R1 regime (sA<=sE=b0_start(A[n])) at an IH-clean level m<tA-1, taking the B-region adjacent monotonicity Hbr as a hypothesis
+- Pointwise on c: c>=sA (boundary + B-region) is Hbr; c<sA (G-prefix) transfers to A via elem_AEn_eq_on_G_prefix, where R1_gprefix_anc_to_old makes q an m-ancestor of sA and the IH gives monotonicity over (q,C_A] containing c
+- Validates the entire R1 G-prefix assembly (ancestry -> IH), isolating exactly the level bound (m<tA-1) and the B-region value fact; no new sorry beyond the onestep residual
+- Bump version v0.1.75 -> v0.1.76
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
