@@ -1,8 +1,8 @@
-v0.1.76/Assemble the R1-regime expand-case obligation (modulo level bound + B-region)
+v0.1.77/Assemble the R2-regime expand-case obligation (modulo level bound + B-region)
 
-- Add ancestor_monotone_expand_step_R1: proves the per-(m,q,c) goal of the ancestor_monotone expand step in the R1 regime (sA<=sE=b0_start(A[n])) at an IH-clean level m<tA-1, taking the B-region adjacent monotonicity Hbr as a hypothesis
-- Pointwise on c: c>=sA (boundary + B-region) is Hbr; c<sA (G-prefix) transfers to A via elem_AEn_eq_on_G_prefix, where R1_gprefix_anc_to_old makes q an m-ancestor of sA and the IH gives monotonicity over (q,C_A] containing c
-- Validates the entire R1 G-prefix assembly (ancestry -> IH), isolating exactly the level bound (m<tA-1) and the B-region value fact; no new sorry beyond the onestep residual
-- Bump version v0.1.75 -> v0.1.76
+- Add ancestor_monotone_expand_step_R2: the R2 counterpart (sE=b0_start(A[n])<sA) of the R1 step, taking the residual Rb (sE is an m-ancestor of sA in A, from R2_new_root_anc_of_old) and the B-region monotonicity Hbr as hypotheses
+- c>=sA via Hbr; c<sA (G-prefix) uses ancestry_restriction_G_modulo_Rb to make q an m-ancestor of sA, then the IH over (q,C_A] containing c
+- Both expansion regimes of the ancestor_monotone expand step are now validated; the residuals are the level bound (m<tA-1), the B-region value fact (Hbr), and Rb (R2 only, ready)
+- Bump version v0.1.76 -> v0.1.77
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
