@@ -12308,6 +12308,84 @@ proof -
     using b0 mp m_lt_t manc j_pos by simp
 qed
 
+text \<open>\<^bold>\<open>Full expand-case assembly (modulo the level bounds and the top-level leaf).\<close>
+  Combines the R1/R2 step lemmas, the \<open>B\<close>-region monotonicity and the \<open>ascends\<close>
+  discharge into the complete \<open>ancestor_monotone\<close> expand obligation, isolating exactly
+  the residual structural facts as hypotheses: the \<open>mpl\<close> upper bounds
+  (\<open>1<l\<^sub>1 A \<Rightarrow> tE \<le> tA\<close> and \<open>tE \<le> tA+1\<close>), the R2 ancestry residual \<open>Rb\<close>
+  (\<open>R2_new_root_anc_of_old\<close>), the top-level leaf (\<open>l\<^sub>1 A = 1 \<and> m = tA-1\<close>), and the
+  strip cutoff \<open>keep\<close>.  At an IH-clean level \<open>m < tA-1\<close> the step lemmas apply
+  (\<open>asc\<close> via @{thm ascends_offset_from_IH}, \<open>Hbr\<close> via @{thm B_region_adj_monotone});
+  otherwise \<open>m = tA-1\<close> forces \<open>l\<^sub>1 A = 1\<close> (else \<open>tE \<le> tA\<close>) and the leaf fires.\<close>
+
+lemma ancestor_monotone_expand:
+  fixes A :: array and sA tA sE tE m q c n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0A: "b0_start A = Some sA" and mpA: "max_parent_level A = Some tA"
+      and IH: "\<forall>s t. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+                 \<longrightarrow> (\<forall>m q c. m < t - 1 \<longrightarrow> (q = s \<or> m_ancestor A m s q)
+                       \<longrightarrow> q < c \<longrightarrow> c \<le> last_col_idx A
+                       \<longrightarrow> elem A (c - 1) m < elem A c m)"
+      and b0E: "b0_start (A[n]) = Some sE" and mpE: "max_parent_level (A[n]) = Some tE"
+      and m_lt: "m < tE - 1"
+      and qor: "q = sE \<or> m_ancestor (A[n]) m sE q"
+      and q_lt: "q < c" and c_le: "c \<le> last_col_idx (A[n])"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and Hmpl_gt1: "1 < l1 A \<Longrightarrow> tE \<le> tA"
+      and Hmpl_le1: "tE \<le> tA + 1"
+      and Rb_cond: "sE < sA \<Longrightarrow> m_ancestor A m sA sE"
+      and Htop: "l1 A = 1 \<Longrightarrow> m = tA - 1 \<Longrightarrow> elem (A[n]) (c - 1) m < elem (A[n]) c m"
+  shows "elem (A[n]) (c - 1) m < elem (A[n]) c m"
+proof (cases "m < tA - 1")
+  case True
+  have s_lt_last0: "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
+  have last_lt_arr0: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have sA_le_arr0: "sA \<le> arr_len A" using s_lt_last0 last_lt_arr0 by linarith
+  have l0_eq: "l0 A = sA" using b0A sA_le_arr0 unfolding l0_def G_block_def by simp
+  have asc: "\<And>j'. 0 < j' \<Longrightarrow> j' < l1 A \<Longrightarrow> ascends A j' m"
+  proof -
+    fix j' :: nat assume "0 < j'" and "j' < l1 A"
+    thus "ascends A j' m" by (rule ascends_offset_from_IH[OF A_ne b0A mpA IH True])
+  qed
+  have Hbr: "\<And>c'. sA < c' \<Longrightarrow> c' \<le> last_col_idx (A[n])
+                \<Longrightarrow> elem (A[n]) (c' - 1) m < elem (A[n]) c' m"
+  proof -
+    fix c' :: nat assume a: "sA < c'" and b: "c' \<le> last_col_idx (A[n])"
+    have lc: "l0 A < c'" using a l0_eq by simp
+    show "elem (A[n]) (c' - 1) m < elem (A[n]) c' m"
+      by (rule B_region_adj_monotone[OF A_BMS A_ne b0A mpA IH True asc keep lc b])
+  qed
+  show ?thesis
+  proof (cases "sA \<le> sE")
+    case True
+    show ?thesis
+      by (rule ancestor_monotone_expand_step_R1[OF A_BMS A_ne b0A mpA IH b0E True
+            \<open>m < tA - 1\<close> keep asc qor q_lt c_le Hbr])
+  next
+    case False
+    hence sE_lt_sA: "sE < sA" by simp
+    have Rb: "m_ancestor A m sA sE" using Rb_cond sE_lt_sA by simp
+    show ?thesis
+      by (rule ancestor_monotone_expand_step_R2[OF A_BMS A_ne b0A mpA IH sE_lt_sA
+            \<open>m < tA - 1\<close> keep Rb qor q_lt c_le Hbr])
+  qed
+next
+  case False
+  have m_lt_tA: "m < tA" using m_lt Hmpl_le1 by linarith
+  have m_eq: "m = tA - 1" using False m_lt_tA by linarith
+  have s_lt_last: "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
+  have l1_pos: "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne b0A] s_lt_last by linarith
+  have l1_eq1: "l1 A = 1"
+  proof (rule ccontr)
+    assume "l1 A \<noteq> 1"
+    hence "1 < l1 A" using l1_pos by simp
+    hence "tE \<le> tA" using Hmpl_gt1 by simp
+    hence "m < tA - 1" using m_lt by linarith
+    thus False using False by simp
+  qed
+  show ?thesis using Htop[OF l1_eq1 m_eq] .
+qed
+
 text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
   Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
   \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven

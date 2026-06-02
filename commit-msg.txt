@@ -1,8 +1,9 @@
-v0.1.80/Discharge the ascends hypothesis of the expand step from the IH
+v0.1.81/Assemble the full expand-case obligation, isolating the mpl bounds and top-level leaf
 
-- Add ascends_offset_from_IH: at an IH-clean level m<t-1, the bad root s is an m-ancestor of every interior B0 column s+j' (0<j'<l1), hence ascends A j' m
-- Pure cascade: IH adjacency over (s,C_A] => consecutive_parent_from_mono (consecutive m-parents) => m_anc_of_consecutive_chain (s is an ancestor of s+j')
-- Discharges the asc premise shared by ancestor_monotone_expand_step_R1 and badroot_block_anc_zero; no new sorry beyond the onestep residual
-- Bump version v0.1.79 -> v0.1.80
+- Add ancestor_monotone_expand: combines the R1/R2 step lemmas, B_region_adj_monotone (Hbr) and ascends_offset_from_IH (asc) into the complete ancestor_monotone expand obligation
+- At an IH-clean level m<tA-1 the step lemmas fire (asc + Hbr discharged inline, bridging l0 A = sA); otherwise m=tA-1 forces l1 A=1 (else the Hmpl_gt1 bound gives tE<=tA, contradiction) and the top-level leaf Htop closes it
+- Residual structural facts isolated as explicit hypotheses: the strip cutoff keep, the mpl upper bounds (1<l1 A ==> tE<=tA, and tE<=tA+1), the R2 ancestry residual Rb_cond, and the top-level leaf Htop
+- No new sorry beyond the onestep residual
+- Bump version v0.1.80 -> v0.1.81
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
