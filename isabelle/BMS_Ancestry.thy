@@ -11384,6 +11384,45 @@ proof -
   show ?thesis using main[OF k_lt_t keep col] .
 qed
 
+text \<open>\<^bold>\<open>\<open>B\<close>-region adjacent increase at \<^emph>\<open>any\<close> level \<open>k < t\<close> when \<open>l\<^sub>1 A = 1\<close>
+  (sorry-free).\<close>  With \<open>l\<^sub>1 A = 1\<close> every \<open>B\<close>-block is a single column, so the
+  adjacent expansion columns \<open>idx_B(c-1,0)\<close> and \<open>idx_B(c,0)\<close> are the
+  consecutive bumped copies of the bad root: their level-\<open>k\<close> values are
+  \<open>(A!s)!k + (c-1)\<cdot>delta\<close> and \<open>(A!s)!k + c\<cdot>delta\<close> (the bad root ascends at
+  every \<open>k < t\<close>), and \<open>delta A k > 0\<close> for \<open>k < t\<close>, so the increase is strict.
+  Crucially this holds \<^emph>\<open>up to and including\<close> \<open>k = t-1\<close> (the top level the
+  \<open>A\<close>-IH cannot reach), discharging the \<open>B\<close>-region part of the top-level leaf
+  obligation \<open>Htop\<close> of \<open>ancestor_monotone_expand\<close>.\<close>
+
+lemma b_region_adj_increase_l1_eq_1:
+  fixes A :: array and n c :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and c_pos: "0 < c" and c_le: "c \<le> n"
+      and k_lt_t: "k < t"
+      and keep: "k < keep_of (G_block A @ Bs_concat A n)"
+      and col: "k < length (A ! s)"
+  shows "elem (A[n]) (idx_B_in_expansion A (c - 1) 0) k
+       < elem (A[n]) (idx_B_in_expansion A c 0) k"
+proof -
+  have l1_pos: "0 < l1 A" using l1_eq by simp
+  have cm_le: "c - 1 \<le> n" using c_le by simp
+  have asc0: "ascends A 0 k"
+    using b0 mp k_lt_t unfolding ascends_def non_strict_ancestor_def by simp
+  have dpos: "0 < delta A k" using delta_pos_of_lt_m0[OF b0 mp k_lt_t] .
+  have col0: "k < length (A ! (s + 0))" using col by simp
+  have eX: "elem (A[n]) (idx_B_in_expansion A c 0) k = (A ! s) ! k + c * delta A k"
+    using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 c_le l1_pos keep col0]
+    by simp
+  have eXp: "elem (A[n]) (idx_B_in_expansion A (c - 1) 0) k
+           = (A ! s) ! k + (c - 1) * delta A k"
+    using elem_AEn_cross_block_when_ascends[OF A_BMS A_ne b0 asc0 cm_le l1_pos keep col0]
+    by simp
+  show ?thesis using eX eXp dpos c_pos by simp
+qed
+
 
 text \<open>\<^bold>\<open>Ascending one-step / atomic bump-chain crux (shared by clauses (i) and (v)).\<close>
   When \<open>j\<close> ascends at \<open>k\<close>, the bumped copy \<open>idx_B(c,j)\<close> reaches the previous
