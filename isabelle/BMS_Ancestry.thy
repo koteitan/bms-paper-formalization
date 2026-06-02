@@ -11877,6 +11877,68 @@ next
   qed
 qed
 
+text \<open>\<^bold>\<open>R1-\<open>G\<close>-prefix ancestry restriction (assembly, modulo IH-content).\<close>  In the
+  R1 expansion regime (\<open>sA \<le> sE\<close>, \<open>sE = b0_start (A[n])\<close>), a \<open>G\<close>-prefix
+  \<open>m\<close>-ancestor \<open>q < sA\<close> of \<open>sE\<close> in \<open>A[n]\<close> is an \<open>m\<close>-ancestor of the old bad root
+  \<open>sA\<close> in \<open>A\<close>.  Boundary \<open>sE = sA\<close>: the conclusion-in-\<open>A[n]\<close> is the hypothesis
+  itself, transported by @{thm m_anc_orig_eq_AEn_G}.  Strict \<open>sE > sA\<close>: decompose
+  \<open>sE = idx_B (A,c,j)\<close>, get \<open>sA\<close> as a \<open>k\<close>-ancestor of \<open>sE\<close> via
+  @{thm badroot_block_anc_zero}, descend to \<open>q\<close> by @{thm m_anc_below_ancestor_transfer},
+  then transport to \<open>A\<close> by @{thm m_anc_orig_eq_AEn_G} (\<open>sA = l\<^sub>0 A < l\<^sub>0 A + l\<^sub>1 A\<close>).
+  The \<open>asc\<close> / \<open>m < tA\<close> premises are the induction-hypothesis content, discharged
+  in the \<open>ancestor_monotone\<close> expand case.\<close>
+
+lemma R1_gprefix_anc_to_old:
+  fixes A :: array and sA tA sE m q n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0A: "b0_start A = Some sA" and mpA: "max_parent_level A = Some tA"
+      and m_lt_tA: "m < tA"
+      and asc: "\<And>j'. 0 < j' \<Longrightarrow> j' < l1 A \<Longrightarrow> ascends A j' m"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and sE_ge: "sA \<le> sE"
+      and sE_lt: "sE < l0 A + Suc n * l1 A"
+      and ancE: "m_ancestor (A[n]) m sE q"
+      and q_lt: "q < sA"
+  shows "m_ancestor A m sA q"
+proof -
+  have s_lt_last: "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have sA_le_arr: "sA \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = sA" using b0A sA_le_arr unfolding l0_def G_block_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne b0A] s_lt_last by linarith
+  have idx00: "idx_B_in_expansion A 0 0 = sA" using l0_eq by (simp add: idx_B_in_expansion_def)
+  have sA_lt: "sA < l0 A + l1 A" using l0_eq l1_pos by simp
+  have S2: "m_ancestor (A[n]) m sA q"
+  proof (cases "sE = sA")
+    case True thus ?thesis using ancE by simp
+  next
+    case False
+    hence sE_gt: "sA < sE" using sE_ge by simp
+    define r where "r = sE - l0 A"
+    define c where "c = r div l1 A"
+    define j where "j = r mod l1 A"
+    have r_eq: "r = c * l1 A + j" using c_def j_def by (simp add: div_mult_mod_eq)
+    have sE_r: "sE = l0 A + r" using r_def l0_eq sE_ge by simp
+    have sE_eq: "sE = idx_B_in_expansion A c j"
+      using sE_r r_eq by (simp add: idx_B_in_expansion_def add.assoc)
+    have j_lt: "j < l1 A" using j_def l1_pos by simp
+    have r_lt: "r < Suc n * l1 A" using sE_lt sE_r by simp
+    have c_le: "c \<le> n"
+      using r_lt l1_pos c_def by (simp add: less_Suc_eq_le[symmetric] less_mult_imp_div_less)
+    have nz: "0 < c \<or> 0 < j"
+    proof -
+      have "0 < r" using sE_gt sE_r l0_eq by simp
+      thus ?thesis using r_eq by (cases "c = 0") auto
+    qed
+    have S1: "m_ancestor (A[n]) m sE (idx_B_in_expansion A 0 0)"
+      using badroot_block_anc_zero[OF A_BMS A_ne b0A mpA m_lt_tA asc keep c_le j_lt nz] sE_eq
+      by simp
+    have S1': "m_ancestor (A[n]) m sE sA" using S1 idx00 by simp
+    show ?thesis using m_anc_below_ancestor_transfer[OF S1' q_lt] ancE by simp
+  qed
+  show ?thesis using m_anc_orig_eq_AEn_G[OF A_ne keep sA_lt] S2 by simp
+qed
+
 text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
   Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
   \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven

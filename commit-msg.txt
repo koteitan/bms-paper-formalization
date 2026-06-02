@@ -1,9 +1,9 @@
-v0.1.74/Add badroot_block_anc_zero: the block-0 start is an ancestor of every later B-column
+v0.1.75/Assemble the R1-G-prefix ancestry restriction (modulo IH-content)
 
-- Add badroot_block_anc_zero: for k<t and given that every interior offset ascends at level k, idx_B(A,0,0)=b0_start A is a k-ancestor of EVERY later B-region column idx_B(A,c,j), not only block starts
-- j=0: block_start_anc_zero_genl1; j>0: block-copy to idx_B(A,0,j) (onestep_anc_when_ascends + block_copy_anc_from_onestep), then idx_B(A,0,j)->idx_B(A,0,0) is the verbatim (s+j)->s ancestry of A transported by m_anc_orig_eq_AEn_G (block 0 is unbumped)
-- This is the structural core of the R1-G-prefix keystone S1 (b0_start A is an m-ancestor of b0_start(A[n])), now covering the non-block-start bad roots (~9% of R1) that block_start_anc_zero_genl1 alone misses
-- The ascends hypothesis is vacuous when l1 A=1 (the diff=1 / top-level case) and is otherwise dischargeable from the induction hypothesis since l1 A>1 forces mpl(A[n])=mpl(A); introduces no new sorry beyond the onestep residual
-- Bump version v0.1.73 -> v0.1.74
+- Add R1_gprefix_anc_to_old: in the R1 regime (sA<=sE=b0_start(A[n])), a G-prefix m-ancestor q<sA of sE in A[n] is an m-ancestor of the old bad root sA in A
+- Boundary sE=sA: the A[n]-conclusion is the hypothesis, transported by m_anc_orig_eq_AEn_G
+- Strict sE>sA: decompose sE=idx_B(A,c,j) (c=(sE-l0)/l1, j=(sE-l0)%l1), get sA as a k-ancestor of sE via badroot_block_anc_zero, descend to q by m_anc_below_ancestor_transfer, transport to A by m_anc_orig_eq_AEn_G (sA=l0 A < l0 A + l1 A)
+- The asc / m<tA premises are induction-hypothesis content to be discharged in the ancestor_monotone expand case; no new sorry beyond the onestep residual
+- Bump version v0.1.74 -> v0.1.75
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
