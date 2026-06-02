@@ -11939,6 +11939,51 @@ proof -
   show ?thesis using m_anc_orig_eq_AEn_G[OF A_ne keep sA_lt] S2 by simp
 qed
 
+text \<open>\<^bold>\<open>Elem coincidence up to and including the block-0 start (sorry-free).\<close>  Extends
+  @{thm elem_AEn_eq_on_G_prefix} to \<open>c = l\<^sub>0 A\<close>: column \<open>l\<^sub>0 A = idx_B (A,0,0)\<close> is the
+  block-0 bad-root copy, and block 0 is unbumped, so it agrees with \<open>A\<close> at every row
+  below the cutoff.  Lets the expand-step \<open>G\<close>-route cover the \<open>G\<close>-to-\<open>B\<close> boundary pair
+  \<open>(l\<^sub>0 A - 1, l\<^sub>0 A)\<close> (which is NOT unconditionally monotone — it can plateau at the
+  row-0 level — so it must be handled via the ancestor \<open>q\<close>, not the value-side \<open>Hbr\<close>).\<close>
+
+lemma elem_AEn_eq_le_l0:
+  fixes A :: array and s c m n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and c_le: "c \<le> l0 A"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and m_lt_H: "m < height A"
+  shows "elem (A[n]) c m = elem A c m"
+proof -
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_le_arr: "s \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = s" using b0 s_le_arr unfolding l0_def G_block_def by simp
+  have l1_pos: "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne b0] s_lt_last by linarith
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  show ?thesis
+  proof (cases "c < l0 A")
+    case True
+    hence "c < s" using l0_eq by simp
+    thus ?thesis by (rule elem_AEn_eq_on_G_prefix[OF A_ne b0 _ keep])
+  next
+    case False
+    hence c_eq: "c = l0 A" using c_le by simp
+    have col: "m < length (A ! (s + 0))"
+    proof -
+      have "length (A ! s) = height A" using length_col_arr[OF is_arr A_ne s_lt_arr] .
+      thus ?thesis using m_lt_H by simp
+    qed
+    have idx: "c = idx_B_in_expansion A 0 0" using c_eq by (simp add: idx_B_in_expansion_def)
+    have "elem (A[n]) c m
+        = (A ! (s + 0)) ! m + (if ascends A 0 m then 0 * delta A m else 0)"
+      using elem_AEn_idx_B_value[OF A_ne b0 le0 l1_pos keep col] idx by simp
+    also have "\<dots> = elem A s m" unfolding elem_def by simp
+    also have "\<dots> = elem A c m" using c_eq l0_eq by simp
+    finally show ?thesis .
+  qed
+qed
+
 text \<open>\<^bold>\<open>Expand-case obligation, R1 regime, IH-clean level (assembly).\<close>  Proves the
   per-\<open>(m,q,c)\<close> goal of the \<open>ancestor_monotone\<close> expand step in the R1 regime
   (\<open>sA \<le> sE = b0_start (A[n])\<close>) at an IH-clean level \<open>m < tA - 1\<close>, given the
@@ -11964,16 +12009,16 @@ lemma ancestor_monotone_expand_step_R1:
       and asc: "\<And>j'. 0 < j' \<Longrightarrow> j' < l1 A \<Longrightarrow> ascends A j' m"
       and qor: "q = sE \<or> m_ancestor (A[n]) m sE q"
       and q_lt: "q < c" and c_le: "c \<le> last_col_idx (A[n])"
-      and Hbr: "\<And>c'. sA \<le> c' \<Longrightarrow> c' \<le> last_col_idx (A[n])
+      and Hbr: "\<And>c'. sA < c' \<Longrightarrow> c' \<le> last_col_idx (A[n])
                   \<Longrightarrow> elem (A[n]) (c' - 1) m < elem (A[n]) c' m"
   shows "elem (A[n]) (c - 1) m < elem (A[n]) c m"
-proof (cases "c < sA")
-  case False
-  hence "sA \<le> c" by simp
-  thus ?thesis using Hbr[OF _ c_le] by simp
-next
+proof (cases "sA < c")
   case True
-  \<comment> \<open>\<open>G\<close>-prefix pair: \<open>c - 1 < c < sA\<close>; values agree with \<open>A\<close>.\<close>
+  thus ?thesis using Hbr[OF True c_le] by simp
+next
+  case False
+  hence c_le_sA: "c \<le> sA" by simp
+  \<comment> \<open>\<open>G\<close>-prefix (incl. the \<open>G\<close>-to-\<open>B\<close> boundary \<open>c = sA\<close>); values agree with \<open>A\<close>.\<close>
   have En_ne: "A[n] \<noteq> []"
   proof (rule ccontr)
     assume "\<not> A[n] \<noteq> []"
@@ -11981,17 +12026,21 @@ next
     hence "b0_start (A[n]) = None" by (simp add: b0_start_def max_parent_level_def)
     thus False using b0E by simp
   qed
-  have c_lt_sA: "c < sA" using True .
-  have c1_lt_sA: "c - 1 < sA" using c_lt_sA by simp
-  have e_c1: "elem (A[n]) (c - 1) m = elem A (c - 1) m"
-    by (rule elem_AEn_eq_on_G_prefix[OF A_ne b0A c1_lt_sA keep])
-  have e_c: "elem (A[n]) c m = elem A c m"
-    by (rule elem_AEn_eq_on_G_prefix[OF A_ne b0A c_lt_sA keep])
   have m_lt_tA: "m < tA" using m_lt by simp
-  \<comment> \<open>\<open>q\<close> is an \<open>m\<close>-ancestor of \<open>sA\<close> in \<open>A\<close>.\<close>
-  have q_ne_sE: "q \<noteq> sE" using q_lt c_lt_sA R1 by linarith
+  have m_lt_H: "m < height A" using m_lt_tA max_parent_level_lt[OF mpA] by linarith
+  have s_lt_last: "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have sA_le_arr: "sA \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = sA" using b0A sA_le_arr unfolding l0_def G_block_def by simp
+  have c_le_l0: "c \<le> l0 A" using c_le_sA l0_eq by simp
+  have c1_le_l0: "c - 1 \<le> l0 A" using c_le_l0 by simp
+  have e_c1: "elem (A[n]) (c - 1) m = elem A (c - 1) m"
+    by (rule elem_AEn_eq_le_l0[OF A_BMS A_ne b0A c1_le_l0 keep m_lt_H])
+  have e_c: "elem (A[n]) c m = elem A c m"
+    by (rule elem_AEn_eq_le_l0[OF A_BMS A_ne b0A c_le_l0 keep m_lt_H])
+  have q_lt_sA: "q < sA" using q_lt c_le_sA by simp
+  have q_ne_sE: "q \<noteq> sE" using q_lt_sA R1 by linarith
   have ancE: "m_ancestor (A[n]) m sE q" using qor q_ne_sE by simp
-  have q_lt_sA: "q < sA" using q_lt c_lt_sA by simp
   have sE_lt: "sE < l0 A + Suc n * l1 A"
   proof -
     have "sE < last_col_idx (A[n])" by (rule b0_start_lt[OF b0E En_ne])
@@ -12002,12 +12051,7 @@ next
   qed
   have qancA: "m_ancestor A m sA q"
     by (rule R1_gprefix_anc_to_old[OF A_BMS A_ne b0A mpA m_lt_tA asc keep R1 sE_lt ancE q_lt_sA])
-  \<comment> \<open>Invoke the IH at \<open>q\<close> (an ancestor of \<open>sA\<close>) over \<open>(q, C_A] \<ni> c\<close>.\<close>
-  have c_le_CA: "c \<le> last_col_idx A"
-  proof -
-    have "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
-    thus ?thesis using c_lt_sA by linarith
-  qed
+  have c_le_CA: "c \<le> last_col_idx A" using c_le_sA s_lt_last by linarith
   have "elem A (c - 1) m < elem A c m"
     using IH b0A mpA m_lt qancA q_lt c_le_CA by blast
   thus ?thesis using e_c1 e_c by simp
@@ -12035,22 +12079,28 @@ lemma ancestor_monotone_expand_step_R2:
       and Rb: "m_ancestor A m sA sE"
       and qor: "q = sE \<or> m_ancestor (A[n]) m sE q"
       and q_lt: "q < c" and c_le: "c \<le> last_col_idx (A[n])"
-      and Hbr: "\<And>c'. sA \<le> c' \<Longrightarrow> c' \<le> last_col_idx (A[n])
+      and Hbr: "\<And>c'. sA < c' \<Longrightarrow> c' \<le> last_col_idx (A[n])
                   \<Longrightarrow> elem (A[n]) (c' - 1) m < elem (A[n]) c' m"
   shows "elem (A[n]) (c - 1) m < elem (A[n]) c m"
-proof (cases "c < sA")
-  case False
-  hence "sA \<le> c" by simp
-  thus ?thesis using Hbr[OF _ c_le] by simp
-next
+proof (cases "sA < c")
   case True
-  have c_lt_sA: "c < sA" using True .
-  have c1_lt_sA: "c - 1 < sA" using c_lt_sA by simp
+  thus ?thesis using Hbr[OF True c_le] by simp
+next
+  case False
+  hence c_le_sA: "c \<le> sA" by simp
+  have m_lt_tA: "m < tA" using m_lt by simp
+  have m_lt_H: "m < height A" using m_lt_tA max_parent_level_lt[OF mpA] by linarith
+  have s_lt_last: "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have sA_le_arr: "sA \<le> arr_len A" using s_lt_last last_lt_arr by linarith
+  have l0_eq: "l0 A = sA" using b0A sA_le_arr unfolding l0_def G_block_def by simp
+  have c_le_l0: "c \<le> l0 A" using c_le_sA l0_eq by simp
+  have c1_le_l0: "c - 1 \<le> l0 A" using c_le_l0 by simp
   have e_c1: "elem (A[n]) (c - 1) m = elem A (c - 1) m"
-    by (rule elem_AEn_eq_on_G_prefix[OF A_ne b0A c1_lt_sA keep])
+    by (rule elem_AEn_eq_le_l0[OF A_BMS A_ne b0A c1_le_l0 keep m_lt_H])
   have e_c: "elem (A[n]) c m = elem A c m"
-    by (rule elem_AEn_eq_on_G_prefix[OF A_ne b0A c_lt_sA keep])
-  have q_lt_sA: "q < sA" using q_lt c_lt_sA by simp
+    by (rule elem_AEn_eq_le_l0[OF A_BMS A_ne b0A c_le_l0 keep m_lt_H])
+  have q_lt_sA: "q < sA" using q_lt c_le_sA by simp
   have qancA: "m_ancestor A m sA q"
   proof (cases "q = sE")
     case True thus ?thesis using Rb by simp
@@ -12060,11 +12110,7 @@ next
     show ?thesis
       by (rule ancestry_restriction_G_modulo_Rb[OF A_ne b0A keep R2 Rb ancE])
   qed
-  have c_le_CA: "c \<le> last_col_idx A"
-  proof -
-    have "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
-    thus ?thesis using c_lt_sA by linarith
-  qed
+  have c_le_CA: "c \<le> last_col_idx A" using c_le_sA s_lt_last by linarith
   have "elem A (c - 1) m < elem A c m"
     using IH b0A mpA m_lt qancA q_lt c_le_CA by blast
   thus ?thesis using e_c1 e_c by simp
