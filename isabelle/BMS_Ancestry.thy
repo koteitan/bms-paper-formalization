@@ -11791,6 +11791,34 @@ text \<open>\<^bold>\<open>Adjacent-column value monotonicity below \<open>t-1\<
   remaining gap — a region-restricted value induction over the \<open>BMS\<close> expansion
   structure (bump arithmetic), \<^emph>\<open>not\<close> the ancestry circularity.\<close>
 
+text \<open>\<^bold>\<open>General-\<open>l\<^sub>1\<close> block-start ancestry (continues the R1-G-prefix groundwork).\<close>
+  The \<open>l\<^sub>1 A > 1\<close> analogue of \<open>block_start_anc_zero\<close> (which is restricted to
+  \<open>l\<^sub>1 A = 1\<close>): for ascending levels \<open>k < t\<close>, the block-0 start
+  \<open>idx_B (A,0,0)\<close> is a \<open>k\<close>-ancestor of every later block start \<open>idx_B (A,c,0)\<close>.
+  At offset \<open>j = 0\<close> we have \<open>ascends A 0 k\<close> (reflexive non-strict ancestor), so the
+  one-step ancestry \<open>idx_B (A,c,0) \<leadsto> idx_B (A,c-1,0)\<close> is supplied by
+  @{thm onestep_anc_when_ascends} and chained by @{thm block_copy_anc_from_onestep}.
+  (Inherits @{thm onestep_anc_when_ascends}'s single \<open>l\<^sub>1 > 1\<close> residual; introduces
+  no new \<open>sorry\<close>.)\<close>
+
+lemma block_start_anc_zero_genl1:
+  fixes A :: array and n c k :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and c_pos: "0 < c" and c_le: "c \<le> n"
+      and k_lt_t: "k < t"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A 0 0)"
+proof -
+  have s_lt: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have l1_pos: "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne b0] s_lt by linarith
+  have asc: "ascends A 0 k"
+    unfolding ascends_def non_strict_ancestor_def by (simp add: b0 mp k_lt_t)
+  have onestep: "\<And>c'. 0 < c' \<Longrightarrow> c' \<le> n \<Longrightarrow>
+       m_ancestor (A[n]) k (idx_B_in_expansion A c' 0) (idx_B_in_expansion A (c' - 1) 0)"
+    using onestep_anc_when_ascends[OF A_BMS A_ne b0 asc l1_pos] by blast
+  show ?thesis by (rule block_copy_anc_from_onestep[OF onestep c_pos c_le])
+qed
+
 text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
   Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
   \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven

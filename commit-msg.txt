@@ -1,9 +1,9 @@
-v0.1.72/Restructure adjacent_value_monotone onto the strengthened ancestor_monotone invariant
+v0.1.73/Add the general-l1 block-start ancestry lemma (R1-G-prefix groundwork)
 
-- Add lemma ancestor_monotone: adjacent columns strictly increase over (q,C] for every m-ancestor q of the bad root s (and q=s), at all m<t-1; proven by BMS.induct
-- Prove the seed case for the strengthened ∀q form: column 0 has no m-ancestor (m_ancestor_target_lt), so q collapses to s'=0 and the goal is the old elem_seed_0/1 step
-- Leave the expand step as the sole sorry (the ∀q quantifier is what lets the expansion self-transfer in the R2 regime, where the new bad root lies left of the old one)
-- Redefine adjacent_value_monotone as the thin q=s corollary of ancestor_monotone (same statement, unchanged downstream)
-- Bump version v0.1.71 -> v0.1.72
+- Add block_start_anc_zero_genl1: for k<t, idx_B(A,0,0) is a k-ancestor of every later block start idx_B(A,c,0), with NO l1 A=1 restriction (the existing block_start_anc_zero needs l1 A=1)
+- Proof: ascends A 0 k (reflexive non-strict ancestor at offset 0, from k<mpl) feeds onestep_anc_when_ascends for the j=0 one-step ancestry, chained by block_copy_anc_from_onestep
+- Introduces no new sorry; inherits onestep_anc_when_ascends's single l1>1 residual (the shared crux onto which the whole ancestor_monotone expand case is being collapsed)
+- This supplies the block-start case of the R1-G-prefix keystone S1 (b0_start A is an m-ancestor of b0_start(A[n]) in A[n]); the non-block-start case routes via the induction hypothesis (non-circular)
+- Bump version v0.1.72 -> v0.1.73
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
