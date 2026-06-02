@@ -10909,6 +10909,108 @@ proof -
     using idx_B_n_zero_gateway_aux[OF A_BMS A_ne b0 l1_pos i_lt i_pos anc q_lt_b0] .
 qed
 
+text \<open>\<^bold>\<open>Faithful chain-confinement (Hunter p.6, case 2b core; sorry-free).\<close>
+  At a level \<open>kw\<close> for which clause (iv) holds, if the leftmost block-\<open>n\<close>
+  column \<open>idx_B(n,0)\<close> is \<^emph>\<open>not\<close> a \<open>kw\<close>-ancestor of \<open>idx_B(n,a)\<close>
+  (\<open>0 < a < l\<^sub>1\<close>), then \<^emph>\<open>every\<close> \<open>kw\<close>-ancestor of \<open>idx_B(n,a)\<close> lies in
+  \<open>B\<^sub>n\<close> or in \<open>G\<close>.  This is exactly Hunter's observation that ``all
+  \<open>k'\<close>-ancestors of the \<open>i\<close>-th column in \<open>B\<^sub>n\<close> are either in \<open>B\<^sub>n\<close> or in
+  \<open>G\<close>'': the \<open>kw\<close>-parent is in \<open>B\<^sub>n \<union> G\<close> by clause (iv); a \<open>G\<close>-parent
+  confines all further ancestors to \<open>G\<close>; a \<open>B\<^sub>n\<close>-parent has offset \<open>> 0\<close>
+  (offset \<open>0\<close> would make \<open>idx_B(n,0)\<close> a \<open>kw\<close>-ancestor, against hypothesis),
+  so clause (iv) applies again and the chain recurses on a strictly smaller
+  offset.  No gateway / global-minimum input — strong induction on the
+  block-\<open>n\<close> offset.\<close>
+
+lemma anc_chain_in_Bn_or_G:
+  fixes A :: array and n kw :: nat
+  assumes iv_kw: "lemma_2_5_iv_clause A n kw"
+  shows "\<And>a q. a < l1 A \<Longrightarrow> 0 < a
+        \<Longrightarrow> \<not> m_ancestor (A[n]) kw (idx_B_in_expansion A n a) (idx_B_in_expansion A n 0)
+        \<Longrightarrow> m_ancestor (A[n]) kw (idx_B_in_expansion A n a) q
+        \<Longrightarrow> (\<exists>i'<l1 A. q = idx_B_in_expansion A n i') \<or> (\<exists>g<l0 A. q = idx_G A g)"
+proof -
+  fix a q
+  show "a < l1 A \<Longrightarrow> 0 < a
+        \<Longrightarrow> \<not> m_ancestor (A[n]) kw (idx_B_in_expansion A n a) (idx_B_in_expansion A n 0)
+        \<Longrightarrow> m_ancestor (A[n]) kw (idx_B_in_expansion A n a) q
+        \<Longrightarrow> (\<exists>i'<l1 A. q = idx_B_in_expansion A n i') \<or> (\<exists>g<l0 A. q = idx_G A g)"
+  proof (induct a arbitrary: q rule: less_induct)
+    case (less a q)
+    note IH = less.hyps
+    let ?X = "idx_B_in_expansion A n a"
+    have a_lt: "a < l1 A" by (rule less.prems(1))
+    have a_pos: "0 < a" by (rule less.prems(2))
+    have no_b0: "\<not> m_ancestor (A[n]) kw ?X (idx_B_in_expansion A n 0)"
+      by (rule less.prems(3))
+    have anc_q: "m_ancestor (A[n]) kw ?X q" by (rule less.prems(4))
+    \<comment> \<open>Clause (iv) at \<open>kw\<close> for offset \<open>a\<close>: the \<open>kw\<close>-parent is in \<open>B\<^sub>n\<close> or \<open>G\<close>.\<close>
+    have iv_a: "m_parent (A[n]) kw ?X = None
+          \<or> (\<exists>p. m_parent (A[n]) kw ?X = Some p
+                 \<and> ((\<exists>i'<l1 A. p = idx_B_in_expansion A n i')
+                    \<or> (\<exists>g<l0 A. p = idx_G A g)))"
+      using iv_kw a_pos a_lt unfolding lemma_2_5_iv_clause_def by blast
+    obtain p where mp: "m_parent (A[n]) kw ?X = Some p"
+               and p_loc: "(\<exists>i'<l1 A. p = idx_B_in_expansion A n i')
+                         \<or> (\<exists>g<l0 A. p = idx_G A g)"
+      using iv_a anc_q by (cases "m_parent (A[n]) kw ?X") auto
+    have anc_Xp: "m_ancestor (A[n]) kw ?X p"
+      using m_anc_via_parent_some[OF mp] by blast
+    have case_p: "p = q \<or> m_ancestor (A[n]) kw p q"
+      using m_anc_via_parent_some[OF mp] anc_q by blast
+    show ?case
+    proof (cases "p = q")
+      case True thus ?thesis using p_loc by blast
+    next
+      case False
+      hence anc_pq: "m_ancestor (A[n]) kw p q" using case_p by blast
+      from p_loc show ?thesis
+      proof
+        assume "\<exists>g<l0 A. p = idx_G A g"
+        then obtain g where g_lt: "g < l0 A" and p_g: "p = idx_G A g" by blast
+        \<comment> \<open>\<open>q\<close> is a \<open>kw\<close>-ancestor of a \<open>G\<close>-column, hence itself in \<open>G\<close>.\<close>
+        have "q < p" using m_ancestor_target_lt[OF anc_pq] .
+        hence q_lt_l0: "q < l0 A" using p_g g_lt unfolding idx_G_def by simp
+        have "q = idx_G A q" unfolding idx_G_def by simp
+        thus ?thesis using q_lt_l0 by blast
+      next
+        assume "\<exists>i'<l1 A. p = idx_B_in_expansion A n i'"
+        then obtain i1 where i1_lt: "i1 < l1 A"
+                         and p_b: "p = idx_B_in_expansion A n i1" by blast
+        have p_lt_X: "p < ?X" using mp m_parent_lt by simp
+        have i1_lt_a: "i1 < a"
+          using p_lt_X p_b unfolding idx_B_in_expansion_def by simp
+        \<comment> \<open>Offset \<open>0\<close> would make \<open>idx_B(n,0)\<close> a \<open>kw\<close>-ancestor of \<open>?X\<close>.\<close>
+        have i1_pos: "0 < i1"
+        proof (rule ccontr)
+          assume "\<not> 0 < i1"
+          hence hp0: "p = idx_B_in_expansion A n 0" using p_b by simp
+          have "m_ancestor (A[n]) kw ?X (idx_B_in_expansion A n 0)"
+            using m_anc_via_parent_some[OF mp] hp0 by blast
+          thus False using no_b0 by simp
+        qed
+        \<comment> \<open>\<open>idx_B(n,0)\<close> is not a \<open>kw\<close>-ancestor of \<open>p\<close> (else transitivity).\<close>
+        have no_b0_p: "\<not> m_ancestor (A[n]) kw p (idx_B_in_expansion A n 0)"
+        proof
+          assume "m_ancestor (A[n]) kw p (idx_B_in_expansion A n 0)"
+          hence "m_ancestor (A[n]) kw ?X (idx_B_in_expansion A n 0)"
+            using m_ancestor_trans[OF anc_Xp] by blast
+          thus False using no_b0 by simp
+        qed
+        show ?thesis
+          using IH[OF i1_lt_a i1_lt i1_pos no_b0_p[unfolded p_b] anc_pq[unfolded p_b]] .
+      qed
+    qed
+  qed
+qed
+
+text \<open>\<^bold>\<open>Clause (iv) intermediate, chain-breaks case (Hunter p.6, case 2b; sorry-free).\<close>
+  Re-proved \<^emph>\<open>faithfully\<close> via @{thm anc_chain_in_Bn_or_G} (Hunter's actual
+  argument) rather than the gateway: at the chain-break witness level \<open>kw\<close>,
+  \<open>idx_B(n,0)\<close> is not a \<open>kw\<close>-ancestor of \<open>idx_B(n,i)\<close>, so every \<open>kw\<close>-ancestor
+  of it — including the \<open>k\<close>-parent \<open>p\<close> (a \<open>kw\<close>-ancestor, as \<open>kw \<le> k-1\<close>) —
+  lies in \<open>B\<^sub>n\<close> or \<open>G\<close>; but \<open>p = idx_B(t,j)\<close> with \<open>t < n\<close> is in neither.\<close>
+
 lemma clause_iv_intermediate_B_t_impossible_chain_breaks:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -10928,31 +11030,40 @@ lemma clause_iv_intermediate_B_t_impossible_chain_breaks:
   shows "False"
 proof -
   let ?i = "idx_B_in_expansion A n i"
-  let ?b0 = "idx_B_in_expansion A n 0"
-  \<comment> \<open>Since \<open>0 < k\<close>, write \<open>k = Suc k\<^sub>0\<close>; the level-\<open>k\<close> parent \<open>p\<close> is then a
-      level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close> (definition of \<open>m_parent\<close>).\<close>
+  \<comment> \<open>Since \<open>0 < k\<close>, write \<open>k = Suc k\<^sub>0\<close>; \<open>p\<close> is a level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close>.\<close>
   obtain k\<^sub>0 where k_eq: "k = Suc k\<^sub>0" using k_pos by (cases k) auto
-  have anc_p: "m_ancestor (A[n]) k\<^sub>0 ?i p"
+  have anc_p_k0: "m_ancestor (A[n]) k\<^sub>0 ?i p"
     using m_parent_Suc_implies_m_ancestor[OF mp_eq[unfolded k_eq]] .
-  \<comment> \<open>\<open>p = idx_B(t, j)\<close> is an earlier-block column (\<open>t < n\<close>) reached as a
-      level-\<open>k\<^sub>0\<close> ancestor of \<open>?i\<close>. By the gateway property the leftmost
-      block-\<open>n\<close> column \<open>?b0 = idx_B(n, 0)\<close> is then also a level-\<open>k\<^sub>0\<close>
-      ancestor of \<open>?i\<close>.\<close>
-  have anc_b0_k0: "m_ancestor (A[n]) k\<^sub>0 ?i ?b0"
-    using idx_B_n_zero_gateway_for_earlier_block_ancestor
-            [OF A_BMS A_ne b0 l1_pos i_pos i_lt t_lt_n j_lt anc_p[unfolded p_eq]] .
-  \<comment> \<open>The chain-breaks hypothesis yields a witness level \<open>k_w < k\<close> at which
-      \<open>?b0\<close> fails to be an ancestor of \<open>?i\<close>.\<close>
-  obtain k_w where kw_lt: "k_w < k"
-               and kw_no_anc: "\<not> m_ancestor (A[n]) k_w ?i ?b0"
+  \<comment> \<open>Chain-break witness level \<open>kw < k\<close>.\<close>
+  obtain kw where kw_lt: "kw < k"
+              and kw_no_anc: "\<not> m_ancestor (A[n]) kw ?i (idx_B_in_expansion A n 0)"
     using chain_breaks by blast
-  \<comment> \<open>But \<open>k_w < Suc k\<^sub>0\<close> gives \<open>k_w \<le> k\<^sub>0\<close>, and ancestry is monotone in the
-      level, so the level-\<open>k\<^sub>0\<close> ancestor \<open>?b0\<close> is also a level-\<open>k_w\<close> ancestor
-      of \<open>?i\<close> — contradiction.\<close>
-  have kw_le_k0: "k_w \<le> k\<^sub>0" using kw_lt k_eq by simp
-  have "m_ancestor (A[n]) k_w ?i ?b0"
-    using m_ancestor_mono[OF kw_le_k0 anc_b0_k0] .
-  thus False using kw_no_anc by simp
+  have kw_le_k0: "kw \<le> k\<^sub>0" using kw_lt k_eq by simp
+  \<comment> \<open>\<open>p\<close> is also a level-\<open>kw\<close> ancestor of \<open>?i\<close> (monotone down).\<close>
+  have anc_p_kw: "m_ancestor (A[n]) kw ?i p"
+    using m_ancestor_mono[OF kw_le_k0 anc_p_k0] .
+  \<comment> \<open>Clause (iv) at \<open>kw\<close> from the joint IH.\<close>
+  have iv_kw: "lemma_2_5_iv_clause A n kw"
+    using IH kw_lt unfolding lemma_2_5_at_def by blast
+  \<comment> \<open>Hunter's confinement: \<open>p\<close> lies in \<open>B\<^sub>n\<close> or \<open>G\<close>.\<close>
+  have p_loc: "(\<exists>i'<l1 A. p = idx_B_in_expansion A n i')
+             \<or> (\<exists>g<l0 A. p = idx_G A g)"
+    using anc_chain_in_Bn_or_G[OF iv_kw i_lt i_pos kw_no_anc anc_p_kw] .
+  \<comment> \<open>But \<open>p = idx_B(t,j)\<close>, \<open>t < n\<close>: in neither \<open>B\<^sub>n\<close> nor \<open>G\<close>.\<close>
+  from p_loc show False
+  proof
+    assume "\<exists>i'<l1 A. p = idx_B_in_expansion A n i'"
+    then obtain i' where i'_lt: "i' < l1 A"
+                     and pi': "p = idx_B_in_expansion A n i'" by blast
+    have "idx_B_in_expansion A t j < idx_B_in_expansion A n i'"
+      using idx_B_earlier_block_lt_block_n[OF t_lt_n j_lt] .
+    thus False using p_eq pi' by simp
+  next
+    assume "\<exists>g<l0 A. p = idx_G A g"
+    then obtain g where g_lt: "g < l0 A" and pg: "p = idx_G A g" by blast
+    have "l0 A \<le> idx_B_in_expansion A t j" unfolding idx_B_in_expansion_def by simp
+    thus False using p_eq pg g_lt unfolding idx_G_def by simp
+  qed
 qed
 
 lemma clause_iv_intermediate_B_t_impossible:
