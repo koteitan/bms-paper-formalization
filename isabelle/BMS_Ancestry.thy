@@ -12308,6 +12308,58 @@ proof -
     using b0 mp m_lt_t manc j_pos by simp
 qed
 
+text \<open>\<^bold>\<open>A \<open>Suc k\<close>-parent forces a \<open>k\<close>-parent (sorry-free).\<close>  The candidate filter at
+  level \<open>Suc k\<close> requires a \<open>k\<close>-ancestor guard, which is \<open>False\<close> unless a \<open>k\<close>-parent
+  exists; so the set of levels at which a fixed column has a parent is downward closed.
+  Used to reduce the \<open>mpl\<close> upper bound to a single non-existence at one level.\<close>
+
+lemma m_parent_Suc_imp_lower_parent:
+  assumes mp: "m_parent A (Suc k) i = Some p"
+  shows "m_parent A k i \<noteq> None"
+proof -
+  let ?cands = "[j \<leftarrow> [0..<i]. elem A j (Suc k) < elem A i (Suc k) \<and> m_ancestor A k i j]"
+  have body: "m_parent A (Suc k) i = (if ?cands = [] then None else Some (last ?cands))"
+    by (simp add: Let_def)
+  have ne: "?cands \<noteq> []" using mp body by (auto split: if_split_asm)
+  have "last ?cands \<in> set ?cands" using ne by (rule last_in_set)
+  hence "m_ancestor A k i (last ?cands)" by (auto simp: set_filter)
+  thus ?thesis by (cases "m_parent A k i") (simp_all add: m_ancestor.simps)
+qed
+
+text \<open>\<^bold>\<open>Levels with a parent are downward closed (sorry-free).\<close>  Hence
+  \<open>max_parent_level\<close> is achieved as a contiguous prefix: if there is no \<open>k\<close>-parent
+  for the last column, then \<open>mpl < k\<close>.\<close>
+
+lemma mpl_lt_of_no_parent:
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and none: "m_parent A k (last_col_idx A) = None"
+  shows "t < k"
+proof (rule ccontr)
+  assume "\<not> t < k"
+  hence k_le_t: "k \<le> t" by simp
+  let ?C = "last_col_idx A"
+  \<comment> \<open>\<open>t\<close>-parent exists: \<open>b0_start A = m_parent A t C\<close> is \<open>Some s\<close>.\<close>
+  have t_par: "m_parent A t ?C \<noteq> None"
+    using b0 mp unfolding b0_start_def by simp
+  \<comment> \<open>Descend from \<open>t\<close> down to \<open>k\<close>: a parent persists.\<close>
+  have desc: "\<And>d. m_parent A (k + d) ?C \<noteq> None \<Longrightarrow> m_parent A k ?C \<noteq> None"
+  proof -
+    fix d show "m_parent A (k + d) ?C \<noteq> None \<Longrightarrow> m_parent A k ?C \<noteq> None"
+    proof (induct d)
+      case 0 thus ?case by simp
+    next
+      case (Suc d)
+      from Suc.prems obtain p where "m_parent A (Suc (k + d)) ?C = Some p" by auto
+      hence "m_parent A (k + d) ?C \<noteq> None" by (rule m_parent_Suc_imp_lower_parent)
+      thus ?case using Suc.hyps by simp
+    qed
+  qed
+  obtain d where "t = k + d" using k_le_t le_Suc_ex by blast
+  hence "m_parent A k ?C \<noteq> None" using desc t_par by simp
+  thus False using none by simp
+qed
+
 text \<open>\<^bold>\<open>Full expand-case assembly (modulo the level bounds and the top-level leaf).\<close>
   Combines the R1/R2 step lemmas, the \<open>B\<close>-region monotonicity and the \<open>ascends\<close>
   discharge into the complete \<open>ancestor_monotone\<close> expand obligation, isolating exactly
