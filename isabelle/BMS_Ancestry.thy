@@ -12272,6 +12272,42 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>Every interior offset ascends, from the IH (sorry-free).\<close>  Discharges the
+  \<open>asc\<close> hypothesis of @{thm ancestor_monotone_expand_step_R1} /
+  @{thm badroot_block_anc_zero}: at an IH-clean level \<open>m < t - 1\<close>, the bad root \<open>s\<close>
+  is an \<open>m\<close>-ancestor of every interior \<open>B\<^sub>0\<close> column \<open>s + j'\<close> (\<open>0 < j' < l\<^sub>1\<close>),
+  hence \<open>ascends A j' m\<close>.  Pure cascade: IH adjacency \<Rightarrow>
+  @{thm consecutive_parent_from_mono} \<Rightarrow> @{thm m_anc_of_consecutive_chain}.\<close>
+
+lemma ascends_offset_from_IH:
+  fixes A :: array and s t m j' :: nat
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and IH: "\<forall>s t. b0_start A = Some s \<longrightarrow> max_parent_level A = Some t
+                 \<longrightarrow> (\<forall>m q c. m < t - 1 \<longrightarrow> (q = s \<or> m_ancestor A m s q)
+                       \<longrightarrow> q < c \<longrightarrow> c \<le> last_col_idx A
+                       \<longrightarrow> elem A (c - 1) m < elem A c m)"
+      and m_lt: "m < t - 1"
+      and j_pos: "0 < j'" and j_lt: "j' < l1 A"
+  shows "ascends A j' m"
+proof -
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have l1_last: "l1 A = last_col_idx A - s" using l1_eq_last_minus_b0[OF A_ne b0] .
+  have CA_eq: "last_col_idx A = s + l1 A" using l1_last s_lt_last by simp
+  have sj_le: "s + j' \<le> last_col_idx A" using j_lt CA_eq by simp
+  have IH_mono: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' < t - 1
+                    \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+    using IH b0 mp by blast
+  have consec: "\<And>c. s < c \<Longrightarrow> c \<le> last_col_idx A \<Longrightarrow> m_parent A m c = Some (c - 1)"
+    using consecutive_parent_from_mono[OF IH_mono] m_lt by blast
+  have manc: "m_ancestor A m (s + j') s"
+    using m_anc_of_consecutive_chain[OF consec, of s "s + j'"] j_pos sj_le by simp
+  have m_lt_t: "m < t" using m_lt by simp
+  show ?thesis
+    unfolding ascends_def non_strict_ancestor_def
+    using b0 mp m_lt_t manc j_pos by simp
+qed
+
 text \<open>\<^bold>\<open>Strengthened invariant \<open>ancestor_monotone\<close> (the self-transferring form).\<close>
   Adjacent columns strictly increase over \<open>(q, C]\<close> for \<^emph>\<open>every\<close> \<open>m\<close>-ancestor
   \<open>q\<close> of the bad root \<open>s\<close> (and \<open>q = s\<close> itself), at all levels \<open>m < t-1\<close>.  Proven

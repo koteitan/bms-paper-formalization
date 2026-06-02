@@ -1,8 +1,8 @@
-v0.1.79/Discharge the B-region adjacent monotonicity (Hbr) of the expand step
+v0.1.80/Discharge the ascends hypothesis of the expand step from the IH
 
-- Add B_region_adj_monotone: for a pure B-region target c'>l0 A at an IH-clean level m<t-1, the expansion's adjacent columns strictly increase; this is exactly the Hbr hypothesis of the R1/R2 expand-step lemmas
-- Decompose c'=idx_B(A,t',j'): j'>0 within-block via elem_expansion_B_lt_same_block lifting the IH base adjacency (shared bump t'·delta); j'=0,l1=1 consecutive block starts via elem_expansion_B_lt_step_same_j (delta>0); j'=0,l1>1 cross-block reduces to the IH last pair elem A (C_A-1) m < elem A C_A m with (A!s)+delta = elem A C_A m (telescoped IH)
-- No new sorry beyond the onestep residual
-- Bump version v0.1.78 -> v0.1.79
+- Add ascends_offset_from_IH: at an IH-clean level m<t-1, the bad root s is an m-ancestor of every interior B0 column s+j' (0<j'<l1), hence ascends A j' m
+- Pure cascade: IH adjacency over (s,C_A] => consecutive_parent_from_mono (consecutive m-parents) => m_anc_of_consecutive_chain (s is an ancestor of s+j')
+- Discharges the asc premise shared by ancestor_monotone_expand_step_R1 and badroot_block_anc_zero; no new sorry beyond the onestep residual
+- Bump version v0.1.79 -> v0.1.80
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
