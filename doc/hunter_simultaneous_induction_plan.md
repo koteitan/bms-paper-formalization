@@ -61,6 +61,32 @@ Empirically every clause statement was verified earlier (genuine-BMS BFS); the g
 purely the faithful proof. Keep build GREEN after each; commit per closed sorry; no
 net-new sorry. Probes: `tmp/verify-scratch/` (gitignored).
 
+## The precise dependency (located 2026-06-04)
+
+`elem_lt_below_t` (13232) is structured as: **case 0** (sorry-free, `m_anc_zero_imp_strict_min`);
+**case Suc m'** splits on whether `s+j` is an `m'`-ancestor of `C`:
+- **on-chain (True)**: sorry-free via the Hunter kernel `m_anc_Suc_imp_strict_min_on_anc`
+  (9021) — Hunter's last-filter/total-order mechanism for one level transition, fully proven.
+- **off-chain (False)**: proven *vacuous* by showing `s+j` IS an `m'`-ancestor of `C` — but
+  via `adjacent_value_monotone` (13314, `m'<t-1`) → `consecutive_parent_from_mono` →
+  `m_anc_of_consecutive_chain`. `adjacent_value_monotone` is the `q=s` instance of
+  `ancestor_monotone`, whose expand case is the bare sorry #4 (13220).
+
+So **the entire clause-(ii)/(i)/(v) chain depends on sorry #4 only through the off-chain
+vacuity's use of `adjacent_value_monotone`**. The boundary is intrinsic to the array
+induction: even though `ancestor_monotone` only claims `m<t-1`, its expand case proves
+`A[n]` at `m<tE-1` and with `tE=tA+1` that range reaches `m=tA-1` (the predecessor's
+boundary) — there is no array-induction way around it. This is exactly why (B) is needed.
+
+**The core (B) restructuring:** re-prove the off-chain vacuity (`m'<t-1` ⟹ every interior
+`B₀` column `s+j` is an `m'`-ancestor of `C`) using the **simultaneous k-induction IH**
+(clauses for `k'<k`) instead of `adjacent_value_monotone`. This requires `elem_lt_below_t`
+(or the off-chain vacuity lemma it uses) to be proven WITH IH access — i.e. threaded through
+`lemma_2_5_at_main` rather than standalone — which severs the dependency on sorry #4 and the
+array-induction boundary entirely. The Hunter kernel `m_anc_Suc_imp_strict_min_on_anc`
+already supplies the on-chain domination; the off-chain "all interior columns are on the
+`m'`-chain" must come from the IH's clause-(ii)-at-`m'` content, not a value-monotone lemma.
+
 ## Out of scope here
 
 `BMS_Lex.thy` (lex order, sorries 1369/1814) and `BMS_WellOrdered.thy` (final theorem,
