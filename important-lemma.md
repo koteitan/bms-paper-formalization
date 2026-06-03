@@ -127,15 +127,16 @@ $$\text{step}_{(v)}(k) \;:=\; \text{clause (ii)(iii)(iv) at } k \implies \text{c
 | **(i)**   | - | ✓ | ✓ | ✓ | - | ✓ | - | - | - | - |
 | **(ii)**  | - | - | - | - | - | - | ✓ | - | - | - |
 | **(iii)** | - | ✓ | - | - | - | - | - | - | - | - |
-| **(iv)**  | - | ✓ | - | - | - | - | - | - | ✓ | - |
-| **(v)**   | - | ✓ | ✓ | ✓ | - | - | - | - | - | - |
+| **(iv)**  | - | ✓ | ✓ | - | - | - | - | - | ✓ | - |
+| **(v)**   | (✓) | ✓ | ✓ | ✓ | - | - | - | - | - | - |
 
-### 旧版からの変更
+### 依存関係の根拠 (原文 + 形式化で照合, 2026-06-03 訂正)
 
-- **(iv)**: 旧 `(iii) at $k$` 依存削除 (paper page 6: (ii) at k のみ使用)
-- **(v)**: 旧 `(i) at $k$` 依存削除 (paper page 7: (ii)(iii)(iv) at k のみ使用)
-- **(iii), (v)**: 自前 IH 不要 (= k-induction 不要、 同 $k$ の他 clause からの direct corollary)
-- **(ii), (iv), (i)**: 各々自前 IH 要 (= 各自 k-induction)
+- **(iv) は (ii)@k かつ (iii)@k に依存** ── paper page 6 の (iv) 証明は "From **repeated applications of (iii) for k**, which we have already proven, ..." と (iii)@k を明示使用。形式化 `lemma_2_5_iv_clause_step` も `clause_ii_at_k` **と** `clause_iii_at_k` を仮説に取る。
+  - ⚠️ 旧版は「(iv) の (iii) 依存削除」としていたが **これは p.6 の誤読 (誤り)**。よって proof 順序は **(ii)→(iii)→(iv)** (iii が iv に先行) でなければならない (形式化 `lemma_2_5_at_main` もこの順)。
+- **(v)**: paper page 7 では (ii)(iii)(iv)@k のみ使用 ((i) 不要)。一方 **形式化 `lemma_2_5_v_clause_step` は `clause_i_at_k` を仮説に取る** (上表 `(✓)`)。`lemma_2_5_v_clause_step_iff` が現状 sorry なため、この (i) 依存は防御的・vestigial の可能性が高い → **原文に合わせるなら v_clause_step から `clause_i_at_k` を外す**のが筋 (未対応)。
+- **(iii), (v)**: 自前 IH 不要 (= k-induction 不要、 同 $k$ の他 clause からの direct corollary)。
+- **(ii), (iv), (i)**: 各々自前 IH 要 (= 各自 k-induction)。
 
 ### 依存図 (mermaid)
 
@@ -148,13 +149,17 @@ graph LR
   IHi["IH(i)"]   --> i["(i)@k"]
   ii  --> iii["(iii)@k"]
   ii  --> iv
+  iii --> iv
   ii  --> i
   iii --> i
   iv  --> i
   ii  --> v["(v)@k"]
   iii --> v
   iv  --> v
+  i  -.->|形式化のみ・vestigial<br/>原文(p.7)は不使用| v
 ```
+
+正しい proof 順序 (topological): **(ii) → (iii) → (iv) → (i) → (v)**。 (iii) は (iv) に先行する (旧版の ii→iv→iii は誤り)。
 
 Lemma 2.5 の上位定理における位置づけ (paper §2 全体の依存)。
 
@@ -185,11 +190,12 @@ graph TD
 
 ```
 ステージ 1: ∀k. (ii) at k   ← k-induction、 IH(ii) only
-ステージ 2: ∀k. (iv) at k   ← k-induction、 IH(iv) + (ii) at all k
-ステージ 3: ∀k. (iii) at k  ← 直接 corollary、 (ii) at k
+ステージ 2: ∀k. (iii) at k  ← 直接 corollary、 (ii) at k
+ステージ 3: ∀k. (iv) at k   ← k-induction、 IH(iv) + (ii)(iii) at all k   ※(iii) を要するので (iii) の後
 ステージ 4: ∀k. (i) at k    ← k-induction、 IH(i) + (ii)(iii)(iv) at all k
 ステージ 5: ∀k. (v) at k    ← 直接 corollary、 (ii)(iii)(iv) at all k
 ```
+(訂正: 旧版は (iv) を (iii) より前に置いていたが、 (iv) は (iii)@k に依存するので順序は ii→iii→iv→i→v。)
 
 各 stage 独立に sub-agent 並列実装可能。
 
@@ -211,9 +217,9 @@ graph TD
 - paper page 5: "trivially extended" — (ii) の proof を流用
 
 #### (iv) at $k$
-- IH(iv) + **(ii) at $k$**
+- IH(iv) + **(ii) at $k$** + **(iii) at $k$**
 - 内容: 最上位 block の parent は中間 block に居ない
-- paper page 6: "by (iv) for k'" + "(ii) for k" を明示使用
+- paper page 6: "by (iv) for k'" (IH) + "(ii) for k" + "repeated applications of **(iii) for k**" を明示使用 (形式化 `lemma_2_5_iv_clause_step` も `clause_ii_at_k` + `clause_iii_at_k`)
 
 #### (v) at $k$
 - **(ii) at $k$** + **(iii) at $k$** + **(iv) at $k$** (自前 IH 不要)
@@ -269,3 +275,12 @@ BMS_Hunter.thy  ── Hunter Lemma 2.5 の paper-level 層
 - ✅ `dom_transfer_R1` (BMS_Ancestry ~9589): R1 (block-start) で domination ⟸ DOM(A)[IH] + bump 公式。
 - ✅ `dom_transfer_R2` / `dom_transfer_R2_via_BMS` (~9663): R2 (in-G') で domination ⟸ ancestry `ANC(A[n])` + `m_ancestor_elem_lt`。R2 は独立 crux でなく、A[n]-direct で見れば elem_lt を A[n]∈BMS に instantiate したもの (续27 の G'-tail 54viol は M1 proxy artifact、A[n]-direct genuine-seed で 0 viol)。
 - **⭐ 両 transfer とも domination は ancestry の下流 (`m_ancestor_elem_lt`)**。∴ CORE-A も CORE-B も「**ancestry clause (i)-(v) の前方伝播**」という単一目標に収束。残る hard target = ⑥ assembly (ancestry を BMS.induct で回す Hunter 原論文の同時 k-induction)。domination/elem_lt はそこから自動。
+
+**reconstruction 進捗 (2026-06-03, 续112-120; v0.1.83-88)** — `ancestor_monotone` line (BMS_Ancestry, BMS.induct on array; 同時 k-induction とは別経路で CORE-A=clause(ii) を攻める) が大きく前進:
+- **265行 vs 271行 の矛盾を解消**: 真の root は「domination」でも「ancestry」でもなく、**`adjacent_value_monotone` (= `ancestor_monotone` の q=s instance、隣接列の狭義増加という値命題)**。ここから consecutive_parent_from_mono → m-parent 連鎖 → ancestry (m_anc_of_consecutive_chain) → domination (m_ancestor_elem_lt) が全部下流。∴ 265(domination root)も 271(ancestry root)も下流ビューで、**primitive は adjacent_value_monotone (値)**。
+- ✅ **v0.1.87 `onestep_icm_interval_dom`**: ancestry の atomic building block `onestep_anc_when_ascends` (l1>1) もまた **predecessor の `adjacent_value_monotone` に帰着** (bump 公式 + telescope)。explicit mono_A 仮説から sorry-free 証明。
+- ✅ **v0.1.88 循環解消**: `onestep` ↔ `ancestor_monotone` の見かけの循環は **偽**(well-founded IH 降下 A[n]→A)。`ancestor_monotone_expand_step_R1/R2` が **BMS.induct IH から mono_A を discharge** し、ancestry path が global onestep sorry に依存しなくなった。
+- **🎯 最終共通 crux = t-1 境界 adjacency**: `adjacent_value_monotone` を m<t-1 から **m=t-1** へ (ancestor 制限で、t≥2 で真) 拡張。これが clause-(i) の onestep@(k=t-1)、Htop (=gate3)、gate2 の mpl hard case を**同時 unblock** → ancestor_monotone (=elem_lt_below_t=CORE-A=clause(ii)) 閉鎖。
+- **(iv) gateway の訂正**: repo の `m_parent_block_n_stays_until_zero` (≥idx_B(n,0)) は **Hunter の (iv) (parent∈Bn∪G) より強すぎる over-reach**。Hunter の (iv) は同時帰納で証明可。clause-(iv) 2b (chain-breaks) は v0.1.84 で **gateway 非依存・忠実形式化済** (`anc_chain_in_Bn_or_G`)。残 2a/k=0 のみ gateway 使用。
+- **height(A)≤mpl(A)+2 は偽** (n=0 反例 Cex2; gate2 の height-bound 経由ルートは無効)。stripped-ness `keep_of=height` は ✅ v0.1.86。
+- ⚠️ CORE-B (gateway, iii_single_step) は別経路では未着手だが、上記より **CORE-A 経路 (ancestor_monotone) を t-1 境界で閉じれば clause(ii) が落ち**、(iii)-(v) は別途 (block-translation invariance = iii_single_step / v_clause_step_iff)。
