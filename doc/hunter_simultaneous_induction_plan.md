@@ -121,6 +121,37 @@ clause and prove `DOM`@k from clause-(ii)@k + IH (Hunter's dichotomy); (2) repoi
 `DOM` clause; (3) then close the remaining ancestry sorries #1/#2/#5/#6 (iii/iv/i/v steps)
 following Hunter proof-iii/iv/i/v, which are pure ancestry arguments over the simultaneous IH.
 
+## The convergent target: carry interval-ANCESTRY (not value) — located 2026-06-04
+
+The DOM-carried BMS.induct (workflow) is **provably insufficient**: R1 (l1≥2) is sorry-free
+(`dom_transfer_R1_from_DOM` 15830, DOM(A[n]) from IH DOM(A) via `ASC_of_DOM`+`delta_pos_of_lt_m0`),
+but R2 (l1=1) reduces (`dom_transfer_R2_modulo_intervaldom` 15677) to one open hypothesis
+`dom_intv` (15690): `m'<t' ⟹ s'<x≤sA ⟹ elem A s' m' < elem A x m'` — domination from the *deep*
+ancestor `s' = t'-parent of sA` (s'<sA) over the predecessor's G-prefix interval. In R2, l1 A=1
+so the carried `DOM A` is **vacuous** and its level range m<t is below dom_intv's m'<t' — the IH
+supplies nothing. So plain DOM does not self-transfer through R2.
+
+**The right carried invariant is interval-ANCESTRY**, in the form already consumed by
+`R2_gprefix_dom_from_interval_anc` (13544):
+
+    interval_anc:  ⋀q m'. s' < q ⟹ q < sA ⟹ 0 < m' ⟹ m' ≤ t'' ⟹ m_ancestor A m' q s'
+
+i.e. the deep ancestor `s'` is an `m'`-ancestor of *every* column `q` in `(s', sA)` at every
+level `0<m'≤t''`. Given `interval_anc`, `dom_intv` follows immediately by `m_ancestor_elem_lt`,
+closing R2. This is the **ancestry** form (not the adjacency-value form `ancestor_monotone`):
+ancestry is exactly what the Hunter kernel `m_anc_Suc_imp_strict_min_on_anc` and the I-set/total-
+order mechanism handle, and — unlike raw adjacent values — it does **not** plateau at the boundary
+m=t-1, so it sidesteps the irreducible bump-arithmetic primitive that defeated three workflows.
+
+So the genuine (B) step is: **define the interval-ancestry invariant (every ancestor q of sA is an
+m'-ancestor of every column in (q, sA] for the relevant m'), carry it through `BMS.induct`,
+self-transfer it via the kernel / Hunter's mechanism (NOT via adjacent values), and derive
+`elem_lt_below_t` (q=sA instance) and `dom_intv` (q=s' deep instance).** R1 reuses
+`dom_transfer_R1_from_DOM`; R2 chains `interval_anc → R2_gprefix_dom_from_interval_anc →
+dom_transfer_R2_modulo_intervaldom`. (Still needed: an R1/R2 location-dichotomy lemma and, for
+R1 l1≥2, the interior-column ↔ `idx_B_in_expansion` coordinate bridge — the file's own
+15748–15751 header flags this as the multi-session geometry work.)
+
 ## Out of scope here
 
 `BMS_Lex.thy` (lex order, sorries 1369/1814) and `BMS_WellOrdered.thy` (final theorem,
