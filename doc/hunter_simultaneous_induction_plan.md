@@ -87,6 +87,40 @@ array-induction boundary entirely. The Hunter kernel `m_anc_Suc_imp_strict_min_o
 already supplies the on-chain domination; the off-chain "all interior columns are on the
 `m'`-chain" must come from the IH's clause-(ii)-at-`m'` content, not a value-monotone lemma.
 
+## The faithful route, concretely (located 2026-06-04, from the paper proof-ii)
+
+Reading Hunter's actual proof of (ii) (PDF p.4–5) settles the architecture: **Hunter's
+clause (ii) is an ancestry EQUIVALENCE** ("i'-th column in B₀ is a k-ancestor of the j-th
+column in B₀ iff the same holds in Bₙ"), proven from the I-set total order + the dichotomy
+"either all columns of I ascend or the j-th column doesn't ascend" — **there is no
+value-domination lemma in it**. Our `elem_lt_below_t` / `adjacent_value_monotone` /
+`ancestor_monotone` are an *artifact value-route* we introduced; the boundary sorry is a
+consequence of that route, not of Hunter's argument. (The level-induction workflow confirmed
+the value primitive `ev: elem A (c-1) m < elem A c m` is irreducible bump-arithmetic content —
+it cannot be derived from the ancestry kernels, which only give min-domination `elem A s m <
+elem A c m`.)
+
+**The faithful fix is already half-scaffolded.** There are two variants of the (ii) case-B
+leaf used by the clause-(i)/(v) steps:
+- `b0_col_ancestor_below_t` (used at 14961, standalone) → routes to `elem_lt_below_t` →
+  `adjacent_value_monotone` → `ancestor_monotone` boundary sorry.
+- `b0_col_ancestor_below_t_from_DOM` (used at 15790) → takes the domination `DOM` as an
+  **explicit hypothesis**, no value sorry.
+
+So the (B) plan is: **carry `DOM` (the per-level domination invariant) through
+`lemma_2_5_at_main` as part of the simultaneous invariant, prove `DOM`@k inside the step from
+clause-(ii)@k's ascend/non-ascend dichotomy (Hunter's mechanism, the kernel
+`m_anc_Suc_imp_strict_min_on_anc`), and switch every clause step from
+`b0_col_ancestor_below_t` to `b0_col_ancestor_below_t_from_DOM`.** That severs the entire
+value-route (and the boundary sorry #4) from the clause-(i)/(v) machinery — `elem_lt_below_t`,
+`adjacent_value_monotone`, `ancestor_monotone` become dead code, droppable.
+
+Concrete first targets (in dependency order): (1) state `DOM` as a simultaneous-invariant
+clause and prove `DOM`@k from clause-(ii)@k + IH (Hunter's dichotomy); (2) repoint
+`b0_col_ancestor_below_t`'s consumers (14961 etc.) to the `_from_DOM` variant fed by the new
+`DOM` clause; (3) then close the remaining ancestry sorries #1/#2/#5/#6 (iii/iv/i/v steps)
+following Hunter proof-iii/iv/i/v, which are pure ancestry arguments over the simultaneous IH.
+
 ## Out of scope here
 
 `BMS_Lex.thy` (lex order, sorries 1369/1814) and `BMS_WellOrdered.thy` (final theorem,
