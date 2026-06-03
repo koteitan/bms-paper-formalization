@@ -248,3 +248,46 @@ faithful simultaneous k-induction (see `reference_simultaneous_induction_playboo
 That is a high-backtrack-cost pivot (v0.1.70–0.1.89 invested in the array path), so it
 is a decision to weigh only after the in-architecture Hunter-mechanism attempt is
 exhausted.
+
+## Update (2026-06-03 #2): reduction EXHAUSTED — the verified target and the fork
+
+A third workflow (Hunter-mechanism) joined the two reduction workflows; all three
+(5+ agents) confirm the boundary residual **cannot be closed by reduction inside the
+single-clause array induction**. Both Hunter-mechanism agents honestly reported "not
+proven" and refused to introduce dangling/circular sorries. The precise, **coverage-
+safe-verified** target is the trigger-conditioned intrinsic fact (NOT the unconditional
+or pure-leaf forms — both were probe artifacts; the unconditional `tA≥2` form has 504
+real counterexamples):
+
+    g_prefix_boundary_increase:
+      A∈BMS, l1 A = 1, b0_start A = Some sA, max_parent_level A = Some tA, 2 ≤ tA,
+      T1: (∃ q < sA. m_ancestor A tA sA q)         -- sA has a level-tA ancestor below it
+      ⟹  elem A (c-1)(tA-1) < elem A c (tA-1)        for 0 < c ≤ sA
+      (equivalently m_parent A (tA-1) c = Some (c-1) on (0, sA])
+
+Verified `T1 ⟹ adjacent increase` 37800/0; every adjacency counterexample (342) has
+`T1 = False` (excluded). `T1` is supplied in-context for free by the leaf regime:
+`b0_start_expansion_R2_eq` gives `sE = m_parent A (tA+1) sA`, hence `m_ancestor A tA sA sE`
+with `sE < sA`.
+
+**Why reduction is exhausted (the precise blocker):** for genuine `A = A₀[k]` with
+`l1 A = 1, tA ≥ 2`, the case `tA = mpl A₀` is frequent (1149 vs 759). There the boundary
+level `tA-1` coincides with the predecessor's own top boundary — it does **not** descend
+to a strictly-lower IH-clean level, so `BMS.induct` on this lemma alone doesn't reduce.
+The non-circular input lives at level `tA`, but `sA`'s level-`tA` ancestor chain is
+**sparse** (e.g. `[2,1,0]`, skipping columns) whereas level-`(tA-1)` is the **consecutive**
+run `[sA-1,…,0]`; bridging sparse-`tA` → consecutive-`(tA-1)` is the foundational value
+recursion that resisted v0.1.70–0.1.89. Strengthening the invariant from `m<t-1` to `m<t`
+is **unsound** (real counterexample on a genuine stripped array).
+
+**The fork (now actionable):**
+- **(A) lightweight joint induction** — add `g_prefix_boundary_increase` as a SECOND
+  clause to the existing `ancestor_monotone` `BMS.induct`, carried jointly with the
+  `m<t-1` clause (a 2-clause simultaneous array induction), reusing all v0.1.70–0.1.89
+  machinery. Risk: the `tA = mpl A₀` non-descent subcase may still require importing
+  Hunter's I-set / last-smaller argument for that one subcase.
+- **(B) full Hunter pivot** — build `BMS_Hunter.thy`'s faithful simultaneous induction
+  on the level `k` over all of Lemma 2.5 (i)–(v) (task #56). Most faithful; largest rebuild.
+
+Recommendation: attempt (A) first (asset reuse, only two clauses); fall back to (B) if
+the `tA = mpl A₀` subcase cannot be discharged without the full level-induction.
