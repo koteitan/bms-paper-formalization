@@ -15922,4 +15922,129 @@ proof (rule DOM_all_if_transfer[OF _ \<open>A \<in> BMS\<close>])
   from DT[OF this] show "ANC (A[n])" by (rule ANC_of_DOM)
 qed
 
+
+section \<open>Interval-ancestry invariant \<open>INTV\<close> and the \<open>INTV \<Longrightarrow> dom_intv \<Longrightarrow> R2\<close> chain\<close>
+
+text \<open>\<^bold>\<open>The interval-ancestry invariant (Hunter's ANCESTRY mechanism).\<close>  Packaged
+  predicate over \<open>(A, s', sA, t')\<close>: the deep R2 bad root \<open>s'\<close> is, at \<^emph>\<open>every\<close>
+  level \<open>0 < m' < t'\<close>, an \<open>m'\<close>-ancestor of \<^emph>\<open>every\<close> interior \<open>G\<close>-prefix column
+  \<open>q \<in> (s', s\<^sub>A)\<close>.  This is exactly the \<open>interval_anc\<close> hypothesis consumed by
+  @{thm R2_gprefix_dom_from_interval_anc} / @{thm dom_transfer_R2_from_interval_anc},
+  promoted to a named invariant so the R2 reduction can carry it through the
+  \<open>BMS\<close> induction (\<open>verify/probe_R2_sprime_anc_mid.py\<close>: 42624/42624).  It is built
+  from the kernel @{thm m_anc_Suc_imp_strict_min_on_anc} +
+  @{thm m_ancestor_chain_linear} (ancestry, \<^bold>\<open>not\<close> adjacent values), and is the
+  single residual BMS structural fact isolating the R2 crux.\<close>
+
+definition INTV :: "array \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where
+  "INTV A s' sA t' \<longleftrightarrow>
+     (\<forall>q m'. s' < q \<longrightarrow> q < sA \<longrightarrow> 0 < m' \<longrightarrow> m' < t'
+              \<longrightarrow> m_ancestor A m' q s')"
+
+text \<open>\<^bold>\<open>\<open>INTV\<close> unfolds to the \<open>interval_anc\<close> shape (sorry-free).\<close>  Trivial
+  re-association of @{thm INTV_def} to the curried hypothesis form expected by
+  @{thm R2_gprefix_dom_from_interval_anc} when \<open>t' = Suc t''\<close> (so \<open>m' \<le> t''\<close>
+  iff \<open>m' < t'\<close>).\<close>
+
+lemma INTV_imp_interval_anc:
+  assumes I: "INTV A s' sA (Suc t'')"
+      and q_lo: "s' < q" and q_hi: "q < sA" and m_pos: "0 < m'" and m_le: "m' \<le> t''"
+  shows "m_ancestor A m' q s'"
+proof -
+  have "m' < Suc t''" using m_le by simp
+  thus ?thesis using I q_lo q_hi m_pos unfolding INTV_def by blast
+qed
+
+text \<open>\<^bold>\<open>\<open>G\<close>-prefix domination from \<open>INTV\<close> (sorry-free).\<close>  The interior half of the
+  R2 \<open>dom_intv\<close> obligation, supplied directly by the named invariant: at every
+  level \<open>m \<le> t''\<close> the deep root \<open>s'\<close> strictly dominates every interior column
+  \<open>p \<in> (s', s\<^sub>A)\<close>.  Re-expresses @{thm R2_gprefix_dom_from_interval_anc} through
+  @{thm INTV_imp_interval_anc}.\<close>
+
+lemma R2_gprefix_dom_from_INTV:
+  fixes A :: array and s' sA t'' p m :: nat
+  assumes anc_sA: "m_ancestor A (Suc t'') sA s'"
+      and I: "INTV A s' sA (Suc t'')"
+      and p_lo: "s' < p" and p_hi: "p < sA" and m_le: "m \<le> t''"
+  shows "elem A s' m < elem A p m"
+  by (rule R2_gprefix_dom_from_interval_anc[OF anc_sA INTV_imp_interval_anc[OF I]
+        p_lo p_hi m_le])
+
+text \<open>\<^bold>\<open>The full R2 \<open>dom_intv\<close> from \<open>INTV\<close> + endpoint ancestry (sorry-free).\<close>  This
+  is the heart of the interval-ancestry route: it discharges the
+  interval-domination hypothesis \<open>dom_intv\<close> of
+  @{thm dom_transfer_R2_modulo_intervaldom} — \<open>m' < t' \<Longrightarrow> s' < x \<Longrightarrow> x \<le> s\<^sub>A
+  \<Longrightarrow> elem A s' m' < elem A x m'\<close> — purely from the interval-ancestry invariant
+  \<open>INTV\<close> together with the endpoint \<open>(Suc t'')\<close>-ancestry \<open>m_ancestor A (Suc t'')
+  s\<^sub>A s'\<close> (the latter is the P1 keystone fact already produced inside
+  @{thm dom_transfer_R2_modulo_intervaldom} via @{thm R2_endpoint_ancestor}).  The
+  case-split is on \<open>x = s\<^sub>A\<close> (endpoint, dominated because \<open>s'\<close> is an
+  \<open>m'\<close>-ancestor of \<open>s\<^sub>A\<close> — monotone from the \<open>(Suc t'')\<close>-ancestry — through
+  @{thm m_ancestor_elem_lt}) versus \<open>x < s\<^sub>A\<close> (interior, @{thm R2_gprefix_dom_from_INTV}).
+  No adjacent-value machinery; the whole obligation is closed by ancestry alone.\<close>
+
+lemma dom_intv_from_INTV:
+  fixes A :: array and s' sA t'' m' x :: nat
+  assumes anc_sA: "m_ancestor A (Suc t'') sA s'"
+      and I: "INTV A s' sA (Suc t'')"
+      and m_lt: "m' < Suc t''"
+      and x_lo: "s' < x" and x_hi: "x \<le> sA"
+  shows "elem A s' m' < elem A x m'"
+proof (cases "x = sA")
+  case True
+  have m_le: "m' \<le> t''" using m_lt by simp
+  have anc_m': "m_ancestor A m' sA s'" using m_ancestor_mono[OF le_SucI[OF m_le] anc_sA] .
+  show ?thesis using m_ancestor_elem_lt[OF anc_m'] True by simp
+next
+  case False
+  hence x_lt: "x < sA" using x_hi by simp
+  have m_le: "m' \<le> t''" using m_lt by simp
+  show ?thesis using R2_gprefix_dom_from_INTV[OF anc_sA I x_lo x_lt m_le] .
+qed
+
+text \<open>\<^bold>\<open>R2 predecessor-domination transfer from \<open>INTV\<close> (sorry-free).\<close>  Assembles the
+  full R2 branch \<open>elem (A[n]) s' m < elem (A[n]) (s'+j) m\<close> of
+  \<open>DOM A \<Longrightarrow> DOM (A[n])\<close> directly from the interval-ancestry invariant \<open>INTV\<close>:
+  the endpoint \<open>(Suc t'')\<close>-ancestry is the P1 keystone @{thm P1_keystone_R2} /
+  @{thm R2_endpoint_ancestor}, the interval-domination hypothesis \<open>dom_intv\<close> is
+  discharged by @{thm dom_intv_from_INTV}, and the rest is
+  @{thm dom_transfer_R2_modulo_intervaldom}.  This is the \<open>INTV \<Longrightarrow> dom_intv
+  \<Longrightarrow> R2\<close> chain of the interval-ancestry route, with \<open>INTV\<close> the single residual
+  BMS structural invariant (its \<open>BMS.induct\<close> self-transfer remains).\<close>
+
+lemma dom_transfer_R2_from_INTV:
+  fixes A :: array and n s' t' m j :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some sA"
+      and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and n_pos: "0 < n"
+      and t_pos: "0 < t"
+      and b0En: "b0_start (A[n]) = Some s'"
+      and mplEn: "max_parent_level (A[n]) = Some t'"
+      and R2: "s' < l0 A"
+      and m_lt: "m < t'"
+      and j_pos: "0 < j" and j_lt: "j < l1 (A[n])"
+      and t'_eq: "t' = Suc t''"
+      and I: "INTV A s' sA (Suc t'')"
+  shows "elem (A[n]) s' m < elem (A[n]) (s' + j) m"
+proof -
+  have s_lt: "sA < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = sA" using b0 s_lt unfolding l0_def G_block_def by simp
+  have P1: "m_parent A t' sA = Some s'"
+    using P1_keystone_R2[OF A_BMS A_ne b0 mp l1_eq n_pos t_pos b0En mplEn R2] .
+  have anc_sA: "m_ancestor A (Suc t'') sA s'"
+    using m_anc_via_parent_some[OF P1[unfolded t'_eq], of s'] by simp
+  have dom_intv: "\<And>m' x. m' < t' \<Longrightarrow> s' < x \<Longrightarrow> x \<le> sA
+                    \<Longrightarrow> elem A s' m' < elem A x m'"
+  proof -
+    fix m' x assume "m' < t'" and "s' < x" and "x \<le> sA"
+    thus "elem A s' m' < elem A x m'"
+      using dom_intv_from_INTV[OF anc_sA I] t'_eq by simp
+  qed
+  show ?thesis
+    using dom_transfer_R2_modulo_intervaldom[OF A_BMS A_ne b0 mp l1_eq n_pos t_pos
+            b0En mplEn R2 m_lt j_pos j_lt dom_intv] .
+qed
+
 end
