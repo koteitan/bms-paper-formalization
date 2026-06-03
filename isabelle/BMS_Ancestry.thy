@@ -12458,6 +12458,32 @@ proof -
     using b0 mp m_lt_t manc j_pos by simp
 qed
 
+text \<open>\<^bold>\<open>No \<open>m\<close>-parent at or above the height (sorry-free).\<close>  At a row \<open>m \<ge> height E\<close>
+  all columns (equal length \<open>height E \<le> m\<close>) share the same out-of-range \<open>m\<close>-th element
+  (@{thm nth_same_length_oob}), so a parent \<open>p\<close> would need \<open>elem E p m < elem E C m\<close>
+  (@{thm m_parent_elem_lt}) with both sides equal --- impossible.  This is the
+  \<open>out-of-bounds\<close> half of the \<open>mpl\<close> upper bound: \<open>height (A[n]) \<le> t\<^sub>A + 2\<close> then yields
+  \<open>m_parent (A[n]) (t\<^sub>A+2) C = None\<close>, hence (via \<open>mpl_lt_of_no_parent\<close>) \<open>t\<^sub>E \<le> t\<^sub>A + 1\<close>.\<close>
+
+lemma m_parent_None_at_ge_height:
+  assumes is_arr: "is_array E" and ne: "E \<noteq> []" and m_ge: "height E \<le> m"
+  shows "m_parent E m (last_col_idx E) = None"
+proof (rule ccontr)
+  let ?C = "last_col_idx E"
+  assume "m_parent E m ?C \<noteq> None"
+  then obtain p where mp: "m_parent E m ?C = Some p" by auto
+  have p_lt: "p < ?C" by (rule m_parent_lt[OF mp])
+  have C_lt: "?C < arr_len E" using ne by (cases E) auto
+  have p_arr: "p < arr_len E" using p_lt C_lt by simp
+  have lenp: "length (E ! p) = height E" using length_col_arr[OF is_arr ne p_arr] .
+  have lenC: "length (E ! ?C) = height E" using length_col_arr[OF is_arr ne C_lt] .
+  have "(E ! p) ! m = (E ! ?C) ! m"
+    by (rule nth_same_length_oob[OF _ _]) (use lenp lenC m_ge in simp_all)
+  hence "elem E p m = elem E ?C m" unfolding elem_def by simp
+  moreover have "elem E p m < elem E ?C m" by (rule m_parent_elem_lt[OF mp])
+  ultimately show False by simp
+qed
+
 text \<open>\<^bold>\<open>A \<open>Suc k\<close>-parent forces a \<open>k\<close>-parent (sorry-free).\<close>  The candidate filter at
   level \<open>Suc k\<close> requires a \<open>k\<close>-ancestor guard, which is \<open>False\<close> unless a \<open>k\<close>-parent
   exists; so the set of levels at which a fixed column has a parent is downward closed.
