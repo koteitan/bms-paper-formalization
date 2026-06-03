@@ -152,6 +152,25 @@ dom_transfer_R2_modulo_intervaldom`. (Still needed: an R1/R2 location-dichotomy 
 R1 l1≥2, the interior-column ↔ `idx_B_in_expansion` coordinate bridge — the file's own
 15748–15751 header flags this as the multi-session geometry work.)
 
+## Status (2026-06-04): INTV chain landed (v0.1.91); the crux + a verification caveat
+
+The interval-ancestry chain is now on `main` (v0.1.91): `INTV` (definition) + `INTV_imp_interval_anc`
++ `R2_gprefix_dom_from_INTV` + `dom_intv_from_INTV` + `dom_transfer_R2_from_INTV` + `INTV_from_floor`
++ `dom_transfer_R2_from_floor`. These are body-`sorry`-free and build GREEN, and reduce the **R2 branch**
+of `DOM A ⟹ DOM (A[n])` to a single strictly-local **m-parent floor** obligation. `elem_lt_below_t` is
+NOT yet closed — the remaining residuals are (a) the BMS.induct self-transfer / floor supply for INTV in
+R2, and (b) the R1 location-dichotomy + interior↔`idx_B` coordinate bridge (l1≥2).
+
+**Verification caveat (important).** `Thm_Deps.has_skip_proof` is UNRELIABLE in this `quick_and_dirty`
+batch build: it correctly flags `refl`=clean / `ancestor_monotone`=tainted, but ALSO flags definitely-clean
+basic lemmas (`m_parent_lt`, `m_ancestor_trans`, defined before every `sorry`) as TAINTED — i.e. false
+positives. So transitive-`sorry` taint cannot be judged by `has_skip_proof` here. The project's working
+standard is **body-`sorry`-free + build-GREEN + no direct reference to the 6 known-`sorry` lemmas**
+(`iii_single_step_t_to_Suc_t`, `m_parent_block_n_stays_until_zero`, `onestep_anc_when_ascends`,
+`ancestor_monotone`, `clause_i_iff_when_not_ascends`, `lemma_2_5_v_clause_step_iff`); the INTV chain meets
+it. For a genuine transitive check, use a proofterm-enabled build (`Proofterm.proofs := 2`) or a full
+name-based dependency trace, not `has_skip_proof`.
+
 ## Out of scope here
 
 `BMS_Lex.thy` (lex order, sorries 1369/1814) and `BMS_WellOrdered.thy` (final theorem,
