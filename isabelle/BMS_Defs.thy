@@ -929,10 +929,74 @@ proof -
   thus ?thesis using assms by blast
 qed
 
+lemma keep_of_least:
+  assumes "h \<le> height A"
+      and "\<forall>m. h \<le> m \<and> m < height A \<longrightarrow> (\<forall>c \<in> set A. c ! m = 0)"
+  shows "keep_of A \<le> h"
+  unfolding keep_of_def using assms by (intro Least_le) blast
+
 lemma strip_zero_rows_eq_map_take:
   assumes "A \<noteq> []"
   shows "strip_zero_rows A = map (\<lambda>c. take (keep_of A) c) A"
   using assms unfolding strip_zero_rows_def keep_of_def by (simp add: Let_def)
+
+lemma height_strip_eq_keep:
+  assumes A_ne: "A \<noteq> []"
+  shows "height (strip_zero_rows A) = keep_of A"
+proof -
+  let ?k = "keep_of A"
+  have strip_eq: "strip_zero_rows A = map (\<lambda>c. take ?k c) A"
+    using A_ne by (rule strip_zero_rows_eq_map_take)
+  have S_ne: "strip_zero_rows A \<noteq> []" using strip_eq A_ne by simp
+  have hd_eq: "hd (strip_zero_rows A) = take ?k (hd A)"
+    using strip_eq A_ne by (cases A) auto
+  have "height (strip_zero_rows A) = length (hd (strip_zero_rows A))"
+    using S_ne by (cases "strip_zero_rows A") auto
+  also have "\<dots> = length (take ?k (hd A))" using hd_eq by simp
+  also have "\<dots> = min ?k (length (hd A))" by simp
+  also have "\<dots> = min ?k (height A)" using A_ne by (cases A) auto
+  also have "\<dots> = ?k" using keep_of_le_height by simp
+  finally show ?thesis .
+qed
+
+lemma keep_of_strip_eq_height:
+  assumes A_ne: "A \<noteq> []"
+  shows "keep_of (strip_zero_rows A) = height (strip_zero_rows A)"
+proof -
+  let ?k = "keep_of A"
+  let ?S = "strip_zero_rows A"
+  have hS: "height ?S = ?k" using height_strip_eq_keep[OF A_ne] .
+  have strip_eq: "?S = map (\<lambda>c. take ?k c) A"
+    using A_ne by (rule strip_zero_rows_eq_map_take)
+  have le: "keep_of ?S \<le> height ?S" by (rule keep_of_le_height)
+  have ge: "height ?S \<le> keep_of ?S"
+  proof (rule ccontr)
+    assume "\<not> height ?S \<le> keep_of ?S"
+    hence kS_lt: "keep_of ?S < ?k" using hS by simp
+    have allz: "\<forall>m'. keep_of ?S \<le> m' \<and> m' < height A \<longrightarrow> (\<forall>c' \<in> set A. c' ! m' = 0)"
+    proof (intro allI impI ballI)
+      fix m' c' assume hyp: "keep_of ?S \<le> m' \<and> m' < height A" and c'_in: "c' \<in> set A"
+      hence m'_lo: "keep_of ?S \<le> m'" and m'_hi: "m' < height A" by auto
+      show "c' ! m' = 0"
+      proof (cases "m' < ?k")
+        case True
+        have tk_in: "take ?k c' \<in> set ?S" using strip_eq c'_in by auto
+        have m'_hS: "m' < height ?S" using True hS by simp
+        have "(take ?k c') ! m' = 0" using keep_of_row_zero[OF m'_lo m'_hS tk_in] .
+        thus ?thesis using True by simp
+      next
+        case False
+        hence "?k \<le> m'" by simp
+        show ?thesis using keep_of_row_zero[OF \<open>?k \<le> m'\<close> m'_hi c'_in] .
+      qed
+    qed
+    have kS_le_H: "keep_of ?S \<le> height A"
+      using kS_lt keep_of_le_height[of A] by linarith
+    have "keep_of A \<le> keep_of ?S" using keep_of_least[OF kS_le_H allz] .
+    thus False using kS_lt by simp
+  qed
+  show ?thesis using le ge by simp
+qed
 
 lemma length_col_arr:
   assumes is_arr: "is_array A" and A_ne: "A \<noteq> []" and i_lt: "i < arr_len A"

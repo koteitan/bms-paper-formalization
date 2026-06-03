@@ -2435,6 +2435,72 @@ proof (rule ccontr)
   thus False using bump_pos by simp
 qed
 
+text \<open>\<^bold>\<open>BMS arrays are stripped: \<open>keep_of A = height A\<close> (sorry-free).\<close>  Every
+  \<open>A \<in> BMS\<close> arises from a seed by \<open>expansion\<close> (which ends in \<open>strip_zero_rows\<close>),
+  and a stripped array has no trailing all-zero rows, so its \<open>keep_of\<close> cut-off
+  equals its full height.  Proven by @{thm BMS.induct}: the seed has
+  \<open>keep_of (seed n) = n = height (seed n)\<close> (column 1 is nonzero at every kept row),
+  and any expansion is \<open>strip_zero_rows ?P\<close>, for which \<open>keep_of = height\<close> by
+  @{thm keep_of_strip_eq_height}.  This is the \<^emph>\<open>stripped-ness\<close> foundation: it
+  reduces height bounds to in-range value statements (the row \<open>height A - 1\<close> is
+  never all-zero).\<close>
+
+lemma keep_of_seed_eq:
+  "keep_of (seed n) = n"
+proof -
+  have h: "height (seed n) = n" by (rule height_seed)
+  have le: "keep_of (seed n) \<le> n" using keep_of_le_height[of "seed n"] h by simp
+  have ge: "n \<le> keep_of (seed n)"
+  proof (rule ccontr)
+    assume "\<not> n \<le> keep_of (seed n)"
+    hence K_lt: "keep_of (seed n) < n" by simp
+    have col1_in: "seed n ! 1 \<in> set (seed n)"
+      using seed_nonempty length_seed by (metis One_nat_def nth_mem Suc_1 lessI)
+    have K_le: "keep_of (seed n) \<le> keep_of (seed n)" by simp
+    have K_lt_h: "keep_of (seed n) < height (seed n)" using K_lt h by simp
+    have "(seed n ! 1) ! (keep_of (seed n)) = 0"
+      using keep_of_row_zero[OF K_le K_lt_h col1_in] .
+    moreover have "(seed n ! 1) ! (keep_of (seed n)) = 1"
+      using seed_nth1 K_lt by simp
+    ultimately show False by simp
+  qed
+  show ?thesis using le ge by simp
+qed
+
+lemma BMS_keep_of_eq_height:
+  assumes "A \<in> BMS"
+  shows "keep_of A = height A"
+  using assms
+proof (induct rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case using keep_of_seed_eq[of n] height_seed[of n] by simp
+next
+  case (expand_in_BMS A k)
+  show ?case
+  proof (cases "A = []")
+    case True
+    hence empt: "A[k] = []" by (simp add: expansion_def)
+    have "keep_of (A[k]) \<le> height (A[k])" by (rule keep_of_le_height)
+    thus ?thesis using empt by simp
+  next
+    case A_ne: False
+    let ?P = "G_block A @ Bs_concat A k"
+    have An_eq: "A[k] = strip_zero_rows ?P" using A_ne by (simp add: expansion_def)
+    show ?thesis
+    proof (cases "?P = []")
+      case True
+      hence empt: "A[k] = []" using An_eq by (simp add: strip_zero_rows_def)
+      have "keep_of (A[k]) \<le> height (A[k])" by (rule keep_of_le_height)
+      thus ?thesis using empt by simp
+    next
+      case P_ne: False
+      have "keep_of (strip_zero_rows ?P) = height (strip_zero_rows ?P)"
+        using keep_of_strip_eq_height[OF P_ne] .
+      thus ?thesis using An_eq by simp
+    qed
+  qed
+qed
+
 
 text \<open>
   Elem equality across blocks at row \<open>k \<ge> t\<close>: at non-bumping
