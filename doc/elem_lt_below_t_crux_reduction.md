@@ -185,3 +185,66 @@ IH = `adjacent_value_monotone A`) splits on `b0_start(A[n])` vs `l0 A` **only**
   covering the relevant `G`-prefix, or a recursion into `A`'s `G`-block structure.
   (`s' = m_parent A (mpl (A[n])) (b0_start A)` by `b0_start_expansion_R2_eq` when
   `l1 A=1`.)
+
+## Update (2026-06-03, autonomous): the m<t-1 R2/G crux is CLOSED; the frontier moved to the m=t-1 boundary
+
+v0.1.88 closed the m<t-1 R2/G-block crux above via the strengthened invariant
+`ancestor_monotone` + `ancestry_restriction` + an IH-discharged `mono_A` (the
+apparent onestep⟺ancestor_monotone circularity is a false alarm: well-founded
+descent `A[n]→A`). What remains of `ancestor_monotone`'s expand case is exactly
+the **boundary** obligation, isolated by `ancestor_monotone_expand` (BMS_Ancestry
+~13099) into residuals:
+- `keep` (easy, from `BMS_keep_of_eq_height`),
+- `Hmpl_le1: tE≤tA+1` and `Hmpl_gt1: 1<l1 A ⟹ tE≤tA` (**gate 2**),
+- `Rb_cond: sE<sA ⟹ m_ancestor A m sA sE`,
+- `Htop: l1 A=1 ⟹ m=tA-1 ⟹ elem(A[n])(c-1)m < elem(A[n]) c m` (**the boundary, gate 3**).
+
+**gate 2 is empirically settled** (`probe_gate2_mpl`, 0 fail over 42k): `tE≤tA+1`
+always; `1<l1 A ⟹ tE=tA` exactly; for `l1 A=1`, `tE-tA ∈ {-1,0,+1}` and Htop fires
+only in the `+1` (leaf) case. So both mpl bounds are true invariants, provable.
+
+**Htop splits** (two independent workflows + 8 agents agree): B-region (`sA<c`) is
+**fully discharged sorry-free** by `b_region_adj_increase_l1_eq_1` (covers the top
+level `k=tA-1`); the G-region (`c≤sA`) reduces, via the G-prefix value coincidence
+`elem(A[n]) c (tA-1) = elem A c (tA-1)` (`elem_AEn_eq_le_l0`/`elem_AEn_eq_on_G_prefix`)
+and `m_parent_elem_lt`, to a SINGLE residual:
+
+    mp_c:  in the leaf regime (l1 A=1, tE=tA+1, R2 with sE<sA),
+           m_parent A (tA-1) c = Some (c-1)  for c on the reachable G-prefix
+           (equivalently  elem A (c-1)(tA-1) < elem A c (tA-1)  for q<c≤sA).
+
+`mp_c` is `adjacent_value_monotone` **extended to the top level m=t-1**, ancestor-
+restricted, leaf-conditioned. It is the SAME foundational value-induction gap as the
+original `elem_lt_below_t`. It is **NOT a context-free A-fact**: the A-only and
+chain-only forms are FALSE (counterexample `(0,0)(1,1)(1,0)(2,1)`: `m_parent A 0 2 = 0`,
+not 1; 648/54 counterexamples, all `tA=1`). Those arrays do not arise as genuine
+Htop consumers, so `A∈BMS` + the leaf hypotheses (`Rb`, `qor`, `tE=tA+1`) are load-
+bearing. The generic `m'-parent ⟹ elem(Suc m') strict` bridge is also FALSE.
+
+### The Hunter-faithful proof plan for `mp_c` (from paper proof-ii, tmp/prop/chapter2.md)
+
+Hunter does NOT prove "parent = c-1" directly (which is what every reduction attempt
+got stuck on). His clause (ii) is part of a **simultaneous induction on the level k**,
+and the mechanism is: let `I = {columns that are k'-ancestors (for ALL k'<k) of the
+target}`; since `k'<k`-ancestry is a **total order on I**, the `k`-parent of each
+column in `I` is **the last column before it in `I` with a smaller `k`-th element**
+(not necessarily the immediate predecessor). Ascension of the target's `k`-th element
+then forces either "all of `I` ascends" or "the target doesn't ascend".
+
+Mapped onto our boundary `k = tA-1`: the membership condition for `I` is `k'-ancestry
+for all k'<tA-1`, which is **exactly the range `m<tA-1` covered by the `ancestor_monotone`
+IH**. So `mp_c` should be provable in the current architecture WITHOUT a new axiom:
+use the IH to fix `I` (the sub-boundary ancestor chain), then Hunter's last-smaller-
+value argument to pin the `(tA-1)`-parent, with the leaf condition `tE=tA+1` forcing
+`I` to be the consecutive run with strictly increasing `(tA-1)`-th values ⟹ parent
+`= c-1`. This is the untried angle (reduction workflows all tried to prove `parent=c-1`
+directly and hit the same wall).
+
+**Potential architectural fork (watch):** if the Hunter-mechanism attack on `mp_c`
+also stalls, the boundary gap is likely an artifact of the array-induction (`BMS.induct`)
++ pure-value-reduction architecture — in Hunter's level-induction, `k=m₀-1` is just one
+ordinary value of `k`. The principled alternative is to build out `BMS_Hunter.thy`'s
+faithful simultaneous k-induction (see `reference_simultaneous_induction_playbook`).
+That is a high-backtrack-cost pivot (v0.1.70–0.1.89 invested in the array path), so it
+is a decision to weigh only after the in-architecture Hunter-mechanism attempt is
+exhausted.
