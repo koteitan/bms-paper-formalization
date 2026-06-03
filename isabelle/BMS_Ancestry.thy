@@ -11664,6 +11664,236 @@ next
   show ?thesis sorry
 qed
 
+text \<open>\<^bold>\<open>The interval-domination residual of \<open>onestep_anc_when_ascends\<close> (sorry-free,
+  from an EXPLICIT predecessor adjacent-monotone hypothesis).\<close>  A prior multi-agent
+  reduction (workflows \<open>wkolfgqlx\<close>/\<open>w4nmcy6f4\<close>) showed the \<open>l\<^sub>1 > 1\<close> one-step crux is
+  value-based (the within-block parent never crosses to the previous block), reducing
+  to a single interval domination: when \<open>j\<close> ascends at level \<open>m\<close>, the block-\<open>(c-1)\<close>
+  bumped copy \<open>idx_B(c-1,j)\<close> strictly dominates, at level \<open>m\<close>, every column in the
+  cross-block interval \<open>(idx_B(c-1,j), idx_B(c,j)]\<close>.  The proof takes \<open>mono_A\<close> --- the
+  predecessor's adjacent value monotonicity over \<open>(s,C]\<close> at every level \<open>m' \<le> m\<close> ---
+  as an EXPLICIT hypothesis (NOT the global \<open>adjacent_value_monotone\<close>, which would be
+  circular); in the eventual wiring \<open>mono_A\<close> is discharged from the \<open>BMS.induct\<close> IH on
+  the predecessor.  From the multi-level \<open>mono_A\<close>, every offset ascends at \<open>m\<close>
+  (@{thm m_anc_of_consecutive_chain} via the consecutive-parent chain), killing the
+  non-ascending sub-cases; the bump values then reduce the goal to \<open>mono_A\<close>-telescoping
+  plus \<open>delta A m > 0\<close>.\<close>
+
+lemma mono_A_interval:
+  fixes A :: array and s m :: nat
+  assumes mono: "\<And>d. s < d \<Longrightarrow> d \<le> C \<Longrightarrow> elem A (d - 1) m < elem A d m"
+      and d1d2: "d1 < d2" and d2C: "d2 \<le> C" and sd1: "s \<le> d1"
+  shows "elem A d1 m < elem A d2 m"
+  using d1d2 d2C
+proof (induct d2 rule: less_induct)
+  case (less d2)
+  have d1_lt: "d1 < d2" and d2_le: "d2 \<le> C" by fact+
+  have s_lt_d2: "s < d2" using sd1 d1_lt by simp
+  have step: "elem A (d2 - 1) m < elem A d2 m" using mono[OF s_lt_d2 d2_le] .
+  show ?case
+  proof (cases "d1 = d2 - 1")
+    case True
+    thus ?thesis using step by simp
+  next
+    case False
+    hence d1_lt': "d1 < d2 - 1" using d1_lt by simp
+    have d2m1_lt: "d2 - 1 < d2" using d1_lt by simp
+    have d2m1_le: "d2 - 1 \<le> C" using d2_le by simp
+    have "elem A d1 m < elem A (d2 - 1) m"
+      using less.hyps[OF d2m1_lt d1_lt' d2m1_le] .
+    thus ?thesis using step by simp
+  qed
+qed
+
+lemma consec_parent_le:
+  fixes A :: array and s C c :: nat
+  assumes mono: "\<And>d m'. s < d \<Longrightarrow> d \<le> C \<Longrightarrow> m' \<le> m
+                    \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+      and cs: "s < c" and cC: "c \<le> C"
+  shows "m' \<le> m \<Longrightarrow> m_parent A m' c = Some (c - 1)"
+proof (induct m' rule: less_induct)
+  case (less m')
+  have mle: "m' \<le> m" by fact
+  have cm1_lt: "c - 1 < c" using cs by simp
+  have ev: "elem A (c - 1) m' < elem A c m'" using mono[OF cs cC mle] .
+  show ?case
+  proof (cases m')
+    case 0
+    obtain p where mp: "m_parent A 0 c = Some p" and pge: "c - 1 \<le> p"
+      using m_parent_ge_candidate_zero[OF cm1_lt] ev 0 by auto
+    have "p < c" using m_parent_lt[OF mp] .
+    hence "p = c - 1" using pge cs by simp
+    thus ?thesis using mp 0 by simp
+  next
+    case (Suc m'')
+    have m''_lt: "m'' < m'" using Suc by simp
+    have m''_le: "m'' \<le> m" using mle Suc by simp
+    have anc: "m_ancestor A m'' c (c - 1)"
+      using m_anc_via_parent_some[OF less.hyps[OF m''_lt m''_le]] by blast
+    obtain p where mp: "m_parent A (Suc m'') c = Some p" and pge: "c - 1 \<le> p"
+      using m_parent_ge_candidate_Suc[OF cm1_lt _ anc] ev Suc by auto
+    have "p < c" using m_parent_lt[OF mp] .
+    hence "p = c - 1" using pge cs by simp
+    thus ?thesis using mp Suc by simp
+  qed
+qed
+
+lemma onestep_icm_all_ascend:
+  fixes A :: array and s m x :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t" and m_lt: "m < t"
+      and x_lt: "x < l1 A"
+      and mono_A: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> m
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+  shows "ascends A x m"
+proof -
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have l1_eq: "l1 A = last_col_idx A - s" using l1_eq_last_minus_b0[OF A_ne b0] .
+  have C_eq: "last_col_idx A = s + l1 A" using l1_eq s_lt_last by simp
+  show ?thesis
+  proof (cases "x = 0")
+    case True
+    thus ?thesis
+      unfolding ascends_def using b0 mp m_lt
+      by (simp add: non_strict_ancestor_def)
+  next
+    case False
+    hence x_pos: "0 < x" by simp
+    have sx_le: "s + x \<le> last_col_idx A" using x_lt C_eq by simp
+    have consec: "\<And>c. s < c \<Longrightarrow> c \<le> last_col_idx A
+                    \<Longrightarrow> m_parent A m c = Some (c - 1)"
+      using consec_parent_le[OF mono_A _ _ order.refl] by blast
+    have anc: "m_ancestor A m (s + x) s"
+      using m_anc_of_consecutive_chain[OF consec, of s "s + x"]
+            x_pos sx_le by simp
+    show ?thesis
+      unfolding ascends_def using b0 mp m_lt anc
+      by (simp add: non_strict_ancestor_def)
+  qed
+qed
+
+lemma onestep_icm_interval_dom:
+  fixes A :: array and n c j m :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and asc: "ascends A j m"
+      and j_lt: "j < l1 A"
+      and c_pos: "0 < c" and c_le: "c \<le> n"
+      and p_lo: "idx_B_in_expansion A (c - 1) j < p"
+      and p_hi: "p \<le> idx_B_in_expansion A c j"
+      and keep: "m < keep_of (G_block A @ Bs_concat A n)"
+      and mono_A: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> m
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+  shows "elem (A[n]) (idx_B_in_expansion A (c - 1) j) m < elem (A[n]) p m"
+proof -
+  have m_lt_t: "m < t" using asc unfolding ascends_def using b0 mp by simp
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
+  have l1_eq: "l1 A = last_col_idx A - s" using l1_eq_last_minus_b0[OF A_ne b0] .
+  have C_eq: "last_col_idx A = s + l1 A" using l1_eq s_lt_last by simp
+  have col_at: "\<And>y. y < l1 A \<Longrightarrow> m < length (A ! (s + y))"
+  proof -
+    fix y assume y_lt: "y < l1 A"
+    have sy_le_arr: "s + y < arr_len A" using y_lt C_eq last_lt_arr by simp
+    have "length (A ! (s + y)) = height A"
+      using length_col_arr[OF is_arr A_ne sy_le_arr] .
+    thus "m < length (A ! (s + y))" using m_lt_t t_lt_H by simp
+  qed
+  have dpos: "0 < delta A m" using delta_pos_of_lt_m0[OF b0 mp m_lt_t] .
+  have all_asc: "\<And>y. y < l1 A \<Longrightarrow> ascends A y m"
+    using onestep_icm_all_ascend[OF A_ne b0 mp m_lt_t _ mono_A] by blast
+  have val: "\<And>a y. a \<le> n \<Longrightarrow> y < l1 A
+              \<Longrightarrow> elem (A[n]) (idx_B_in_expansion A a y) m
+                  = elem A (s + y) m + a * delta A m"
+  proof -
+    fix a y assume a_le: "a \<le> n" and y_lt: "y < l1 A"
+    have "elem (A[n]) (idx_B_in_expansion A a y) m
+        = (A ! (s + y)) ! m + (if ascends A y m then a * delta A m else 0)"
+      using elem_AEn_idx_B_value[OF A_ne b0 a_le y_lt keep col_at[OF y_lt]] .
+    thus "elem (A[n]) (idx_B_in_expansion A a y) m
+          = elem A (s + y) m + a * delta A m"
+      using all_asc[OF y_lt] by (simp add: elem_def)
+  qed
+  have mono_m: "\<And>d. s < d \<Longrightarrow> d \<le> last_col_idx A
+                 \<Longrightarrow> elem A (d - 1) m < elem A d m"
+    using mono_A[OF _ _ order.refl] by blast
+  have telesc: "\<And>d1 d2. s \<le> d1 \<Longrightarrow> d1 < d2 \<Longrightarrow> d2 \<le> last_col_idx A
+                  \<Longrightarrow> elem A d1 m < elem A d2 m"
+    using mono_A_interval[OF mono_m] by blast
+  have cm1_le: "c - 1 \<le> n" using c_le by simp
+  have lhs_val: "elem (A[n]) (idx_B_in_expansion A (c - 1) j) m
+               = elem A (s + j) m + (c - 1) * delta A m"
+    using val[OF cm1_le j_lt] .
+  have idxcm1: "idx_B_in_expansion A (c - 1) j = l0 A + (c - 1) * l1 A + j"
+    by (simp add: idx_B_in_expansion_def)
+  have idxc: "idx_B_in_expansion A c j = l0 A + c * l1 A + j"
+    by (simp add: idx_B_in_expansion_def)
+  have c_suc: "c = Suc (c - 1)" using c_pos by simp
+  have c_decomp: "c * l1 A = (c - 1) * l1 A + l1 A"
+    by (subst c_suc) simp
+  define r where "r = p - (l0 A + (c - 1) * l1 A)"
+  have p_ge: "l0 A + (c - 1) * l1 A + j < p" using p_lo idxcm1 by simp
+  have p_le: "p \<le> l0 A + c * l1 A + j" using p_hi idxc by simp
+  have r_gt_j: "j < r" using p_ge r_def by simp
+  have r_le: "r \<le> l1 A + j" using p_le r_def c_decomp by simp
+  have p_eq: "p = l0 A + (c - 1) * l1 A + r" using r_gt_j r_def by simp
+  show ?thesis
+  proof (cases "r < l1 A")
+    case True
+    have p_idx: "p = idx_B_in_expansion A (c - 1) r"
+      using p_eq by (simp add: idx_B_in_expansion_def)
+    have rhs_val: "elem (A[n]) p m
+                 = elem A (s + r) m + (c - 1) * delta A m"
+      using p_idx val[OF cm1_le True] by simp
+    have sj_lt_sr: "s + j < s + r" using r_gt_j by simp
+    have sr_le_C: "s + r \<le> last_col_idx A" using True C_eq by simp
+    have base_lt: "elem A (s + j) m < elem A (s + r) m"
+      using telesc[OF _ sj_lt_sr sr_le_C] by simp
+    show ?thesis using lhs_val rhs_val base_lt by simp
+  next
+    case False
+    hence r_ge: "l1 A \<le> r" by simp
+    define x where "x = r - l1 A"
+    have x_le_j: "x \<le> j" using r_le r_ge x_def by simp
+    have x_lt_l1: "x < l1 A" using x_le_j j_lt by simp
+    have p_idx: "p = idx_B_in_expansion A c x"
+      using p_eq r_ge x_def c_decomp
+      by (simp add: idx_B_in_expansion_def)
+    have rhs_val: "elem (A[n]) p m = elem A (s + x) m + c * delta A m"
+      using p_idx val[OF c_le x_lt_l1] by simp
+    have delta_eq: "delta A m = elem A (last_col_idx A) m - elem A s m"
+      unfolding delta_def using b0 by simp
+    have sx_le_C: "s + x \<le> last_col_idx A" using x_lt_l1 C_eq by simp
+    have base_s_le: "elem A s m \<le> elem A (s + x) m"
+    proof (cases "x = 0")
+      case True thus ?thesis by simp
+    next
+      case False
+      hence "s < s + x" by simp
+      thus ?thesis using telesc[OF order.refl _ sx_le_C] by simp
+    qed
+    have s_lt_C: "elem A s m < elem A (last_col_idx A) m"
+      using telesc[OF order.refl s_lt_last order.refl] .
+    have sj_lt_C: "s + j < last_col_idx A" using j_lt C_eq by simp
+    have base_j_lt_C: "elem A (s + j) m < elem A (last_col_idx A) m"
+      using telesc[OF _ sj_lt_C order.refl] by simp
+    have C_val_eq: "elem A (last_col_idx A) m = elem A s m + delta A m"
+      using delta_eq s_lt_C by simp
+    have key: "elem A (s + j) m < elem A (s + x) m + delta A m"
+      using base_j_lt_C C_val_eq base_s_le by simp
+    have delta_decomp: "c * delta A m = (c - 1) * delta A m + delta A m"
+      by (subst c_suc) simp
+    have rhs_expand: "elem (A[n]) p m
+                    = elem A (s + x) m + (c - 1) * delta A m + delta A m"
+      using rhs_val delta_decomp by simp
+    show ?thesis using lhs_val rhs_expand key by simp
+  qed
+qed
+
 lemma lemma_2_5_i_clause_step_forward_case_ascends:
   \<comment> \<open>CASE (A): source column \<open>j\<close> ascends at level \<open>k\<close>.  The whole block-copy
       run \<open>idx_B(n,j) \<leadsto> idx_B(0,j)\<close> is a \<open>k\<close>-ancestor chain (built from the
