@@ -6,3 +6,5 @@ output/
 *.swp
 *~
 commit-msg.txt
+__pycache__/
+*.pyc
