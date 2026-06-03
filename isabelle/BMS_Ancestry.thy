@@ -16047,4 +16047,77 @@ proof -
             b0En mplEn R2 m_lt j_pos j_lt dom_intv] .
 qed
 
+text \<open>\<^bold>\<open>\<open>INTV\<close> from the local m-parent floor (sorry-free).\<close>  Establishes the
+  named interval-ancestry invariant \<open>INTV A s' s\<^sub>A (Suc t'')\<close> from the
+  \<^emph>\<open>local\<close> m-parent-floor fact alone: every interior column \<open>q \<in> (s', s\<^sub>A)\<close>
+  has, at each level \<open>0 < m' \<le> t''\<close>, an \<open>m'\<close>-parent \<open>p\<close> that does \<^emph>\<open>not\<close>
+  drop below \<open>s'\<close> (\<open>verify/probe_R2_mid_mparent_floor.py\<close>: 29610/0, no \<open>None\<close>,
+  no \<open>p < s'\<close>).  The ancestry \<open>m_ancestor A m' q s'\<close> follows by \<^bold>\<open>strong
+  induction on \<open>q\<close>\<close>: the floor gives an \<open>m'\<close>-parent \<open>p\<close> with \<open>s' \<le> p < q\<close>;
+  if \<open>p = s'\<close> the parent \<^emph>\<open>is\<close> the ancestor (@{thm m_anc_via_parent_some}); if
+  \<open>s' < p < s\<^sub>A\<close> the induction hypothesis gives \<open>m_ancestor A m' p s'\<close>, and the
+  parent step \<open>m_ancestor A m' q p\<close> chains by transitivity (@{thm m_ancestor_trans})
+  to \<open>m_ancestor A m' q s'\<close>.  This reduces the residual interval-ancestry
+  invariant to the strictly local floor obligation — no global chain, no
+  adjacent-value machinery.\<close>
+
+lemma INTV_from_floor:
+  fixes A :: array and s' sA t'' :: nat
+  assumes floor: "\<And>q m'. s' < q \<Longrightarrow> q < sA \<Longrightarrow> 0 < m' \<Longrightarrow> m' \<le> t''
+                    \<Longrightarrow> (\<exists>p. m_parent A m' q = Some p \<and> s' \<le> p)"
+  shows "INTV A s' sA (Suc t'')"
+  unfolding INTV_def
+proof (intro allI impI)
+  fix q m'
+  assume q_lo: "s' < q" and q_hi: "q < sA" and m_pos: "0 < m'" and m_lt: "m' < Suc t''"
+  have m_le: "m' \<le> t''" using m_lt by simp
+  from q_lo q_hi show "m_ancestor A m' q s'"
+  proof (induct q rule: less_induct)
+    case (less q)
+    obtain p where mp: "m_parent A m' q = Some p" and p_ge: "s' \<le> p"
+      using floor[OF less.prems(1) less.prems(2) m_pos m_le] by blast
+    have p_lt: "p < q" using m_parent_lt[OF mp] .
+    have anc_qp: "m_ancestor A m' q p"
+      using m_anc_via_parent_some[OF mp, of p] by simp
+    show ?case
+    proof (cases "p = s'")
+      case True thus ?thesis using anc_qp by simp
+    next
+      case False
+      hence s_lt_p: "s' < p" using p_ge by simp
+      have p_hi: "p < sA" using p_lt less.prems(2) by simp
+      have anc_ps: "m_ancestor A m' p s'" using less.hyps[OF p_lt s_lt_p p_hi] .
+      show ?thesis using m_ancestor_trans[OF anc_qp anc_ps] .
+    qed
+  qed
+qed
+
+text \<open>\<^bold>\<open>The full \<open>floor \<Longrightarrow> R2\<close> chain (sorry-free).\<close>  Composes
+  @{thm INTV_from_floor} with @{thm dom_transfer_R2_from_INTV}: the entire R2
+  branch of \<open>DOM A \<Longrightarrow> DOM (A[n])\<close> is discharged from the single \<^emph>\<open>local\<close>
+  m-parent-floor obligation (plus the BMS / coordinate side-conditions), with
+  \<^bold>\<open>no\<close> reference to the global interval-ancestry chain, adjacent values, or
+  @{thm elem_lt_below_t}.  The floor is the strictly-local residual to which the
+  R2 crux is now reduced.\<close>
+
+lemma dom_transfer_R2_from_floor:
+  fixes A :: array and n s' t' m j :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some sA"
+      and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and n_pos: "0 < n"
+      and t_pos: "0 < t"
+      and b0En: "b0_start (A[n]) = Some s'"
+      and mplEn: "max_parent_level (A[n]) = Some t'"
+      and R2: "s' < l0 A"
+      and m_lt: "m < t'"
+      and j_pos: "0 < j" and j_lt: "j < l1 (A[n])"
+      and t'_eq: "t' = Suc t''"
+      and floor: "\<And>q m'. s' < q \<Longrightarrow> q < sA \<Longrightarrow> 0 < m' \<Longrightarrow> m' \<le> t''
+                    \<Longrightarrow> (\<exists>p. m_parent A m' q = Some p \<and> s' \<le> p)"
+  shows "elem (A[n]) s' m < elem (A[n]) (s' + j) m"
+  by (rule dom_transfer_R2_from_INTV[OF A_BMS A_ne b0 mp l1_eq n_pos t_pos
+        b0En mplEn R2 m_lt j_pos j_lt t'_eq INTV_from_floor[OF floor]])
+
 end
