@@ -11611,57 +11611,100 @@ text \<open>\<^bold>\<open>Ascending one-step / atomic bump-chain crux (shared b
   \<open>321246\<close> bumped instances (\<open>verify/probe_onestep.py\<close>,
   \<open>verify/probe_onestep_all.py\<close>).\<close>
 
-lemma onestep_anc_when_ascends:
-  fixes A :: array and n c :: nat
-  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
-      and b0: "b0_start A = Some s"
-      and asc: "ascends A j k"
-      and j_lt: "j < l1 A"
-      and c_pos: "0 < c"
-      and c_le: "c \<le> n"
-  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A (c - 1) j)"
-proof (cases "l1 A = 1")
-  case True
-  \<comment> \<open>\<open>l1 A = 1\<close>: the source column index \<open>j < l1 A = 1\<close> forces \<open>j = 0\<close>,
-      so this is the consecutive block-start one-step ancestry, discharged by
-      @{thm consecutive_block_start_parent} (the direct \<open>k\<close>-parent) followed by
-      @{thm m_anc_via_parent_some}.\<close>
-  have j0: "j = 0" using j_lt True by simp
-  have n_pos: "0 < n" using c_pos c_le by simp
-  \<comment> \<open>Extract \<open>max_parent_level A = Some t\<close> and \<open>k < t\<close> from \<open>ascends A j k\<close>.\<close>
-  obtain t where mp: "max_parent_level A = Some t"
-    using asc unfolding ascends_def using b0
-    by (cases "max_parent_level A") auto
-  have k_lt_t: "k < t"
-    using asc unfolding ascends_def using b0 mp by simp
-  \<comment> \<open>\<open>keep\<close> bound: \<open>k < t \<le> keep_of (\<dots>)\<close>.\<close>
-  have keep_ge_t: "t \<le> keep_of (G_block A @ Bs_concat A n)"
-    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
-  have keep: "k < keep_of (G_block A @ Bs_concat A n)"
-    using k_lt_t keep_ge_t by linarith
-  \<comment> \<open>\<open>col\<close> bound: \<open>k < t < height A = length (A ! s)\<close>.\<close>
-  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
-  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
-  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
-  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
-  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
-  have len_As: "length (A ! s) = height A"
-    using length_col_arr[OF is_arr A_ne s_lt_arr] .
-  have col: "k < length (A ! s)" using k_lt_t t_lt_H len_As by simp
-  \<comment> \<open>The direct consecutive block-start parent step, then one-step ancestry.\<close>
-  have par: "m_parent (A[n]) k (idx_B_in_expansion A c 0)
-           = Some (idx_B_in_expansion A (c - 1) 0)"
-    using consecutive_block_start_parent[OF A_BMS A_ne b0 mp True c_pos c_le
-            k_lt_t keep col] .
-  have "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A (c - 1) 0)"
-    using m_anc_via_parent_some[OF par] by simp
-  thus ?thesis using j0 by simp
-next
-  case False
-  \<comment> \<open>\<open>l1 A > 1\<close>: the \<open>k\<close>-parent is not directly \<open>idx_B(c-1,j)\<close>; the ancestry is
-      reached via a chain of length up to \<open>lE\<close> (probe
-      \<open>verify/probe_onestep_parent_structure.py\<close>).  Open residual.\<close>
-  show ?thesis sorry
+text \<open>\<^bold>\<open>Build a level-\<open>Suc m'\<close> ancestor from stratified domination (sorry-free).\<close>
+  Ported from the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>le1_build\<close> /
+  \<open>m_5_1_parent_exists_4\<close>): if the candidate \<open>j0\<close> is already a level-\<open>m'\<close>
+  ancestor of \<open>j1\<close> and strictly dominates, \<^emph>\<open>at level \<open>Suc m'\<close>\<close>, every
+  level-\<open>m'\<close> ancestor of \<open>j1\<close> strictly above it (the \<^bold>\<open>stratified\<close>
+  domination — over the \<open>m'\<close>-ancestor chain only, \<^emph>\<open>not\<close> the raw interval),
+  then \<open>j0\<close> is a level-\<open>Suc m'\<close> ancestor of \<open>j1\<close>.  The \<open>(Suc m')\<close>-parent
+  chain is followed by \<^bold>\<open>strong induction on the endpoint \<open>j1\<close>\<close>: \<open>j0\<close> is a
+  candidate (smaller value via \<open>dom_top\<close>, \<open>m'\<close>-ancestry via \<open>anc_low\<close>), so the
+  parent \<open>p\<close> satisfies \<open>j0 \<le> p < j1\<close> (@{thm m_parent_ge_candidate_Suc}); if
+  \<open>p = j0\<close> we are done, else \<open>j0\<close> is an \<open>m'\<close>-ancestor of \<open>p\<close>
+  (@{thm m_anc_below_ancestor_transfer}) and the stratified domination
+  restricts to \<open>p\<close>'s range (@{thm m_ancestor_trans}), so the induction
+  hypothesis applies at \<open>p < j1\<close>.  This is the BMS analogue of the PSS
+  higher-row ancestry build — the \<^emph>\<open>correct\<close> (stratified) form of the
+  ancestry-from-domination engine, avoiding the raw-interval domination that
+  \<open>elem_lt_below_t\<close> would require.\<close>
+
+lemma m_anc_build_Suc:
+  fixes A :: array and m' j0 :: nat
+  shows "m_ancestor A m' j1 j0 \<Longrightarrow> j0 < j1
+       \<Longrightarrow> elem A j0 (Suc m') < elem A j1 (Suc m')
+       \<Longrightarrow> (\<And>j. j0 < j \<Longrightarrow> j < j1 \<Longrightarrow> m_ancestor A m' j1 j
+              \<Longrightarrow> elem A j0 (Suc m') < elem A j (Suc m'))
+       \<Longrightarrow> m_ancestor A (Suc m') j1 j0"
+proof (induct j1 rule: less_induct)
+  case (less j1)
+  obtain p where mp_p: "m_parent A (Suc m') j1 = Some p" and j0_le_p: "j0 \<le> p"
+    using m_parent_ge_candidate_Suc[OF less.prems(2) less.prems(3) less.prems(1)] by blast
+  have p_lt: "p < j1" using m_parent_lt[OF mp_p] .
+  have anc_low_p: "m_ancestor A m' j1 p" using m_parent_Suc_implies_m_ancestor[OF mp_p] .
+  show ?case
+  proof (cases "p = j0")
+    case True thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+  next
+    case False
+    with j0_le_p have j0_lt_p: "j0 < p" by simp
+    have anc_low_j0p: "m_ancestor A m' p j0"
+      using m_anc_below_ancestor_transfer[OF anc_low_p j0_lt_p] less.prems(1) by blast
+    have dom_top_p: "elem A j0 (Suc m') < elem A p (Suc m')"
+      using less.prems(4)[OF j0_lt_p p_lt anc_low_p] .
+    have dom_mid_p: "\<And>j. j0 < j \<Longrightarrow> j < p \<Longrightarrow> m_ancestor A m' p j
+                       \<Longrightarrow> elem A j0 (Suc m') < elem A j (Suc m')"
+    proof -
+      fix j assume a1: "j0 < j" and a2: "j < p" and a3: "m_ancestor A m' p j"
+      have "m_ancestor A m' j1 j" using m_ancestor_trans[OF anc_low_p a3] .
+      thus "elem A j0 (Suc m') < elem A j (Suc m')"
+        using less.prems(4)[OF a1] a2 p_lt by simp
+    qed
+    have "m_ancestor A (Suc m') p j0"
+      using less.hyps[OF p_lt anc_low_j0p j0_lt_p dom_top_p dom_mid_p] .
+    thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+  qed
+qed
+
+text \<open>\<^bold>\<open>Stratified ancestor tree at level \<open>Suc m'\<close> (sorry-free).\<close>  Ported from
+  the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>m_5_1_ancestor_tree_2\<close>): if \<open>j0\<close> is a
+  level-\<open>Suc m'\<close> ancestor of \<open>j1\<close>, then it is a level-\<open>Suc m'\<close> ancestor of
+  \<^emph>\<open>every\<close> intermediate \<open>j\<close> that is itself a level-\<open>m'\<close> ancestor of \<open>j1\<close>
+  (the \<^bold>\<open>stratified\<close> interval-density — restricted to the \<open>m'\<close>-ancestor
+  chain, \<^emph>\<open>not\<close> the raw interval, which is exactly what makes it provable
+  without raw domination).  The \<open>Suc m'\<close>-domination of \<open>j0\<close> over the
+  \<open>m'\<close>-ancestors of \<open>j1\<close> comes from @{thm m_anc_Suc_imp_strict_min_on_anc}
+  (consequence of \<open>j0\<close> being a \<open>Suc m'\<close>-ancestor), and the build is fed to
+  @{thm m_anc_build_Suc} at endpoint \<open>j\<close>.\<close>
+
+lemma m_ancestor_tree_Suc:
+  fixes A :: array and m' j0 j j1 :: nat
+  assumes hi: "m_ancestor A (Suc m') j1 j0"
+      and j0_lt_j: "j0 < j"
+      and lo_j: "m_ancestor A m' j1 j"
+  shows "m_ancestor A (Suc m') j j0"
+proof -
+  have j_lt_j1: "j < j1" using m_ancestor_target_lt[OF lo_j] .
+  have dom_all: "\<forall>c. j0 < c \<and> c < j1 \<and> m_ancestor A m' j1 c
+                     \<longrightarrow> elem A j0 (Suc m') < elem A c (Suc m')"
+    using m_anc_Suc_imp_strict_min_on_anc[OF hi] .
+  \<comment> \<open>\<open>j0\<close> is a level-\<open>m'\<close> ancestor of \<open>j\<close>.\<close>
+  have anc_low_j1: "m_ancestor A m' j1 j0" using m_ancestor_mono[OF _ hi] by simp
+  have anc_low_j: "m_ancestor A m' j j0"
+    using m_anc_below_ancestor_transfer[OF lo_j j0_lt_j] anc_low_j1 by blast
+  \<comment> \<open>top domination at endpoint \<open>j\<close>.\<close>
+  have dom_top: "elem A j0 (Suc m') < elem A j (Suc m')"
+    using dom_all j0_lt_j j_lt_j1 lo_j by blast
+  \<comment> \<open>stratified domination over the \<open>m'\<close>-ancestors of \<open>j\<close>.\<close>
+  have dom_mid: "\<And>c. j0 < c \<Longrightarrow> c < j \<Longrightarrow> m_ancestor A m' j c
+                    \<Longrightarrow> elem A j0 (Suc m') < elem A c (Suc m')"
+  proof -
+    fix c assume c1: "j0 < c" and c2: "c < j" and c3: "m_ancestor A m' j c"
+    have "m_ancestor A m' j1 c" using m_ancestor_trans[OF lo_j c3] .
+    thus "elem A j0 (Suc m') < elem A c (Suc m')"
+      using dom_all c1 c2 j_lt_j1 by simp
+  qed
+  show ?thesis using m_anc_build_Suc[OF anc_low_j j0_lt_j dom_top dom_mid] .
 qed
 
 text \<open>\<^bold>\<open>The interval-domination residual of \<open>onestep_anc_when_ascends\<close> (sorry-free,
@@ -11893,6 +11936,203 @@ proof -
     show ?thesis using lhs_val rhs_expand key by simp
   qed
 qed
+
+lemma ascends_level_downward:
+  fixes A :: array and j k k' :: nat
+  assumes asc: "ascends A j k" and le: "k' \<le> k"
+  shows "ascends A j k'"
+proof -
+  obtain s where b0: "b0_start A = Some s"
+    using asc unfolding ascends_def by (cases "b0_start A") auto
+  obtain t where mp: "max_parent_level A = Some t"
+    using asc unfolding ascends_def using b0 by (cases "max_parent_level A") auto
+  have k_lt_t: "k < t" using asc unfolding ascends_def using b0 mp by simp
+  have nsa_k: "non_strict_ancestor A k (s + j) s"
+    using asc unfolding ascends_def using b0 mp by simp
+  have nsa_k': "non_strict_ancestor A k' (s + j) s"
+    using nsa_k unfolding non_strict_ancestor_def
+    using m_ancestor_mono[OF le] by blast
+  show ?thesis unfolding ascends_def using b0 mp k_lt_t le nsa_k' by simp
+qed
+
+lemma onestep_anc_when_ascends_mono:
+  fixes A :: array and n c :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and asc: "ascends A j k"
+      and j_lt: "j < l1 A"
+      and c_pos: "0 < c"
+      and c_le: "c \<le> n"
+      and mono_A: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> k
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A (c - 1) j)"
+proof (cases "l1 A = 1")
+  case True
+  \<comment> \<open>\<open>l1 A = 1\<close>: the source column index \<open>j < l1 A = 1\<close> forces \<open>j = 0\<close>,
+      so this is the consecutive block-start one-step ancestry, discharged by
+      @{thm consecutive_block_start_parent} (the direct \<open>k\<close>-parent) followed by
+      @{thm m_anc_via_parent_some}.\<close>
+  have j0: "j = 0" using j_lt True by simp
+  have n_pos: "0 < n" using c_pos c_le by simp
+  \<comment> \<open>Extract \<open>max_parent_level A = Some t\<close> and \<open>k < t\<close> from \<open>ascends A j k\<close>.\<close>
+  obtain t where mp: "max_parent_level A = Some t"
+    using asc unfolding ascends_def using b0
+    by (cases "max_parent_level A") auto
+  have k_lt_t: "k < t"
+    using asc unfolding ascends_def using b0 mp by simp
+  \<comment> \<open>\<open>keep\<close> bound: \<open>k < t \<le> keep_of (\<dots>)\<close>.\<close>
+  have keep_ge_t: "t \<le> keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
+  have keep: "k < keep_of (G_block A @ Bs_concat A n)"
+    using k_lt_t keep_ge_t by linarith
+  \<comment> \<open>\<open>col\<close> bound: \<open>k < t < height A = length (A ! s)\<close>.\<close>
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
+  have len_As: "length (A ! s) = height A"
+    using length_col_arr[OF is_arr A_ne s_lt_arr] .
+  have col: "k < length (A ! s)" using k_lt_t t_lt_H len_As by simp
+  \<comment> \<open>The direct consecutive block-start parent step, then one-step ancestry.\<close>
+  have par: "m_parent (A[n]) k (idx_B_in_expansion A c 0)
+           = Some (idx_B_in_expansion A (c - 1) 0)"
+    using consecutive_block_start_parent[OF A_BMS A_ne b0 mp True c_pos c_le
+            k_lt_t keep col] .
+  have "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A (c - 1) 0)"
+    using m_anc_via_parent_some[OF par] by simp
+  thus ?thesis using j0 by simp
+next
+  case False
+  \<comment> \<open>\<open>l1 A > 1\<close>: value-based level induction.  The within-block parent never
+      crosses to block \<open>c-1\<close>; the bumped copy \<open>idx_B(c-1,j)\<close> dominates, at every
+      level \<open>kk \<le> k\<close>, the whole half-open interval \<open>(idx_B(c-1,j), idx_B(c,j)]\<close>
+      (@{thm onestep_icm_interval_dom}).  Level induction via
+      @{thm m_anc_build_Suc} / @{thm m_anc_zero_strict_min}.\<close>
+  define j1 where "j1 = idx_B_in_expansion A c j"
+  define j0 where "j0 = idx_B_in_expansion A (c - 1) j"
+  obtain t where mp: "max_parent_level A = Some t"
+    using asc unfolding ascends_def using b0
+    by (cases "max_parent_level A") auto
+  have k_lt_t: "k < t"
+    using asc unfolding ascends_def using b0 mp by simp
+  have n_pos: "0 < n" using c_pos c_le by simp
+  have keep_ge_t: "t \<le> keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
+  have keep: "k < keep_of (G_block A @ Bs_concat A n)"
+    using k_lt_t keep_ge_t by linarith
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have l1_pos: "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne b0] s_lt_last by linarith
+  have c_suc: "c = Suc (c - 1)" using c_pos by simp
+  have j0_lt_j1: "j0 < j1"
+    unfolding j0_def j1_def idx_B_in_expansion_def
+    using c_suc l1_pos by simp
+  have idom: "\<And>kk p. kk \<le> k \<Longrightarrow> j0 < p \<Longrightarrow> p \<le> j1
+                \<Longrightarrow> elem (A[n]) j0 kk < elem (A[n]) p kk"
+  proof -
+    fix kk p assume kk_le: "kk \<le> k" and p_lo: "j0 < p" and p_hi: "p \<le> j1"
+    have asc_kk: "ascends A j kk" using ascends_level_downward[OF asc kk_le] .
+    have keep_kk: "kk < keep_of (G_block A @ Bs_concat A n)" using kk_le keep by linarith
+    have mono_kk: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> kk
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+      using mono_A kk_le by simp
+    show "elem (A[n]) j0 kk < elem (A[n]) p kk"
+      using onestep_icm_interval_dom[OF A_BMS A_ne b0 mp asc_kk j_lt c_pos c_le
+              _ _ keep_kk mono_kk] p_lo p_hi
+      unfolding j0_def j1_def by simp
+  qed
+  have lvl: "\<And>kk. kk \<le> k \<Longrightarrow> m_ancestor (A[n]) kk j1 j0"
+  proof -
+    fix kk assume "kk \<le> k"
+    thus "m_ancestor (A[n]) kk j1 j0"
+    proof (induct kk)
+      case 0
+      have hyp0: "\<forall>c. j0 < c \<and> c \<le> j1 \<longrightarrow> elem (A[n]) j0 0 < elem (A[n]) c 0"
+        using idom[of 0] by auto
+      show ?case
+        using m_anc_zero_strict_min[OF j0_lt_j1 hyp0] .
+    next
+      case (Suc kk)
+      have kk_le: "kk \<le> k" using Suc.prems by simp
+      have IH: "m_ancestor (A[n]) kk j1 j0" using Suc.hyps[OF kk_le] .
+      have dom_top: "elem (A[n]) j0 (Suc kk) < elem (A[n]) j1 (Suc kk)"
+        using idom[OF Suc.prems j0_lt_j1 order.refl] .
+      have dom_mid: "\<And>J. j0 < J \<Longrightarrow> J < j1 \<Longrightarrow> m_ancestor (A[n]) kk j1 J
+                       \<Longrightarrow> elem (A[n]) j0 (Suc kk) < elem (A[n]) J (Suc kk)"
+        using idom[OF Suc.prems] by simp
+      show ?case
+        using m_anc_build_Suc[OF IH j0_lt_j1 dom_top dom_mid] .
+    qed
+  qed
+  show ?thesis
+    using lvl[OF order.refl] unfolding j0_def j1_def .
+qed
+
+text \<open>\<^bold>\<open>Clause-(i) one-step interface (boundary residual confined to \<open>l\<^sub>1 > 1\<close>).\<close>
+  The clause-(i) ascending sub-lemmas invoke the atomic one-step ancestry at the
+  full simultaneous-induction level \<open>k < t\<close>, which can reach the open boundary
+  \<open>k = t-1\<close>.  There the predecessor adjacent-value monotonicity \<open>mono_A\<close> needed
+  by \<open>onestep_anc_when_ascends_mono\<close> is the one level \<open>adjacent_value_monotone\<close>
+  does \<^emph>\<open>not\<close> cover (proven only for \<open>m < t-1\<close>).  This interface keeps the
+  value core @{thm onestep_anc_when_ascends_mono} sorry-free and isolates the single
+  remaining residual to \<open>l\<^sub>1 A > 1\<close>; the \<open>l\<^sub>1 A = 1\<close> case (the only one the R2 /
+  clause-(i) \<open>j = 0\<close> machinery requires) is discharged in full.\<close>
+
+lemma onestep_anc_when_ascends:
+  fixes A :: array and n c :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and asc: "ascends A j k"
+      and j_lt: "j < l1 A"
+      and c_pos: "0 < c"
+      and c_le: "c \<le> n"
+  shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A (c - 1) j)"
+proof (cases "l1 A = 1")
+  case True
+  \<comment> \<open>\<open>l1 A = 1\<close>: the source column index \<open>j < l1 A = 1\<close> forces \<open>j = 0\<close>,
+      so this is the consecutive block-start one-step ancestry, discharged by
+      @{thm consecutive_block_start_parent} (the direct \<open>k\<close>-parent) followed by
+      @{thm m_anc_via_parent_some}.  Needs no \<open>mono_A\<close>.\<close>
+  have j0: "j = 0" using j_lt True by simp
+  have n_pos: "0 < n" using c_pos c_le by simp
+  obtain t where mp: "max_parent_level A = Some t"
+    using asc unfolding ascends_def using b0
+    by (cases "max_parent_level A") auto
+  have k_lt_t: "k < t"
+    using asc unfolding ascends_def using b0 mp by simp
+  have keep_ge_t: "t \<le> keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
+  have keep: "k < keep_of (G_block A @ Bs_concat A n)"
+    using k_lt_t keep_ge_t by linarith
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
+  have len_As: "length (A ! s) = height A"
+    using length_col_arr[OF is_arr A_ne s_lt_arr] .
+  have col: "k < length (A ! s)" using k_lt_t t_lt_H len_As by simp
+  have par: "m_parent (A[n]) k (idx_B_in_expansion A c 0)
+           = Some (idx_B_in_expansion A (c - 1) 0)"
+    using consecutive_block_start_parent[OF A_BMS A_ne b0 mp True c_pos c_le
+            k_lt_t keep col] .
+  have "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A (c - 1) 0)"
+    using m_anc_via_parent_some[OF par] by simp
+  thus ?thesis using j0 by simp
+next
+  case False
+  \<comment> \<open>\<open>l\<^sub>1 A > 1\<close>: the value core \<open>onestep_anc_when_ascends_mono\<close> closes
+      this from \<open>mono_A\<close>; the only residual is supplying \<open>mono_A\<close> at the boundary
+      \<open>k = t-1\<close>, where \<open>adjacent_value_monotone\<close> does not reach.  Isolated
+      here as the single labelled \<open>sorry\<close>.\<close>
+  have mono_res: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> k
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+    sorry
+  show ?thesis
+    by (rule onestep_anc_when_ascends_mono[OF A_BMS A_ne b0 asc j_lt c_pos c_le mono_res])
+qed
+
+
 
 lemma lemma_2_5_i_clause_step_forward_case_ascends:
   \<comment> \<open>CASE (A): source column \<open>j\<close> ascends at level \<open>k\<close>.  The whole block-copy
@@ -12253,6 +12493,8 @@ lemma block_start_anc_zero_genl1:
       and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
       and c_pos: "0 < c" and c_le: "c \<le> n"
       and k_lt_t: "k < t"
+      and mono_A: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> k
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A 0 0)"
 proof -
   have s_lt: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
@@ -12261,7 +12503,7 @@ proof -
     unfolding ascends_def non_strict_ancestor_def by (simp add: b0 mp k_lt_t)
   have onestep: "\<And>c'. 0 < c' \<Longrightarrow> c' \<le> n \<Longrightarrow>
        m_ancestor (A[n]) k (idx_B_in_expansion A c' 0) (idx_B_in_expansion A (c' - 1) 0)"
-    using onestep_anc_when_ascends[OF A_BMS A_ne b0 asc l1_pos] by blast
+    using onestep_anc_when_ascends_mono[OF A_BMS A_ne b0 asc l1_pos _ _ mono_A] by blast
   show ?thesis by (rule block_copy_anc_from_onestep[OF onestep c_pos c_le])
 qed
 
@@ -12285,12 +12527,14 @@ lemma badroot_block_anc_zero:
       and keep: "k < keep_of (G_block A @ Bs_concat A n)"
       and c_le: "c \<le> n" and j_lt: "j < l1 A"
       and nz: "0 < c \<or> 0 < j"
+      and mono_A: "\<And>d m'. s < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> k
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
   shows "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A 0 0)"
 proof (cases "j = 0")
   case True
   hence c_pos: "0 < c" using nz by simp
   have "m_ancestor (A[n]) k (idx_B_in_expansion A c 0) (idx_B_in_expansion A 0 0)"
-    by (rule block_start_anc_zero_genl1[OF A_BMS A_ne b0 mp c_pos c_le k_lt_t])
+    by (rule block_start_anc_zero_genl1[OF A_BMS A_ne b0 mp c_pos c_le k_lt_t mono_A])
   thus ?thesis using True by simp
 next
   case False
@@ -12316,7 +12560,7 @@ next
     hence c_pos: "0 < c" by simp
     have onestep: "\<And>c'. 0 < c' \<Longrightarrow> c' \<le> n \<Longrightarrow>
          m_ancestor (A[n]) k (idx_B_in_expansion A c' j) (idx_B_in_expansion A (c' - 1) j)"
-      using onestep_anc_when_ascends[OF A_BMS A_ne b0 ascj j_lt] by blast
+      using onestep_anc_when_ascends_mono[OF A_BMS A_ne b0 ascj j_lt _ _ mono_A] by blast
     have bc: "m_ancestor (A[n]) k (idx_B_in_expansion A c j) (idx_B_in_expansion A 0 j)"
       by (rule block_copy_anc_from_onestep[OF onestep c_pos c_le])
     show ?thesis by (rule m_ancestor_trans[OF bc wb0])
@@ -12345,6 +12589,8 @@ lemma R1_gprefix_anc_to_old:
       and sE_lt: "sE < l0 A + Suc n * l1 A"
       and ancE: "m_ancestor (A[n]) m sE q"
       and q_lt: "q < sA"
+      and mono_A: "\<And>d m'. sA < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> m
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
   shows "m_ancestor A m sA q"
 proof -
   have s_lt_last: "sA < last_col_idx A" by (rule b0_start_lt[OF b0A A_ne])
@@ -12377,7 +12623,7 @@ proof -
       thus ?thesis using r_eq by (cases "c = 0") auto
     qed
     have S1: "m_ancestor (A[n]) m sE (idx_B_in_expansion A 0 0)"
-      using badroot_block_anc_zero[OF A_BMS A_ne b0A mpA m_lt_tA asc keep c_le j_lt nz] sE_eq
+      using badroot_block_anc_zero[OF A_BMS A_ne b0A mpA m_lt_tA asc keep c_le j_lt nz mono_A] sE_eq
       by simp
     have S1': "m_ancestor (A[n]) m sE sA" using S1 idx00 by simp
     show ?thesis using m_anc_below_ancestor_transfer[OF S1' q_lt] ancE by simp
@@ -12495,8 +12741,16 @@ next
       using A_ne by (simp add: arr_len_expansion_l01 l0_def l1_def)
     finally show ?thesis .
   qed
+  have mono_A_R1: "\<And>d m'. sA < d \<Longrightarrow> d \<le> last_col_idx A \<Longrightarrow> m' \<le> m
+                     \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+  proof -
+    fix d m' assume dlo: "sA < d" and dhi: "d \<le> last_col_idx A" and m'le: "m' \<le> m"
+    have m'_lt: "m' < tA - 1" using m'le m_lt by simp
+    show "elem A (d - 1) m' < elem A d m'"
+      using IH b0A mpA m'_lt dlo dhi by blast
+  qed
   have qancA: "m_ancestor A m sA q"
-    by (rule R1_gprefix_anc_to_old[OF A_BMS A_ne b0A mpA m_lt_tA asc keep R1 sE_lt ancE q_lt_sA])
+    by (rule R1_gprefix_anc_to_old[OF A_BMS A_ne b0A mpA m_lt_tA asc keep R1 sE_lt ancE q_lt_sA mono_A_R1])
   have c_le_CA: "c \<le> last_col_idx A" using c_le_sA s_lt_last by linarith
   have "elem A (c - 1) m < elem A c m"
     using IH b0A mpA m_lt qancA q_lt c_le_CA by blast
@@ -14752,101 +15006,6 @@ qed
 
 
 
-text \<open>\<^bold>\<open>Build a level-\<open>Suc m'\<close> ancestor from stratified domination (sorry-free).\<close>
-  Ported from the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>le1_build\<close> /
-  \<open>m_5_1_parent_exists_4\<close>): if the candidate \<open>j0\<close> is already a level-\<open>m'\<close>
-  ancestor of \<open>j1\<close> and strictly dominates, \<^emph>\<open>at level \<open>Suc m'\<close>\<close>, every
-  level-\<open>m'\<close> ancestor of \<open>j1\<close> strictly above it (the \<^bold>\<open>stratified\<close>
-  domination — over the \<open>m'\<close>-ancestor chain only, \<^emph>\<open>not\<close> the raw interval),
-  then \<open>j0\<close> is a level-\<open>Suc m'\<close> ancestor of \<open>j1\<close>.  The \<open>(Suc m')\<close>-parent
-  chain is followed by \<^bold>\<open>strong induction on the endpoint \<open>j1\<close>\<close>: \<open>j0\<close> is a
-  candidate (smaller value via \<open>dom_top\<close>, \<open>m'\<close>-ancestry via \<open>anc_low\<close>), so the
-  parent \<open>p\<close> satisfies \<open>j0 \<le> p < j1\<close> (@{thm m_parent_ge_candidate_Suc}); if
-  \<open>p = j0\<close> we are done, else \<open>j0\<close> is an \<open>m'\<close>-ancestor of \<open>p\<close>
-  (@{thm m_anc_below_ancestor_transfer}) and the stratified domination
-  restricts to \<open>p\<close>'s range (@{thm m_ancestor_trans}), so the induction
-  hypothesis applies at \<open>p < j1\<close>.  This is the BMS analogue of the PSS
-  higher-row ancestry build — the \<^emph>\<open>correct\<close> (stratified) form of the
-  ancestry-from-domination engine, avoiding the raw-interval domination that
-  @{thm elem_lt_below_t} would require.\<close>
-
-lemma m_anc_build_Suc:
-  fixes A :: array and m' j0 :: nat
-  shows "m_ancestor A m' j1 j0 \<Longrightarrow> j0 < j1
-       \<Longrightarrow> elem A j0 (Suc m') < elem A j1 (Suc m')
-       \<Longrightarrow> (\<And>j. j0 < j \<Longrightarrow> j < j1 \<Longrightarrow> m_ancestor A m' j1 j
-              \<Longrightarrow> elem A j0 (Suc m') < elem A j (Suc m'))
-       \<Longrightarrow> m_ancestor A (Suc m') j1 j0"
-proof (induct j1 rule: less_induct)
-  case (less j1)
-  obtain p where mp_p: "m_parent A (Suc m') j1 = Some p" and j0_le_p: "j0 \<le> p"
-    using m_parent_ge_candidate_Suc[OF less.prems(2) less.prems(3) less.prems(1)] by blast
-  have p_lt: "p < j1" using m_parent_lt[OF mp_p] .
-  have anc_low_p: "m_ancestor A m' j1 p" using m_parent_Suc_implies_m_ancestor[OF mp_p] .
-  show ?case
-  proof (cases "p = j0")
-    case True thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-  next
-    case False
-    with j0_le_p have j0_lt_p: "j0 < p" by simp
-    have anc_low_j0p: "m_ancestor A m' p j0"
-      using m_anc_below_ancestor_transfer[OF anc_low_p j0_lt_p] less.prems(1) by blast
-    have dom_top_p: "elem A j0 (Suc m') < elem A p (Suc m')"
-      using less.prems(4)[OF j0_lt_p p_lt anc_low_p] .
-    have dom_mid_p: "\<And>j. j0 < j \<Longrightarrow> j < p \<Longrightarrow> m_ancestor A m' p j
-                       \<Longrightarrow> elem A j0 (Suc m') < elem A j (Suc m')"
-    proof -
-      fix j assume a1: "j0 < j" and a2: "j < p" and a3: "m_ancestor A m' p j"
-      have "m_ancestor A m' j1 j" using m_ancestor_trans[OF anc_low_p a3] .
-      thus "elem A j0 (Suc m') < elem A j (Suc m')"
-        using less.prems(4)[OF a1] a2 p_lt by simp
-    qed
-    have "m_ancestor A (Suc m') p j0"
-      using less.hyps[OF p_lt anc_low_j0p j0_lt_p dom_top_p dom_mid_p] .
-    thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
-  qed
-qed
-
-text \<open>\<^bold>\<open>Stratified ancestor tree at level \<open>Suc m'\<close> (sorry-free).\<close>  Ported from
-  the 2-row PSS proof (\<open>../pss-proof\<close>, \<open>m_5_1_ancestor_tree_2\<close>): if \<open>j0\<close> is a
-  level-\<open>Suc m'\<close> ancestor of \<open>j1\<close>, then it is a level-\<open>Suc m'\<close> ancestor of
-  \<^emph>\<open>every\<close> intermediate \<open>j\<close> that is itself a level-\<open>m'\<close> ancestor of \<open>j1\<close>
-  (the \<^bold>\<open>stratified\<close> interval-density — restricted to the \<open>m'\<close>-ancestor
-  chain, \<^emph>\<open>not\<close> the raw interval, which is exactly what makes it provable
-  without raw domination).  The \<open>Suc m'\<close>-domination of \<open>j0\<close> over the
-  \<open>m'\<close>-ancestors of \<open>j1\<close> comes from @{thm m_anc_Suc_imp_strict_min_on_anc}
-  (consequence of \<open>j0\<close> being a \<open>Suc m'\<close>-ancestor), and the build is fed to
-  @{thm m_anc_build_Suc} at endpoint \<open>j\<close>.\<close>
-
-lemma m_ancestor_tree_Suc:
-  fixes A :: array and m' j0 j j1 :: nat
-  assumes hi: "m_ancestor A (Suc m') j1 j0"
-      and j0_lt_j: "j0 < j"
-      and lo_j: "m_ancestor A m' j1 j"
-  shows "m_ancestor A (Suc m') j j0"
-proof -
-  have j_lt_j1: "j < j1" using m_ancestor_target_lt[OF lo_j] .
-  have dom_all: "\<forall>c. j0 < c \<and> c < j1 \<and> m_ancestor A m' j1 c
-                     \<longrightarrow> elem A j0 (Suc m') < elem A c (Suc m')"
-    using m_anc_Suc_imp_strict_min_on_anc[OF hi] .
-  \<comment> \<open>\<open>j0\<close> is a level-\<open>m'\<close> ancestor of \<open>j\<close>.\<close>
-  have anc_low_j1: "m_ancestor A m' j1 j0" using m_ancestor_mono[OF _ hi] by simp
-  have anc_low_j: "m_ancestor A m' j j0"
-    using m_anc_below_ancestor_transfer[OF lo_j j0_lt_j] anc_low_j1 by blast
-  \<comment> \<open>top domination at endpoint \<open>j\<close>.\<close>
-  have dom_top: "elem A j0 (Suc m') < elem A j (Suc m')"
-    using dom_all j0_lt_j j_lt_j1 lo_j by blast
-  \<comment> \<open>stratified domination over the \<open>m'\<close>-ancestors of \<open>j\<close>.\<close>
-  have dom_mid: "\<And>c. j0 < c \<Longrightarrow> c < j \<Longrightarrow> m_ancestor A m' j c
-                    \<Longrightarrow> elem A j0 (Suc m') < elem A c (Suc m')"
-  proof -
-    fix c assume c1: "j0 < c" and c2: "c < j" and c3: "m_ancestor A m' j c"
-    have "m_ancestor A m' j1 c" using m_ancestor_trans[OF lo_j c3] .
-    thus "elem A j0 (Suc m') < elem A c (Suc m')"
-      using dom_all c1 c2 j_lt_j1 by simp
-  qed
-  show ?thesis using m_anc_build_Suc[OF anc_low_j j0_lt_j dom_top dom_mid] .
-qed
 
 
 
