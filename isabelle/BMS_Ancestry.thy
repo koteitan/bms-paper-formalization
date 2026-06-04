@@ -7011,6 +7011,54 @@ proof -
 qed
 
 text \<open>
+  (L4', dual) The level-0 \<open>m\<close>-parent of \<open>s + j\<close> equals the maximal
+  block-0-local candidate when \<open>j\<close> ascends.  The \<open>m\<close>-parent \<open>p\<close> lies in
+  \<open>[s, s+j)\<close> (it is \<open>\<ge> s\<close> by @{thm m_parent_row0_ge_b0_start_when_ascends})
+  and is the LAST candidate over the full prefix \<open>[0, s+j)\<close>; since it is
+  \<open>\<ge> s\<close>, it is also the last candidate of the block-0-restricted filter over
+  \<open>[s, s+j)\<close>.  This makes the block-0-restricted nearest-smaller-left
+  computation agree with \<open>A\<close>'s global level-0 \<open>m\<close>-parent, closing the bridge
+  residual (tightening the prior \<open>\<ge> s\<close> bound to an equality).
+\<close>
+lemma m_parent_row0_ascends_eq_block0_last:
+  fixes A :: array
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+      and asc_j: "ascends A j 0"
+  shows "m_parent A 0 (s + j)
+       = Some (last (filter (\<lambda>c. elem A c 0 < elem A (s + j) 0) [s..<s + j]))"
+proof -
+  obtain p where mp_eq: "m_parent A 0 (s + j) = Some p" and p_ge: "s \<le> p"
+    using m_parent_row0_ge_b0_start_when_ascends[OF b0 mp t_pos j_lt j_pos asc_j]
+    by blast
+  have p_lt: "p < s + j" using m_parent_lt[OF mp_eq] .
+  have pv: "elem A p 0 < elem A (s + j) 0" using m_parent_elem_lt[OF mp_eq] .
+  let ?P = "\<lambda>c. elem A c 0 < elem A (s + j) 0"
+  have full_split: "[0..<s + j] = [0..<s] @ [s..<s + j]"
+    using upt_add_eq_append[OF le0, of s j] .
+  have p_eq_full: "p = last (filter ?P [0..<s + j])"
+  proof -
+    have c_mem: "p \<in> set (filter ?P [0..<s + j])"
+      using p_lt pv by simp
+    hence ne: "filter ?P [0..<s + j] \<noteq> []" by (cases "filter ?P [0..<s + j]") auto
+    show ?thesis using mp_eq ne by (simp add: Let_def)
+  qed
+  have p_mem_tail: "p \<in> set (filter ?P [s..<s + j])"
+    using p_ge p_lt pv by simp
+  hence tail_ne: "filter ?P [s..<s + j] \<noteq> []"
+    by (cases "filter ?P [s..<s + j]") auto
+  have filt_split: "filter ?P [0..<s + j]
+                  = filter ?P [0..<s] @ filter ?P [s..<s + j]"
+    using full_split by simp
+  have last_eq: "last (filter ?P [0..<s + j]) = last (filter ?P [s..<s + j])"
+    using filt_split tail_ne by simp
+  show ?thesis using mp_eq p_eq_full last_eq by simp
+qed
+
+text \<open>
   (L4-c) Strict row-0 block monotonicity for an ascending column.  If
   block-0 column \<open>j\<close> ascends at row 0, then its row-0 value in block
   \<open>c\<close> strictly increases with \<open>c\<close> (each block adds \<open>delta A 0 > 0\<close>).
