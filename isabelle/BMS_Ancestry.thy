@@ -10081,6 +10081,175 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>GAP B helper: \<open>A\<close>'s row-0 \<open>m\<close>-parent of a \<open>B\<^sub>0\<close> column lands in \<open>B\<^sub>0\<close>
+  when the \<open>B\<^sub>0\<close>-tail has a candidate (sorry-free).\<close>  If the filter over the
+  \<open>B\<^sub>0\<close>-tail \<open>[s..<s+j]\<close> below \<open>elem A (s+j) 0\<close> is non-empty, then the global
+  level-0 \<open>m\<close>-parent of \<open>s+j\<close> (the last candidate over \<open>[0..<s+j]\<close>) is exactly
+  the last \<open>B\<^sub>0\<close>-tail candidate.  Mirrors the tail-suffix argument of
+  @{thm m_parent_row0_ascends_eq_block0_last} but derives tail-membership from
+  the non-empty tail filter rather than from \<open>ascends\<close>; valid for any \<open>t\<close>.\<close>
+
+lemma m_parent_row0_eq_b0_tail_last_when_tail_ne:
+  fixes A :: array and s j :: nat
+  assumes tail_ne: "filter (\<lambda>c. elem A c 0 < elem A (s + j) 0) [s..<s + j] \<noteq> []"
+  shows "m_parent A 0 (s + j)
+       = Some (last (filter (\<lambda>c. elem A c 0 < elem A (s + j) 0) [s..<s + j]))"
+proof -
+  let ?P = "\<lambda>c. elem A c 0 < elem A (s + j) 0"
+  have full_split: "[0..<s + j] = [0..<s] @ [s..<s + j]"
+    using upt_add_eq_append[OF le0, of s j] .
+  have filt_split: "filter ?P [0..<s + j]
+                  = filter ?P [0..<s] @ filter ?P [s..<s + j]"
+    using full_split by simp
+  have full_ne: "filter ?P [0..<s + j] \<noteq> []"
+    using filt_split tail_ne by simp
+  have last_eq: "last (filter ?P [0..<s + j]) = last (filter ?P [s..<s + j])"
+    using filt_split tail_ne by simp
+  have mp_eq: "m_parent A 0 (s + j)
+             = (if filter ?P [0..<s + j] = [] then None
+                else Some (last (filter ?P [0..<s + j])))"
+    by (simp add: Let_def)
+  show ?thesis using mp_eq full_ne last_eq by simp
+qed
+
+text \<open>\<^bold>\<open>GAP B within-block step, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  When the
+  \<open>A[n]\<close> block-0 candidate list \<open>S\<close> of offset \<open>j\<close> is non-empty, the level-0
+  \<open>m\<close>-parent of \<open>idx_B (A,c,j)\<close> stays within block \<open>c\<close> at offset \<open>last S\<close>
+  (@{thm m_parent_AEn_zero_idx_B_within_block_when_t_zero}), and the \<open>Suc\<close>-step is
+  exactly \<open>A\<close>'s OWN row-0 invariant at \<open>s+j\<close>: the block-\<open>c\<close> value is verbatim
+  \<open>elem A (s+j) 0\<close> (\<open>t = 0 \<Rightarrow> \<not> ascends\<close>, @{thm elem_AEn_cross_block_when_not_ascends}),
+  and \<open>A\<close>'s row-0 \<open>m\<close>-parent of \<open>s+j\<close> is the \<open>B\<^sub>0\<close>-tail's last candidate \<open>s + last S\<close>
+  (@{thm m_parent_row0_eq_b0_tail_last_when_tail_ne}), whose block-\<open>c\<close> copy is again
+  verbatim.  So \<open>IHj\<close> (fed in) telescopes.\<close>
+
+lemma row0_recursive_AEn_idx_B_when_t_zero_within_block:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and c_le: "c \<le> n"
+      and j_lt: "j < l1 A"
+      and len_pos: "0 < length (A ! (s + j))"
+      and keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+      and S_ne: "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                            < elem (A[n]) (idx_B_in_expansion A 0 j) 0] \<noteq> []"
+      and IHj: "elem A (s + j) 0
+              = (case m_parent A 0 (s + j) of None \<Rightarrow> 0
+                 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) (idx_B_in_expansion A c j) 0
+       = (case m_parent (A[n]) 0 (idx_B_in_expansion A c j) of None \<Rightarrow> 0
+          | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  let ?S = "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                        < elem (A[n]) (idx_B_in_expansion A 0 j) 0]"
+  let ?ls = "last ?S"
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  \<comment> \<open>All \<open>B\<^sub>0\<close> columns have positive length (uniform height).\<close>
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+  proof -
+    have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have sj_lt_arr: "\<And>x. x < l1 A \<Longrightarrow> s + x < arr_len A"
+  proof -
+    fix x assume "x < l1 A"
+    hence "s + x < s + l1 A" by simp
+    also have "\<dots> = last_col_idx A" using l1_eq s_lt_last by simp
+    finally show "s + x < arr_len A" using last_lt_arr by linarith
+  qed
+  have H_pos: "0 < height A"
+  proof -
+    have "length (A ! (s + j)) = height A"
+      using length_col_arr[OF is_arr A_ne sj_lt_arr[OF j_lt]] .
+    thus ?thesis using len_pos by simp
+  qed
+  have all_len_pos: "\<And>x. x < l1 A \<Longrightarrow> 0 < length (A ! (s + x))"
+  proof -
+    fix x assume x_lt: "x < l1 A"
+    have "length (A ! (s + x)) = height A"
+      using length_col_arr[OF is_arr A_ne sj_lt_arr[OF x_lt]] .
+    thus "0 < length (A ! (s + x))" using H_pos by simp
+  qed
+  \<comment> \<open>Block-\<open>c\<close> value is verbatim \<open>elem A (s+j) 0\<close> (no ascension at \<open>t = 0\<close>).\<close>
+  have not_asc_j: "\<not> ascends A j 0"
+    unfolding ascends_def using b0 mp0 by simp
+  have vcj: "elem (A[n]) (idx_B_in_expansion A c j) 0 = elem A (s + j) 0"
+    using elem_AEn_cross_block_when_not_ascends
+            [OF A_BMS A_ne b0 not_asc_j c_le j_lt keep_pos len_pos]
+    unfolding elem_def by simp
+  \<comment> \<open>The within-block parent at offset \<open>last S\<close>.\<close>
+  have mp_within: "m_parent (A[n]) 0 (idx_B_in_expansion A c j)
+                 = Some (idx_B_in_expansion A c ?ls)"
+    using m_parent_AEn_zero_idx_B_within_block_when_t_zero
+            [OF A_BMS A_ne b0 mp0 c_le j_lt S_ne] .
+  have ls_in: "?ls \<in> set ?S" using last_in_set[OF S_ne] .
+  have ls_lt_j: "?ls < j" using ls_in by auto
+  have ls_lt_l1: "?ls < l1 A" using ls_lt_j j_lt by linarith
+  \<comment> \<open>\<open>A\<close>'s \<open>B\<^sub>0\<close>-tail filter equals \<open>S\<close> shifted by \<open>s\<close>; its last is \<open>s + last S\<close>.\<close>
+  let ?PA = "\<lambda>c'. elem A c' 0 < elem A (s + j) 0"
+  have tail_range: "[s..<s + j] = map (\<lambda>x. x + s) [0..<j]"
+    using map_add_upt[of s j] by (simp add: add.commute)
+  have valx0: "\<And>x. x < l1 A \<Longrightarrow>
+                 elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+  proof -
+    fix x assume x_lt: "x < l1 A"
+    have not_asc_x: "\<not> ascends A x 0"
+      unfolding ascends_def using b0 mp0 by simp
+    show "elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+      using elem_AEn_cross_block_when_not_ascends
+              [OF A_BMS A_ne b0 not_asc_x le0 x_lt keep_pos all_len_pos[OF x_lt]]
+      unfolding elem_def by simp
+  qed
+  have tail_filter: "filter ?PA [s..<s + j] = map (\<lambda>x. x + s) ?S"
+  proof -
+    have "filter ?PA [s..<s + j]
+        = map (\<lambda>x. x + s) (filter (\<lambda>x. ?PA (x + s)) [0..<j])"
+      using tail_range by (simp add: filter_map o_def)
+    also have "filter (\<lambda>x. ?PA (x + s)) [0..<j] = ?S"
+    proof (rule filter_cong[OF refl])
+      fix x assume "x \<in> set [0..<j]"
+      hence x_lt_j: "x < j" by simp
+      hence x_lt_l1: "x < l1 A" using j_lt by linarith
+      have ex: "elem A (x + s) 0 = elem (A[n]) (idx_B_in_expansion A 0 x) 0"
+        using valx0[OF x_lt_l1] by (simp add: add.commute)
+      have ej: "elem A (s + j) 0 = elem (A[n]) (idx_B_in_expansion A 0 j) 0"
+        using valx0[OF j_lt] by simp
+      show "?PA (x + s) \<longleftrightarrow> (elem (A[n]) (idx_B_in_expansion A 0 x) 0
+                              < elem (A[n]) (idx_B_in_expansion A 0 j) 0)"
+        using ex ej by simp
+    qed
+    finally show ?thesis .
+  qed
+  have tail_ne: "filter ?PA [s..<s + j] \<noteq> []" using tail_filter S_ne by simp
+  have last_tail: "last (filter ?PA [s..<s + j]) = ?ls + s"
+    using tail_filter S_ne by (simp add: last_map)
+  have mpA: "m_parent A 0 (s + j) = Some (?ls + s)"
+    using m_parent_row0_eq_b0_tail_last_when_tail_ne[OF tail_ne] last_tail by simp
+  \<comment> \<open>Value of the parent column \<open>s + last S\<close> equals block-\<open>c\<close> copy at \<open>last S\<close>.\<close>
+  have len_pos_ls: "0 < length (A ! (s + ?ls))"
+    using all_len_pos[OF ls_lt_l1] .
+  have not_asc_ls: "\<not> ascends A ?ls 0"
+    unfolding ascends_def using b0 mp0 by simp
+  have vcls: "elem (A[n]) (idx_B_in_expansion A c ?ls) 0 = elem A (s + ?ls) 0"
+    using elem_AEn_cross_block_when_not_ascends
+            [OF A_BMS A_ne b0 not_asc_ls c_le ls_lt_l1 keep_pos len_pos_ls]
+    unfolding elem_def by simp
+  \<comment> \<open>Telescope \<open>IHj\<close>.\<close>
+  have vA: "elem A (s + j) 0 = Suc (elem A (?ls + s) 0)"
+    using IHj mpA by (simp only: option.case)
+  have "elem (A[n]) (idx_B_in_expansion A c j) 0 = Suc (elem A (s + ?ls) 0)"
+    using vcj vA by (simp add: add.commute)
+  also have "\<dots> = Suc (elem (A[n]) (idx_B_in_expansion A c ?ls) 0)"
+    using vcls by simp
+  finally show ?thesis using mp_within by (simp only: option.case)
+qed
+
 text \<open>\<^bold>\<open>Ancestry-restriction to the \<open>G\<close>-prefix, modulo the level-descent residual
   \<open>(R\<hyphen>b)\<close> (sorry-free).\<close>  The \<open>G\<close>-block sub-case of the \<open>ancestor_monotone\<close>
   self-transfer reduces to: a \<open>G\<close>-prefix \<open>m\<close>-ancestor \<open>q'\<close> of the new bad root
