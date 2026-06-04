@@ -16092,6 +16092,192 @@ proof (intro allI impI)
   qed
 qed
 
+text \<open>\<^bold>\<open>The m-parent floor from the ON-CHAIN universality + endpoint ancestry
+  (sorry-free).\<close>  Discharges the strictly-local m-parent floor obligation from
+  two purely-ancestry inputs:
+    \<^item> \<^bold>\<open>\<open>endpt\<close>\<close> = the endpoint \<open>(Suc t'')\<close>-ancestry \<open>m_ancestor A (Suc t'') s\<^sub>A s'\<close>
+      (the P1 keystone @{thm P1_keystone_R2} / @{thm R2_endpoint_ancestor}), and
+    \<^item> \<^bold>\<open>\<open>onchain\<close>\<close> = the ON-CHAIN universality: every interior column
+      \<open>q \<in> (s', s\<^sub>A)\<close> is an \<open>(m'-1)\<close>-ancestor of \<open>s\<^sub>A\<close> at each level
+      \<open>0 < m' \<le> t''\<close> (\<open>verify/probe_R2_*\<close>: 29610/0 — in the R2 \<open>l\<^sub>1 A = 1\<close>
+      regime every interior column lies on the \<open>(m'-1)\<close>-chain of \<open>s\<^sub>A\<close>, so the
+      off-chain case is \<^emph>\<open>vacuous\<close>).
+  From these the floor follows with \<^bold>\<open>no\<close> adjacent-value machinery: writing
+  \<open>m' = Suc k\<close>, the Hunter kernel @{thm m_anc_Suc_imp_strict_min_on_anc} applied
+  to the endpoint ancestry \<open>m_ancestor A (Suc k) s\<^sub>A s'\<close> (monotone from \<open>endpt\<close>)
+  gives the strict domination \<open>elem A s' (Suc k) < elem A q (Suc k)\<close> for the
+  on-chain column \<open>q\<close> (\<^bold>\<open>conjunct A\<close>); chain linearity
+  @{thm m_ancestor_chain_linear} on the two \<open>k\<close>-ancestors \<open>q\<close>, \<open>s'\<close> of \<open>s\<^sub>A\<close>
+  (both supplied by \<open>onchain\<close> / monotone \<open>endpt\<close>) yields \<open>m_ancestor A k q s'\<close>
+  (\<^bold>\<open>conjunct B\<close>, ruling out the reverse by @{thm m_ancestor_target_lt}).  Hence
+  \<open>s'\<close> is itself a level-\<open>m'\<close> \<^emph>\<open>candidate\<close> of \<open>q\<close>, so it lies in the candidate
+  filter and \<open>last cands \<ge> s'\<close> (@{thm last_filter_upt_ge_member}) — the floor.
+  This isolates the entire R2 crux to the single ancestry invariant \<open>onchain\<close>
+  (no \<open>elem_lt_below_t\<close>, no global chain).\<close>
+
+lemma floor_from_ONCHAIN:
+  fixes A :: array and s' sA t'' :: nat
+  assumes endpt: "m_ancestor A (Suc t'') sA s'"
+      and onchain: "\<And>q m'. s' < q \<Longrightarrow> q < sA \<Longrightarrow> 0 < m' \<Longrightarrow> m' \<le> t''
+                      \<Longrightarrow> m_ancestor A (m' - 1) sA q"
+      and q_lo: "s' < q" and q_hi: "q < sA" and m_pos: "0 < m'" and m_le: "m' \<le> t''"
+  shows "\<exists>p. m_parent A m' q = Some p \<and> s' \<le> p"
+proof -
+  obtain k where m_eq: "m' = Suc k" using m_pos by (cases m') auto
+  have k_le: "k \<le> t''" using m_le m_eq by simp
+  \<comment> \<open>endpoint ancestry at levels \<open>Suc k\<close> and \<open>k\<close>\<close>
+  have anc_sA_Sk: "m_ancestor A (Suc k) sA s'"
+    using m_ancestor_mono[OF _ endpt, of "Suc k"] m_le m_eq by simp
+  have anc_sA_k: "m_ancestor A k sA s'"
+    using m_ancestor_mono[OF _ endpt, of k] k_le by simp
+  \<comment> \<open>ON-CHAIN: \<open>q\<close> is a \<open>k\<close>-ancestor of \<open>s\<^sub>A\<close> (off-chain vacuous)\<close>
+  have anc_sA_q: "m_ancestor A k sA q"
+    using onchain[OF q_lo q_hi m_pos m_le] m_eq by simp
+  \<comment> \<open>conjunct A: \<open>s'\<close> strictly dominates \<open>q\<close> at level \<open>Suc k\<close> (Hunter kernel)\<close>
+  have conjA: "elem A s' (Suc k) < elem A q (Suc k)"
+    using m_anc_Suc_imp_strict_min_on_anc[OF anc_sA_Sk] q_lo q_hi anc_sA_q by blast
+  \<comment> \<open>conjunct B: \<open>s'\<close> is a \<open>k\<close>-ancestor of \<open>q\<close> (chain linearity on \<open>s\<^sub>A\<close>)\<close>
+  have comp: "q = s' \<or> m_ancestor A k q s' \<or> m_ancestor A k s' q"
+    using m_ancestor_chain_linear anc_sA_q anc_sA_k by blast
+  have not_rev: "\<not> m_ancestor A k s' q"
+  proof
+    assume "m_ancestor A k s' q"
+    hence "q < s'" by (rule m_ancestor_target_lt)
+    thus False using q_lo by simp
+  qed
+  have conjB: "m_ancestor A k q s'" using comp not_rev q_lo by auto
+  \<comment> \<open>\<open>s'\<close> is a level-\<open>m'\<close> candidate of \<open>q\<close>, hence in the filter\<close>
+  let ?P = "\<lambda>j. elem A j (Suc k) < elem A q (Suc k) \<and> m_ancestor A k q j"
+  have s'_cand: "?P s'" using conjA conjB by blast
+  have s'_mem: "s' \<in> set [0..<q]" using q_lo by simp
+  have s'_in: "s' \<in> set (filter ?P [0..<q])"
+    using s'_mem s'_cand by (simp only: set_filter mem_Collect_eq)
+  have cands_ne: "filter ?P [0..<q] \<noteq> []"
+  proof
+    assume "filter ?P [0..<q] = []"
+    hence "set (filter ?P [0..<q]) = {}" by simp
+    thus False using s'_in by simp
+  qed
+  have mp_eq: "m_parent A (Suc k) q = Some (last (filter ?P [0..<q]))"
+    using cands_ne by (simp add: Let_def)
+  have ge: "s' \<le> last (filter ?P [0..<q])"
+    using last_filter_upt_ge_member[OF s'_in] .
+  show ?thesis using mp_eq ge m_eq by auto
+qed
+
+text \<open>\<^bold>\<open>\<open>ONCHAIN\<close> from a single-level \<open>stepdown\<close> chain (sorry-free).\<close>  The
+  \<open>ONCHAIN\<close> universality consumed by @{thm floor_from_ONCHAIN} — every interior
+  column \<open>q \<in> (s', s\<^sub>A)\<close> is an \<open>(m'-1)\<close>-ancestor of \<open>s\<^sub>A\<close> at every level
+  \<open>0 < m' \<le> t''\<close> — is reduced here to the \<^emph>\<open>single top level\<close> \<open>K = t'' - 1\<close>
+  via the @{thm m_ancestor_mono} level-descent: a \<open>K\<close>-ancestry implies the
+  \<open>(m'-1)\<close>-ancestry for every \<open>m'-1 \<le> K\<close>, i.e. \<open>m' \<le> t''\<close>.  And the
+  top-level \<open>K\<close>-ancestry \<open>m_ancestor A K s\<^sub>A q\<close> for all \<open>q \<in> [s', s\<^sub>A)\<close> follows
+  from the empirically-observed \<^bold>\<open>step-by-one\<close> chain
+  \<open>m_parent A K (Suc j) = Some j\<close> for \<open>s' \<le> j < s\<^sub>A\<close>
+  (\<open>verify/probe_top_chain.py\<close>: 10650 step + 3807 base, 0 violations — the
+  \<open>(t''-1)\<close>-parent chain of \<open>s\<^sub>A\<close> descends one column at a time down to \<open>s'\<close>)
+  by downward induction (@{thm m_anc_via_parent_some} + @{thm m_ancestor_trans}).
+  This isolates the \<^bold>\<open>entire\<close> R2 crux to the single staircase identity
+  \<open>stepdown\<close> at the top level \<open>t'' - 1\<close>.\<close>
+
+lemma manc_from_stepdown:
+  fixes A :: array and K lo hi :: nat
+  assumes step: "\<And>j. lo \<le> j \<Longrightarrow> j < hi \<Longrightarrow> m_parent A K (Suc j) = Some j"
+      and q_lo: "lo \<le> q" and q_hi: "q < hi"
+  shows "m_ancestor A K hi q"
+proof -
+  have "\<And>r. q < r \<Longrightarrow> r \<le> hi \<Longrightarrow> m_ancestor A K r q"
+  proof -
+    fix r assume "q < r" and "r \<le> hi"
+    thus "m_ancestor A K r q"
+    proof (induct r rule: less_induct)
+      case (less r)
+      obtain r' where r_eq: "r = Suc r'" using less.prems(1) by (cases r) auto
+      have r'_lo: "lo \<le> r'" using less.prems(1) q_lo r_eq by simp
+      have r'_hi: "r' < hi" using less.prems(2) r_eq by simp
+      have mp: "m_parent A K r = Some r'"
+        using step[OF r'_lo r'_hi] r_eq by simp
+      have anc_step: "m_ancestor A K r r'"
+        using m_anc_via_parent_some[OF mp, of r'] by simp
+      show ?case
+      proof (cases "r' = q")
+        case True thus ?thesis using anc_step by simp
+      next
+        case False
+        hence q_lt_r': "q < r'" using less.prems(1) r_eq by simp
+        have r'_le_hi: "r' \<le> hi" using r'_hi by simp
+        have "m_ancestor A K r' q"
+          using less.hyps[OF _ q_lt_r' r'_le_hi] r_eq by simp
+        thus ?thesis using m_ancestor_trans[OF anc_step] by simp
+      qed
+    qed
+  qed
+  thus ?thesis using q_lo q_hi by simp
+qed
+
+lemma ONCHAIN_from_top:
+  fixes A :: array and s' sA t'' :: nat
+  assumes top: "\<And>q. s' \<le> q \<Longrightarrow> q < sA \<Longrightarrow> m_ancestor A (t'' - 1) sA q"
+      and q_lo: "s' < q" and q_hi: "q < sA" and m_pos: "0 < m'" and m_le: "m' \<le> t''"
+  shows "m_ancestor A (m' - 1) sA q"
+proof -
+  have q_lo': "s' \<le> q" using q_lo by simp
+  have anc_top: "m_ancestor A (t'' - 1) sA q" using top[OF q_lo' q_hi] .
+  have le: "m' - 1 \<le> t'' - 1" using m_le by simp
+  show ?thesis using m_ancestor_mono[OF le anc_top] .
+qed
+
+text \<open>\<^bold>\<open>\<open>ONCHAIN\<close> from the adjacent-column \<open>MONO\<close> residual (sorry-free).\<close>  The
+  top-level staircase \<open>stepdown\<close> — and hence \<open>ONCHAIN\<close> in full — is reduced to
+  the single \<^bold>\<open>adjacent-column strict-increase\<close> fact
+    \<open>MONO:  s' < d \<le> s\<^sub>A \<Longrightarrow> m' < t'' \<Longrightarrow> elem A (d-1) m' < elem A d m'\<close>
+  (\<open>verify/probe_mono_adjacent.py\<close>: 40155/0 — in the R2 bad-root interval the
+  columns strictly increase one-by-one at every level below \<open>t''\<close>).  Given
+  \<open>MONO\<close>, the proven @{thm consecutive_parent_from_mono} yields the step-by-one
+  \<open>(t''-1)\<close>-parent chain \<open>m_parent A (t''-1) c = Some (c-1)\<close> for \<open>c \<in> (s', s\<^sub>A]\<close>
+  (instantiated at \<open>t := Suc t''\<close>, so \<open>m' < t - 1 = t''\<close> matches \<open>MONO\<close> and the
+  chain level \<open>t'' - 1 < t - 1\<close>), and @{thm m_anc_of_consecutive_chain} walks
+  that chain to the top-level ancestry \<open>m_ancestor A (t''-1) s\<^sub>A q\<close> for every
+  \<open>q \<in> [s', s\<^sub>A)\<close> — the \<open>top\<close> hypothesis of @{thm ONCHAIN_from_top}.  This makes
+  \<open>MONO\<close> the \<^bold>\<open>single\<close> residual BMS structural fact behind the entire R2 crux:
+  no global chain, no \<open>elem_lt_below_t\<close>, only adjacent-column monotonicity in
+  the bad-root interval.\<close>
+
+lemma top_from_mono:
+  fixes A :: array and s' sA t'' :: nat
+  assumes t_pos: "0 < t''"
+      and mono: "\<And>d m'. s' < d \<Longrightarrow> d \<le> sA \<Longrightarrow> m' < t''
+                    \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+      and q_lo: "s' \<le> q" and q_hi: "q < sA"
+  shows "m_ancestor A (t'' - 1) sA q"
+proof -
+  \<comment> \<open>step-by-one parent chain at level \<open>t'' - 1\<close> via @{thm consecutive_parent_from_mono}\<close>
+  have consec: "\<And>c. s' < c \<Longrightarrow> c \<le> sA \<Longrightarrow> m_parent A (t'' - 1) c = Some (c - 1)"
+  proof -
+    fix c assume cs: "s' < c" and cC: "c \<le> sA"
+    have lvl: "t'' - 1 < Suc t'' - 1" using t_pos by simp
+    have mono': "\<And>d m'. s' < d \<Longrightarrow> d \<le> sA \<Longrightarrow> m' < Suc t'' - 1
+                    \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+      using mono by simp
+    show "m_parent A (t'' - 1) c = Some (c - 1)"
+      using consecutive_parent_from_mono[OF mono' cs cC lvl] .
+  qed
+  show ?thesis using m_anc_of_consecutive_chain[OF consec q_lo q_hi le_refl] .
+qed
+
+lemma ONCHAIN_from_mono:
+  fixes A :: array and s' sA t'' :: nat
+  assumes t_pos: "0 < t''"
+      and mono: "\<And>d m'. s' < d \<Longrightarrow> d \<le> sA \<Longrightarrow> m' < t''
+                    \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+      and q_lo: "s' < q" and q_hi: "q < sA" and m_pos: "0 < m'" and m_le: "m' \<le> t''"
+  shows "m_ancestor A (m' - 1) sA q"
+proof -
+  have top: "\<And>r. s' \<le> r \<Longrightarrow> r < sA \<Longrightarrow> m_ancestor A (t'' - 1) sA r"
+    using top_from_mono[OF t_pos mono] by blast
+  show ?thesis using ONCHAIN_from_top[OF top q_lo q_hi m_pos m_le] .
+qed
+
 text \<open>\<^bold>\<open>The full \<open>floor \<Longrightarrow> R2\<close> chain (sorry-free).\<close>  Composes
   @{thm INTV_from_floor} with @{thm dom_transfer_R2_from_INTV}: the entire R2
   branch of \<open>DOM A \<Longrightarrow> DOM (A[n])\<close> is discharged from the single \<^emph>\<open>local\<close>
@@ -16119,5 +16305,69 @@ lemma dom_transfer_R2_from_floor:
   shows "elem (A[n]) s' m < elem (A[n]) (s' + j) m"
   by (rule dom_transfer_R2_from_INTV[OF A_BMS A_ne b0 mp l1_eq n_pos t_pos
         b0En mplEn R2 m_lt j_pos j_lt t'_eq INTV_from_floor[OF floor]])
+
+text \<open>\<^bold>\<open>The full \<open>MONO \<Longrightarrow> R2\<close> chain (sorry-free).\<close>  The capstone of the
+  interval-ancestry route: the entire R2 branch
+  \<open>elem (A[n]) s' m < elem (A[n]) (s'+j) m\<close> of \<open>DOM A \<Longrightarrow> DOM (A[n])\<close> is
+  discharged from the \<^bold>\<open>single\<close> adjacent-column strict-increase residual
+
+    \<open>MONO:  s' < d \<le> s\<^sub>A \<Longrightarrow> m' < t'' \<Longrightarrow> elem A (d-1) m' < elem A d m'\<close>
+
+  (\<open>verify/probe_mono_adjacent.py\<close>: 40155/0).  The chain is
+  \<open>MONO \<rightarrow>[ONCHAIN_from_mono] ONCHAIN \<rightarrow>[floor_from_ONCHAIN] floor
+  \<rightarrow>[INTV_from_floor / dom_transfer_R2_from_INTV] R2\<close>, every link sorry-free
+  and free of @{thm elem_lt_below_t} / the global interval-ancestry chain.  The
+  endpoint \<open>(Suc t'')\<close>-ancestry \<open>m_ancestor A (Suc t'') s\<^sub>A s'\<close> driving
+  @{thm floor_from_ONCHAIN} is the P1 keystone @{thm P1_keystone_R2} /
+  @{thm R2_endpoint_ancestor}.  \<^bold>\<open>Residual characterization.\<close>  \<open>MONO\<close> is exactly
+  @{thm adjacent_value_monotone} for the \<^emph>\<open>predecessor\<close> array \<open>A[n]\<close>
+  (bad root \<open>s'\<close>, level cutoff \<open>t'' = mpl (A[n]) - 1\<close>), transported to \<open>A\<close> by
+  the \<open>G\<close>-prefix value-agreement on \<open>(s', s\<^sub>A]\<close>
+  (\<open>verify/probe_mono_as_AEn.py\<close>: 40155/0 agree, \<open>s\<^sub>A \<le> last_col_idx (A[n])\<close>):
+  it is the adjacent-monotone BMS invariant at \<open>A[n]\<close>, i.e. precisely the
+  \<open>ancestor_monotone\<close> difficulty class supplied by Hunter's simultaneous BMS
+  induction (where \<open>A[n]\<close> is the smaller instance).  This is the single point at
+  which the off-chain R2 crux reduces to the foundational invariant.\<close>
+
+lemma dom_transfer_R2_from_mono:
+  fixes A :: array and n s' t' m j :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some sA"
+      and mp: "max_parent_level A = Some t"
+      and l1_eq: "l1 A = 1"
+      and n_pos: "0 < n"
+      and t_pos: "0 < t"
+      and b0En: "b0_start (A[n]) = Some s'"
+      and mplEn: "max_parent_level (A[n]) = Some t'"
+      and R2: "s' < l0 A"
+      and m_lt: "m < t'"
+      and j_pos: "0 < j" and j_lt: "j < l1 (A[n])"
+      and t'_eq: "t' = Suc t''"
+      and t''_pos: "0 < t''"
+      and mono: "\<And>d m'. s' < d \<Longrightarrow> d \<le> sA \<Longrightarrow> m' < t''
+                    \<Longrightarrow> elem A (d - 1) m' < elem A d m'"
+  shows "elem (A[n]) s' m < elem (A[n]) (s' + j) m"
+proof -
+  have s_lt: "sA < length A" using b0_start_le_length[OF b0 A_ne] .
+  have l0_eq: "l0 A = sA" using b0 s_lt unfolding l0_def G_block_def by simp
+  have P1: "m_parent A t' sA = Some s'"
+    using P1_keystone_R2[OF A_BMS A_ne b0 mp l1_eq n_pos t_pos b0En mplEn R2] .
+  have endpt: "m_ancestor A (Suc t'') sA s'"
+    using m_anc_via_parent_some[OF P1[unfolded t'_eq], of s'] by simp
+  have floor: "\<And>q m'. s' < q \<Longrightarrow> q < sA \<Longrightarrow> 0 < m' \<Longrightarrow> m' \<le> t''
+                \<Longrightarrow> (\<exists>p. m_parent A m' q = Some p \<and> s' \<le> p)"
+  proof -
+    fix q m' assume q_lo: "s' < q" and q_hi: "q < sA"
+                 and mp': "0 < m'" and mle: "m' \<le> t''"
+    have onchain: "\<And>r k. s' < r \<Longrightarrow> r < sA \<Longrightarrow> 0 < k \<Longrightarrow> k \<le> t''
+                    \<Longrightarrow> m_ancestor A (k - 1) sA r"
+      using ONCHAIN_from_mono[OF t''_pos mono] by blast
+    show "\<exists>p. m_parent A m' q = Some p \<and> s' \<le> p"
+      using floor_from_ONCHAIN[OF endpt onchain q_lo q_hi mp' mle] .
+  qed
+  show ?thesis
+    by (rule dom_transfer_R2_from_floor[OF A_BMS A_ne b0 mp l1_eq n_pos t_pos
+          b0En mplEn R2 m_lt j_pos j_lt t'_eq floor])
+qed
 
 end
