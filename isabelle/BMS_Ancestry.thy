@@ -6858,6 +6858,101 @@ proof (intro allI impI)
 qed
 
 text \<open>
+  (L1) Closed-form row-0 value of the \<open>(t', j)\<close> block-cell of \<open>A[n]\<close>,
+  with the keep/column side-conditions discharged from the \<open>t > 0\<close>,
+  \<open>n > 0\<close> BMS context.  Combines @{thm elem_AEn_idx_B_value} at \<open>k = 0\<close>
+  with @{thm keep_of_pre_strip_pos_of_t_pos_and_n_pos} (keep \<open>> 0\<close>) and
+  @{thm row0_lengths_when_t_pos} (column \<open>> 0\<close>).  This is the row-0
+  building block for the explicit row-0 sequence of \<open>A[n]\<close>.
+\<close>
+lemma row0_value_AEn_idx_B:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and j_lt: "j < l1 A"
+      and t'_le: "t' \<le> n"
+  shows "elem (A[n]) (idx_B_in_expansion A t' j) 0
+       = (A ! (s + j)) ! 0 + (if ascends A j 0 then t' * delta A 0 else 0)"
+proof -
+  have keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_pos_of_t_pos_and_n_pos[OF A_BMS A_ne b0 mp t_pos n_pos] .
+  have col_pos: "0 < length (A ! (s + j))"
+    using row0_lengths_when_t_pos[OF A_BMS A_ne b0 mp t_pos] j_lt by blast
+  show ?thesis
+    using elem_AEn_idx_B_value[OF A_ne b0 t'_le j_lt keep_pos col_pos] .
+qed
+
+text \<open>
+  (L2) Hunter's row-0 ascension equivalence: column \<open>j\<close> ascends at
+  row 0 iff \<open>s\<close> is the strict row-0 minimum over the open-left,
+  closed-right interval \<open>(s, s+j]\<close>.  Forward direction combines
+  @{thm m_anc_zero_imp_strict_min} (strict below \<open>s+j\<close>) with
+  @{thm m_ancestor_elem_lt} (strict at \<open>s+j\<close>); backward direction
+  anchors the m-parent chain via @{thm m_anc_zero_strict_min}.  The
+  \<open>j = 0\<close> case is vacuous (no \<open>c\<close> with \<open>s < c \<le> s\<close>) and \<open>j = 0\<close>
+  always ascends (\<open>non_strict_ancestor\<close> via reflexivity).
+\<close>
+lemma ascends_row0_iff_strict_min:
+  fixes A :: array
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < l1 A"
+  shows "ascends A j 0 \<longleftrightarrow> (\<forall>c. s < c \<and> c \<le> s + j \<longrightarrow> elem A s 0 < elem A c 0)"
+proof
+  assume asc: "ascends A j 0"
+  show "\<forall>c. s < c \<and> c \<le> s + j \<longrightarrow> elem A s 0 < elem A c 0"
+  proof (cases "j = 0")
+    case True
+    show ?thesis using True by simp
+  next
+    case False
+    hence j_pos: "0 < j" by simp
+    have nsa_j: "non_strict_ancestor A 0 (s + j) s"
+      using asc b0 mp t_pos by (simp add: ascends_def)
+    have anc_j: "m_ancestor A 0 (s + j) s"
+      using nsa_j j_pos by (simp add: non_strict_ancestor_def)
+    have strict_below: "\<forall>c. s < c \<and> c < s + j \<longrightarrow> elem A s 0 < elem A c 0"
+      using m_anc_zero_imp_strict_min[OF anc_j] .
+    have strict_at_j: "elem A s 0 < elem A (s + j) 0"
+      using m_ancestor_elem_lt[OF anc_j] .
+    show ?thesis
+    proof (intro allI impI)
+      fix c assume "s < c \<and> c \<le> s + j"
+      hence c_lo: "s < c" and c_hi: "c \<le> s + j" by auto
+      show "elem A s 0 < elem A c 0"
+      proof (cases "c = s + j")
+        case True thus ?thesis using strict_at_j by simp
+      next
+        case False
+        hence "c < s + j" using c_hi by simp
+        thus ?thesis using strict_below c_lo by blast
+      qed
+    qed
+  qed
+next
+  assume H: "\<forall>c. s < c \<and> c \<le> s + j \<longrightarrow> elem A s 0 < elem A c 0"
+  show "ascends A j 0"
+  proof (cases "j = 0")
+    case True
+    have "non_strict_ancestor A 0 (s + j) s"
+      using True by (simp add: non_strict_ancestor_def)
+    thus ?thesis using b0 mp t_pos by (simp add: ascends_def)
+  next
+    case False
+    hence j_pos: "0 < j" by simp
+    have sj_gt: "s < s + j" using j_pos by simp
+    have anc_j: "m_ancestor A 0 (s + j) s"
+      using m_anc_zero_strict_min[OF sj_gt H] .
+    have "non_strict_ancestor A 0 (s + j) s"
+      using anc_j by (simp add: non_strict_ancestor_def)
+    thus ?thesis using b0 mp t_pos by (simp add: ascends_def)
+  qed
+qed
+
+text \<open>
   (B2) Row-0 candidate implication, mirror of
   @{thm elem_AEn_lt_block_implies_block_zero_when_j_not_asc} at level 0:
   if \<open>j\<close> does not ascend at row 0, a block-\<open>c\<close> row-0 candidate \<open>x\<close>
