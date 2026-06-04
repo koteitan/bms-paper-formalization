@@ -7011,6 +7011,40 @@ proof -
 qed
 
 text \<open>
+  (L4-c) Strict row-0 block monotonicity for an ascending column.  If
+  block-0 column \<open>j\<close> ascends at row 0, then its row-0 value in block
+  \<open>c\<close> strictly increases with \<open>c\<close> (each block adds \<open>delta A 0 > 0\<close>).
+  Assembles @{thm row0_value_AEn_idx_B} (closed-form value) with
+  @{thm delta_pos_of_lt_m0} (positive step, since row \<open>0 < t\<close>).
+  Plateau-permitting: only the single column \<open>j\<close> need ascend.
+\<close>
+lemma row0_AEn_block_strict_mono_when_ascends:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and j_lt: "j < l1 A"
+      and asc: "ascends A j 0"
+      and c_lt_c': "c < c'" and c'_le: "c' \<le> n"
+  shows "elem (A[n]) (idx_B_in_expansion A c j) 0
+       < elem (A[n]) (idx_B_in_expansion A c' j) 0"
+proof -
+  have c_le: "c \<le> n" using c_lt_c' c'_le by simp
+  have vc: "elem (A[n]) (idx_B_in_expansion A c j) 0
+          = (A ! (s + j)) ! 0 + c * delta A 0"
+    using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos j_lt c_le] asc by simp
+  have vc': "elem (A[n]) (idx_B_in_expansion A c' j) 0
+           = (A ! (s + j)) ! 0 + c' * delta A 0"
+    using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos j_lt c'_le] asc by simp
+  have delta_pos: "0 < delta A 0"
+    using delta_pos_of_lt_m0[OF b0 mp t_pos] .
+  have "c * delta A 0 < c' * delta A 0"
+    using c_lt_c' delta_pos by simp
+  thus ?thesis using vc vc' by simp
+qed
+
+text \<open>
   (B2) Row-0 candidate implication, mirror of
   @{thm elem_AEn_lt_block_implies_block_zero_when_j_not_asc} at level 0:
   if \<open>j\<close> does not ascend at row 0, a block-\<open>c\<close> row-0 candidate \<open>x\<close>
