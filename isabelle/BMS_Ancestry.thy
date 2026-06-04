@@ -9766,6 +9766,62 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>All B0 columns ascend at row 0 (sorry-free, clause-iv-free).\<close>
+  The bad root \<open>s\<close> is the level-\<open>t\<close> \<open>m\<close>-parent of the last column \<open>C = last_col_idx A\<close>
+  (by @{thm b0_start_def} with \<open>max_parent_level A = Some t\<close>); since \<open>t = Suc t'\<close>,
+  @{thm m_parent_Suc_implies_m_ancestor} makes \<open>s\<close> a level-\<open>t'\<close> \<open>m\<close>-ancestor of \<open>C\<close>,
+  and @{thm m_ancestor_mono} drops it to level 0.  Then @{thm m_anc_zero_imp_strict_min}
+  gives \<open>elem A s 0 < elem A c 0\<close> for every interior \<open>s < c < C\<close>.  As \<open>j < l1 A\<close>
+  means \<open>s + j < C\<close>, the interval \<open>(s, s+j]\<close> sits strictly below \<open>C\<close>, so the strict
+  minimality holds there, and @{thm ascends_row0_iff_strict_min} yields \<open>ascends A j 0\<close>.
+\<close>
+lemma all_ascend_row0:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < l1 A"
+  shows "ascends A j 0"
+proof -
+  \<comment> \<open>\<open>s\<close> is the level-\<open>t\<close> \<open>m\<close>-parent of the last column.\<close>
+  have mp_t_C: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
+  have mp_Suc: "m_parent A (Suc t') (last_col_idx A) = Some s"
+    using mp_t_C t_eq by simp
+  have anc_t': "m_ancestor A t' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mp_Suc] .
+  have anc0: "m_ancestor A 0 (last_col_idx A) s"
+    using m_ancestor_mono[OF le0 anc_t'] .
+  \<comment> \<open>Strict row-0 minimality of \<open>s\<close> over the interior up to \<open>C\<close>.\<close>
+  have strict_int: "\<forall>c. s < c \<and> c < last_col_idx A \<longrightarrow> elem A s 0 < elem A c 0"
+    using m_anc_zero_imp_strict_min[OF anc0] .
+  \<comment> \<open>\<open>l1 A = last_col_idx A - s\<close>, so \<open>s + j < C\<close>.\<close>
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+  proof -
+    have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq s_lt_last by linarith
+  \<comment> \<open>Strict minimality over the closed-right interval \<open>(s, s+j]\<close>.\<close>
+  have strict_min: "\<forall>c. s < c \<and> c \<le> s + j \<longrightarrow> elem A s 0 < elem A c 0"
+  proof (intro allI impI)
+    fix c assume "s < c \<and> c \<le> s + j"
+    hence c_lo: "s < c" and c_hi: "c \<le> s + j" by auto
+    have "c < last_col_idx A" using c_hi sj_lt_C by linarith
+    thus "elem A s 0 < elem A c 0" using strict_int c_lo by blast
+  qed
+  show ?thesis
+    using ascends_row0_iff_strict_min[OF b0 mp t_pos j_lt] strict_min by blast
+qed
+
 text \<open>\<^bold>\<open>\<open>m\<close>-ancestor coincidence from \<open>m\<close>-parent coincidence on the \<open>G\<close>-prefix
   (sorry-free).\<close>  If \<open>A[n]\<close> and \<open>A\<close> share the \<open>m\<close>-parent at every \<open>G\<close>-prefix
   column \<open>q < s\<close>, then they share the \<open>m\<close>-ancestry from any \<open>G\<close>-prefix column
