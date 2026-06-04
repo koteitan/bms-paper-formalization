@@ -10112,6 +10112,69 @@ proof -
   show ?thesis using mp_eq full_ne last_eq by simp
 qed
 
+text \<open>\<^bold>\<open>Level-0 \<open>m\<close>-parent as the global last strictly-smaller position (sorry-free,
+  clause-iv-free).\<close>  Pure unfold of @{thm m_parent.simps(1)}: the level-0 \<open>m\<close>-parent
+  of any column \<open>i\<close> is exactly the LAST index \<open>p < i\<close> whose row-0 value is strictly
+  below \<open>elem A i 0\<close>, or \<open>None\<close> when no such index exists.  This is the algebraic
+  backbone of the cross-block rightmost-copy argument: it lets one identify the
+  \<open>m\<close>-parent purely from the explicit row-0 sequence by pointing at the rightmost
+  earlier position carrying value \<open>v - 1\<close>.\<close>
+
+lemma m_parent_zero_eq_global_last:
+  fixes A :: array and i :: nat
+  shows "m_parent A 0 i
+       = (if filter (\<lambda>p. elem A p 0 < elem A i 0) [0..<i] = [] then None
+          else Some (last (filter (\<lambda>p. elem A p 0 < elem A i 0) [0..<i])))"
+  by (simp add: Let_def)
+
+text \<open>\<^bold>\<open>Pinning the level-0 \<open>m\<close>-parent from a witnessed rightmost candidate
+  (sorry-free, clause-iv-free).\<close>  If \<open>p < i\<close> carries a strictly smaller row-0
+  value and EVERY position strictly between \<open>p\<close> and \<open>i\<close> carries a value \<open>\<ge> elem A i 0\<close>,
+  then \<open>p\<close> is the last strictly-smaller candidate, hence \<open>m_parent A 0 i = Some p\<close>.
+  This converts a "rightmost copy of value \<open>v - 1\<close>" witness into the exact
+  \<open>m\<close>-parent without recomputing the whole filter.\<close>
+
+lemma m_parent_zero_eq_Some_of_rightmost:
+  fixes A :: array and i p :: nat
+  assumes p_lt: "p < i"
+      and p_v: "elem A p 0 < elem A i 0"
+      and no_between: "\<forall>q. p < q \<and> q < i \<longrightarrow> \<not> elem A q 0 < elem A i 0"
+  shows "m_parent A 0 i = Some p"
+proof -
+  let ?P = "\<lambda>q. elem A q 0 < elem A i 0"
+  have split: "[0..<i] = [0..<p] @ [p] @ [Suc p..<i]"
+  proof -
+    have a: "[0..<i] = [0..<Suc p] @ [Suc p..<i]"
+      using upt_add_eq_append[OF le0, of "Suc p" "i - Suc p"] p_lt by simp
+    have b: "[0..<Suc p] = [0..<p] @ [p]" by simp
+    show ?thesis using a b by simp
+  qed
+  have tail_empty: "filter ?P [Suc p..<i] = []"
+  proof -
+    have "\<forall>q \<in> set [Suc p..<i]. \<not> ?P q"
+    proof
+      fix q assume "q \<in> set [Suc p..<i]"
+      hence "Suc p \<le> q \<and> q < i" by simp
+      hence "p < q \<and> q < i" by simp
+      thus "\<not> ?P q" using no_between by blast
+    qed
+    thus ?thesis by (simp add: filter_empty_conv)
+  qed
+  have filt_full: "filter ?P [0..<i] = filter ?P [0..<p] @ [p]"
+  proof -
+    have "filter ?P [0..<i]
+        = filter ?P [0..<p] @ filter ?P [p] @ filter ?P [Suc p..<i]"
+      using split by (simp only: filter_append)
+    also have "\<dots> = filter ?P [0..<p] @ [p]"
+      using p_v tail_empty by simp
+    finally show ?thesis .
+  qed
+  have ne: "filter ?P [0..<i] \<noteq> []" using filt_full by simp
+  have last_eq: "last (filter ?P [0..<i]) = p" using filt_full by simp
+  show ?thesis
+    using m_parent_zero_eq_global_last[of A i] ne last_eq by simp
+qed
+
 text \<open>\<^bold>\<open>GAP B within-block step, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  When the
   \<open>A[n]\<close> block-0 candidate list \<open>S\<close> of offset \<open>j\<close> is non-empty, the level-0
   \<open>m\<close>-parent of \<open>idx_B (A,c,j)\<close> stays within block \<open>c\<close> at offset \<open>last S\<close>
