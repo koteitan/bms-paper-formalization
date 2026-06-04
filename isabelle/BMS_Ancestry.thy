@@ -7365,6 +7365,73 @@ proof -
   show ?thesis using target_val case_eq[symmetric] by (rule trans)
 qed
 
+text \<open>
+  (L5-b') Block-0 row-0 recursive invariant for \<open>A[n]\<close>, UNIFIED over the
+  ascension status of the column.  At block \<open>0\<close> (\<open>c = 0\<close>) the whole block is a
+  VERBATIM copy of \<open>A\<close>'s columns \<open>[s, s + l1 A)\<close>: the bump \<open>0 * delta\<close> vanishes
+  and \<open>idx_B (A,0,j) = s + j < idx_B (A,0,(l1 A))\<close>, so @{thm elem_orig_eq_AEn_shared_below_l1}
+  and @{thm m_parent_orig_eq_AEn_shared_B0} (both at level \<open>0 < t = m\<^sub>0\<close>) make the
+  level-0 \<open>elem\<close> and \<open>m_parent\<close> of \<open>A[n]\<close> at \<open>idx_B (A,0,j)\<close> coincide with \<open>A\<close>'s at
+  \<open>s + j\<close>.  Hence \<open>A\<close>'s OWN row-0 invariant at \<open>s + j\<close> (the BMS-induction hypothesis,
+  fed in as @{term IHj}) transports verbatim — no ascension split, no nearest-smaller
+  filter, covering BOTH the ascending and non-ascending block-0 columns.
+\<close>
+
+lemma row0_recursive_AEn_block0:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and j_lt: "j < l1 A"
+      and IHj: "elem A (s + j) 0
+              = (case m_parent A 0 (s + j) of None \<Rightarrow> 0
+                 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) (idx_B_in_expansion A 0 j) 0
+       = (case m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) of None \<Rightarrow> 0
+          | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  have l0_eq: "l0 A = s" using l0_eq_s_of_b0[OF A_ne b0] .
+  have idx_j: "idx_B_in_expansion A 0 j = s + j"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  have t_lt0: "(0::nat) < t" using t_pos .
+  \<comment> \<open>Block-0 column index is below the block-0 tile end.\<close>
+  have j_lt_tile: "idx_B_in_expansion A 0 j < idx_B_in_expansion A 0 (l1 A)"
+    using j_lt unfolding idx_B_in_expansion_def by simp
+  \<comment> \<open>Level-0 \<open>elem\<close> and \<open>m_parent\<close> at \<open>s + j\<close> are shared between \<open>A\<close> and \<open>A[n]\<close>.\<close>
+  have ev_j: "elem A (s + j) 0 = elem (A[n]) (s + j) 0"
+    using elem_orig_eq_AEn_shared_below_l1
+            [OF A_BMS A_ne b0 mp n_pos _ t_lt0] j_lt_tile idx_j by simp
+  have mp_j: "m_parent A 0 (s + j) = m_parent (A[n]) 0 (s + j)"
+    using m_parent_orig_eq_AEn_shared_B0
+            [OF A_BMS A_ne b0 mp t_lt0 n_pos _] j_lt_tile idx_j by simp
+  show ?thesis
+  proof (cases "m_parent A 0 (s + j)")
+    case None
+    have mpN: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) = None"
+      using mp_j None idx_j by simp
+    have vA: "elem A (s + j) 0 = 0" using IHj None by (simp only: option.case)
+    have vAEn: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = 0"
+      using ev_j vA idx_j by simp
+    show ?thesis by (simp only: mpN option.case vAEn)
+  next
+    case (Some q)
+    have q_lt: "q < s + j" using m_parent_lt[OF Some] .
+    have q_lt_tile: "q < idx_B_in_expansion A 0 (l1 A)"
+      using q_lt j_lt_tile idx_j by simp
+    have ev_q: "elem A q 0 = elem (A[n]) q 0"
+      using elem_orig_eq_AEn_shared_below_l1
+              [OF A_BMS A_ne b0 mp n_pos q_lt_tile t_lt0] .
+    have mpS: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) = Some q"
+      using mp_j Some idx_j by simp
+    have vA: "elem A (s + j) 0 = Suc (elem A q 0)"
+      using IHj Some by (simp only: option.case)
+    have vAEn: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = Suc (elem (A[n]) q 0)"
+      using ev_j vA ev_q idx_j by simp
+    show ?thesis by (simp only: mpS option.case vAEn)
+  qed
+qed
+
 text \<open>\<^bold>\<open>Block-0 within-block parent at level \<open>Suc k'\<close> (sorry-free, 续61).\<close>
   The \<open>Suc k'\<close>-analogue of @{thm m_parent_AEn_zero_idx_B_within_block_at_block0}:
   block 0 is \<^emph>\<open>unbumped\<close> at every level, so its within-block candidate set

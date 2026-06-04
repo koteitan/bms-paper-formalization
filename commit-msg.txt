@@ -1,8 +1,9 @@
-v0.1.82/Reduce the mpl upper bound to a single no-parent obligation (downward closure)
+v0.1.95/Land the unified block-0 row-0 recursive case (verbatim copy, ascension-independent)
 
-- Add m_parent_Suc_imp_lower_parent: a (Suc k)-parent forces a k-parent (the candidate filter at level Suc k carries a k-ancestor guard, false without a k-parent), so the set of levels with a parent is downward closed
-- Add mpl_lt_of_no_parent: if the last column has no k-parent, then mpl < k (descend from the achieved t-parent b0_start = m_parent A t C down to k via the downward closure)
-- Reduces the mpl upper bound gate to a single value-side non-existence (no parent at one high level); no new sorry
-- Bump version v0.1.81 -> v0.1.82
+row0_recursive_AEn_block0: at block 0 the whole tile is a verbatim copy of
+A columns [s, s+l1), so elem and m_parent agree at level 0 (< t) between A
+and A[n] via elem_orig_eq_AEn_shared_below_l1 / m_parent_orig_eq_AEn_shared_B0.
+Transports A row-0 invariant verbatim, covering BOTH ascending and
+non-ascending block-0 columns without any nearest-smaller filter.
 
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
