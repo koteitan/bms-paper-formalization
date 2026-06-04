@@ -7093,6 +7093,28 @@ proof -
 qed
 
 text \<open>
+  (L5-a) Block-0 row-0 value is verbatim: for any block-0 column \<open>x < l1 A\<close>,
+  the row-0 value of \<open>A[n]\<close> at \<open>idx_B (A,0,x)\<close> equals \<open>A\<close>'s row-0 value at the
+  original column \<open>s + x\<close>.  At block \<open>0\<close> the bump \<open>0 * delta\<close> vanishes whether or
+  not \<open>x\<close> ascends, so @{thm row0_value_AEn_idx_B} collapses to \<open>(A!(s+x))!0\<close>.
+\<close>
+lemma row0_value_AEn_idx_B_block0:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and x_lt: "x < l1 A"
+  shows "elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+proof -
+  have "elem (A[n]) (idx_B_in_expansion A 0 x) 0
+      = (A ! (s + x)) ! 0 + (if ascends A x 0 then 0 * delta A 0 else 0)"
+    using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos x_lt le0] .
+  thus ?thesis unfolding elem_def by simp
+qed
+
+
+text \<open>
   (B2) Row-0 candidate implication, mirror of
   @{thm elem_AEn_lt_block_implies_block_zero_when_j_not_asc} at level 0:
   if \<open>j\<close> does not ascend at row 0, a block-\<open>c\<close> row-0 candidate \<open>x\<close>
@@ -7216,6 +7238,131 @@ proof -
     unfolding idx_B_in_expansion_def by simp
   show ?thesis
     using mp_eq cands_ne last_cands_eq last_post_eq last_S_idx by simp
+qed
+
+text \<open>
+  (L5-b) Block-0 ascending-column case of the row-0 recursive invariant for
+  \<open>A[n]\<close>.  For a block-0 ascending column \<open>j\<close> (\<open>0 < j < l1 A\<close>), the level-0
+  \<open>m\<close>-parent of \<open>A[n]\<close> at \<open>idx_B (A,0,j) = s + j\<close> lands at the last earlier
+  block-0 candidate \<open>idx_B (A,0,(last S))\<close> (@{thm m_parent_AEn_zero_idx_B_within_block_at_block0}),
+  whose row-0 value is one less by \<open>A\<close>'s OWN row-0 invariant at \<open>s + j\<close> (the
+  BMS-induction hypothesis instance, fed in as @{term IHj}) bridged to the
+  block-0 nearest-smaller-left via @{thm m_parent_row0_ascends_eq_block0_last}.
+  Block-0 values are verbatim (@{thm row0_value_AEn_idx_B_block0}), so \<open>A\<close>'s
+  candidate filter over \<open>[s..<s+j]\<close> matches the block-0 filter \<open>S\<close> over \<open>[0..<j]\<close>
+  pointwise under \<open>x \<mapsto> s + x\<close>.
+\<close>
+
+lemma row0_recursive_AEn_block0_when_ascends:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and j_lt: "j < l1 A" and j_pos: "0 < j"
+      and asc_j: "ascends A j 0"
+      and IHj: "elem A (s + j) 0
+              = (case m_parent A 0 (s + j) of None \<Rightarrow> 0
+                 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) (idx_B_in_expansion A 0 j) 0
+       = (case m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) of None \<Rightarrow> 0
+          | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  let ?P = "\<lambda>c. elem A c 0 < elem A (s + j) 0"
+  let ?S = "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                        < elem (A[n]) (idx_B_in_expansion A 0 j) 0]"
+  have l0_eq: "l0 A = s" using l0_eq_s_of_b0[OF A_ne b0] .
+  have idx_eq: "\<And>x. idx_B_in_expansion A 0 x = s + x"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  \<comment> \<open>Block-0 values are verbatim, so \<open>S\<close>'s predicate matches \<open>?P (s + \<cdot>)\<close>.\<close>
+  have valx: "\<And>x. x < l1 A \<Longrightarrow>
+                 elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+    using row0_value_AEn_idx_B_block0[OF A_BMS A_ne b0 mp t_pos n_pos] .
+  have S_pred: "?S = [j' \<leftarrow> [0..<j]. ?P (s + j')]"
+  proof (rule filter_cong[OF refl])
+    fix x assume "x \<in> set [0..<j]"
+    hence x_lt_j: "x < j" by simp
+    hence x_lt_l1: "x < l1 A" using j_lt by linarith
+    show "(elem (A[n]) (idx_B_in_expansion A 0 x) 0
+            < elem (A[n]) (idx_B_in_expansion A 0 j) 0)
+        = ?P (s + x)"
+      using valx[OF x_lt_l1] valx[OF j_lt] by simp
+  qed
+  \<comment> \<open>\<open>A\<close>'s level-0 m-parent of \<open>s+j\<close> is the last \<open>?P\<close>-candidate over \<open>[s..<s+j]\<close>.\<close>
+  have bridge: "m_parent A 0 (s + j)
+              = Some (last (filter ?P [s..<s + j]))"
+    using m_parent_row0_ascends_eq_block0_last[OF b0 mp t_pos j_lt j_pos asc_j] .
+  \<comment> \<open>That filter is \<open>map (s + \<cdot>)\<close> of the block-0 filter, hence nonempty.\<close>
+  have range_map: "[s..<s + j] = map (\<lambda>x. s + x) [0..<j]"
+    using map_add_upt[of s j] by (simp add: add.commute)
+  have filt_map: "filter ?P [s..<s + j]
+                = map (\<lambda>x. s + x) (filter (\<lambda>x. ?P (s + x)) [0..<j])"
+    using range_map by (simp add: filter_map o_def)
+  obtain p where mpA: "m_parent A 0 (s + j) = Some p" and p_ge: "s \<le> p"
+    using m_parent_row0_ge_b0_start_when_ascends[OF b0 mp t_pos j_lt j_pos asc_j]
+    by blast
+  have p_lt: "p < s + j" using m_parent_lt[OF mpA] .
+  have pv: "?P p" using m_parent_elem_lt[OF mpA] .
+  have pmem: "p \<in> set (filter ?P [s..<s + j])" using p_ge p_lt pv by simp
+  hence filt_ne: "filter ?P [s..<s + j] \<noteq> []" by (cases "filter ?P [s..<s + j]") auto
+  have Sp_ne: "filter (\<lambda>x. ?P (s + x)) [0..<j] \<noteq> []"
+    using filt_ne filt_map by auto
+  have S_ne: "?S \<noteq> []" using S_pred Sp_ne by simp
+  \<comment> \<open>The block-0 within-block m-parent: \<open>idx_B (A,0,(last S))\<close>.\<close>
+  have mpAEn: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 j)
+             = Some (idx_B_in_expansion A 0 (last ?S))"
+    using m_parent_AEn_zero_idx_B_within_block_at_block0
+            [OF A_BMS A_ne b0 j_lt S_ne] .
+  \<comment> \<open>\<open>last S\<close> tracks \<open>last (filter ?P [s..<s+j])\<close> under \<open>x \<mapsto> s + x\<close>.\<close>
+  have last_link: "s + last ?S = last (filter ?P [s..<s + j])"
+  proof -
+    have "last (filter ?P [s..<s + j])
+        = last (map (\<lambda>x. s + x) (filter (\<lambda>x. ?P (s + x)) [0..<j]))"
+      using filt_map by simp
+    also have "\<dots> = s + last (filter (\<lambda>x. ?P (s + x)) [0..<j])"
+      using Sp_ne by (simp add: last_map)
+    also have "\<dots> = s + last ?S" using S_pred by simp
+    finally show ?thesis by simp
+  qed
+  \<comment> \<open>So \<open>A\<close>'s m-parent value of \<open>s+j\<close> is \<open>s + last S\<close>.\<close>
+  have p_is: "p = s + last ?S"
+    using mpA bridge last_link by simp
+  have lastS_lt: "last ?S < l1 A"
+  proof -
+    have "last ?S \<in> set ?S" using last_in_set[OF S_ne] .
+    hence "last ?S < j" by simp
+    thus ?thesis using j_lt by linarith
+  qed
+  \<comment> \<open>Block-0 verbatim value at \<open>last S\<close> and at \<open>j\<close>.\<close>
+  have v_lastS: "elem (A[n]) (idx_B_in_expansion A 0 (last ?S)) 0
+               = elem A (s + last ?S) 0"
+    using valx[OF lastS_lt] .
+  have v_j: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = elem A (s + j) 0"
+    using valx[OF j_lt] .
+  \<comment> \<open>\<open>A\<close>'s invariant at \<open>s+j\<close> gives the \<open>Suc\<close> increment over \<open>p = s + last S\<close>.\<close>
+  have IH_val: "elem A (s + j) 0 = Suc (elem A p 0)"
+    using IHj mpA by (simp only: option.case)
+  have p_val_eq: "elem A p 0 = elem A (s + last ?S) 0" using p_is by simp
+  \<comment> \<open>Pure transitivity chain (avoids simp traversing the large filter \<open>?S\<close>).\<close>
+  have step1: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = Suc (elem A p 0)"
+    using v_j IH_val by (rule trans)
+  have step2: "Suc (elem A p 0) = Suc (elem A (s + last ?S) 0)"
+    using p_val_eq by (rule arg_cong)
+  have step3: "Suc (elem A (s + last ?S) 0)
+             = Suc (elem (A[n]) (idx_B_in_expansion A 0 (last ?S)) 0)"
+    using v_lastS[symmetric] by (rule arg_cong)
+  have step12: "elem (A[n]) (idx_B_in_expansion A 0 j) 0
+              = Suc (elem A (s + last ?S) 0)"
+    using step1 step2 by (rule trans)
+  have target_val: "elem (A[n]) (idx_B_in_expansion A 0 j) 0
+                   = Suc (elem (A[n]) (idx_B_in_expansion A 0 (last ?S)) 0)"
+    using step12 step3 by (rule trans)
+  \<comment> \<open>Reduce the \<open>case\<close> via a single \<open>subst\<close> of \<open>mpAEn\<close> (no simp traversal of \<open>?S\<close>).\<close>
+  have case_eq: "(case m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) of None \<Rightarrow> 0
+                  | Some p \<Rightarrow> Suc (elem (A[n]) p 0))
+               = Suc (elem (A[n]) (idx_B_in_expansion A 0 (last ?S)) 0)"
+    by (subst mpAEn) (rule option.case(2))
+  show ?thesis using target_val case_eq[symmetric] by (rule trans)
 qed
 
 text \<open>\<^bold>\<open>Block-0 within-block parent at level \<open>Suc k'\<close> (sorry-free, 续61).\<close>
