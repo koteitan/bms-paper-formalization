@@ -175,3 +175,25 @@ name-based dependency trace, not `has_skip_proof`.
 
 `BMS_Lex.thy` (lex order, sorries 1369/1814) and `BMS_WellOrdered.thy` (final theorem,
 685/725) are separate downstream concerns, not part of the Lemma 2.5 simultaneous induction.
+
+## The complete @13220 obligation map (2026-06-05) — the faithful (b) reconstruction's precise shape
+
+The keystone is `ancestor_monotone`'s expand-case sorry (@13220). Its closure via the already-proven
+`ancestor_monotone_expand` (@13099) was confirmed to **typecheck and build GREEN** (the plumbing is correct);
+it reduces to exactly **7 interlocking obligations**, NOT the single "Htop" previously believed:
+
+| group | obligation | status / what it needs |
+|-------|-----------|------------------------|
+| STRUCT | `b0_start A = Some sA`, `max_parent_level A = Some tA`, `0 < l1 A` | the **BMS linchpin** `A∈BMS ⟹ mpl(A[n]) defined ⟹ mpl A defined` (described @923-931, **unproven**; false for `is_array`, true for BMS) |
+| ENTANGLED | `Hmpl_le1: tE ≤ tA+1` | needs a height/mpl upper bound (no lemma; `height A ≤ mpl A + 2` is **refuted**, so a different proof) |
+| ENTANGLED | `Hmpl_gt1: 1<l1 A ⟹ tE ≤ tA` | same family, harder (l1>1 in-bounds) |
+| ENTANGLED | `Rb_cond: sE<sA ⟹ m_ancestor A m sA sE` | via `R2_new_root_anc_of_old` (@12446) which **requires `lemma_2_5_i_clause`** — the simultaneous-induction entanglement |
+| TOPLEVEL | `Htop: l1 A=1 ⟹ m=tA-1 ⟹ adjacent increase` | needs the carried invariant **strengthened to INV1** (T1-conditional top-level m=t-1 clause) so the IH supplies the `mono` hypothesis of `dom_transfer_R2_from_mono` at m'=tA-1 |
+
+**Conclusion:** closing @13220 is genuinely the **full Hunter simultaneous (i)–(v) k-induction** — `Rb_cond` ties it
+to clause (i), `Htop` needs the strengthened invariant, plus the structural linchpin and mpl upper bounds. This is a
+multi-session interlocking build (confirmed across ~15 workflow attempts; reduction/bump/ancestry/IH/vacuity all
+exhausted). The sorry-free INTV→MONO→floor→R2 chain (v0.1.92, @15939–16330) and `ancestor_monotone_expand` are the
+assembled scaffolding; the remaining work is the joint induction carrying the value/top-level clause.
+
+Most self-contained next sub-target: the **BMS structural linchpin** (mpl-definedness monotone under expansion).
