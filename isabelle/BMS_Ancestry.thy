@@ -9215,6 +9215,72 @@ proof -
   thus ?thesis using eAEn by simp
 qed
 
+text \<open>
+  (L3) Explicit per-column description of the row-0 sequence of \<open>A[n]\<close>.
+  Every column index \<open>i\<close> of \<open>A[n]\<close> is either in the \<open>G\<close>-prefix
+  (\<open>i < l0 A\<close>), where its row-0 value is the verbatim row-0 of \<open>A\<close>
+  (@{thm elem_AEn_eq_on_G_prefix}), or in block \<open>t' = (i - l0 A) div l1 A\<close>
+  at local index \<open>j = (i - l0 A) mod l1 A\<close>, where its row-0 value is the
+  bumped formula @{thm row0_value_AEn_idx_B}.  This assembles the row-0
+  sequence \<open>(row0 of A on [0, l0)) ++ concat_c [bumped block-c row0]\<close>
+  column-by-column, with the strip handled uniformly through \<open>keep > 0\<close>.
+\<close>
+lemma row0_seq_AEn:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and i_lt: "i < l0 A + Suc n * l1 A"
+  shows "elem (A[n]) i 0
+       = (if i < l0 A then elem A i 0
+          else (let t' = (i - l0 A) div l1 A; j = (i - l0 A) mod l1 A
+                in (A ! (s + j)) ! 0
+                   + (if ascends A j 0 then t' * delta A 0 else 0)))"
+proof -
+  have keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_pos_of_t_pos_and_n_pos[OF A_BMS A_ne b0 mp t_pos n_pos] .
+  have l0_eq_s: "l0 A = s" using l0_eq_s_of_b0[OF A_ne b0] .
+  show ?thesis
+  proof (cases "i < l0 A")
+    case True
+    have i_lt_s: "i < s" using True l0_eq_s by simp
+    have "elem (A[n]) i 0 = elem A i 0"
+      using elem_AEn_eq_on_G_prefix[OF A_ne b0 i_lt_s keep_pos] .
+    thus ?thesis using True by simp
+  next
+    case False
+    hence i_ge: "l0 A \<le> i" by simp
+    let ?d = "i - l0 A"
+    let ?t' = "?d div l1 A"
+    let ?j = "?d mod l1 A"
+    have l1_pos: "0 < l1 A"
+    proof -
+      have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+      have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+      show ?thesis using b0 s_lt_last last_lt_arr
+        unfolding l1_def B0_block_def by simp
+    qed
+    have j_lt: "?j < l1 A" using l1_pos by simp
+    have d_eq: "?d = ?t' * l1 A + ?j" by simp
+    have i_eq: "i = idx_B_in_expansion A ?t' ?j"
+      unfolding idx_B_in_expansion_def using i_ge d_eq by simp
+    have d_lt: "?d < Suc n * l1 A" using i_lt i_ge by simp
+    have t'_le: "?t' \<le> n"
+    proof (rule ccontr)
+      assume "\<not> ?t' \<le> n"
+      hence "Suc n \<le> ?t'" by simp
+      hence "Suc n * l1 A \<le> ?t' * l1 A" by (rule mult_le_mono1)
+      also have "\<dots> \<le> ?d" using d_eq by simp
+      finally show False using d_lt by simp
+    qed
+    have val: "elem (A[n]) (idx_B_in_expansion A ?t' ?j) 0
+             = (A ! (s + ?j)) ! 0 + (if ascends A ?j 0 then ?t' * delta A 0 else 0)"
+      using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos j_lt t'_le] .
+    show ?thesis using False i_eq val by (simp add: Let_def)
+  qed
+qed
+
 text \<open>\<^bold>\<open>\<open>m\<close>-ancestor coincidence from \<open>m\<close>-parent coincidence on the \<open>G\<close>-prefix
   (sorry-free).\<close>  If \<open>A[n]\<close> and \<open>A\<close> share the \<open>m\<close>-parent at every \<open>G\<close>-prefix
   column \<open>q < s\<close>, then they share the \<open>m\<close>-ancestry from any \<open>G\<close>-prefix column
