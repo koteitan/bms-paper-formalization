@@ -9822,6 +9822,53 @@ proof -
     using ascends_row0_iff_strict_min[OF b0 mp t_pos j_lt] strict_min by blast
 qed
 
+text \<open>\<^bold>\<open>For \<open>t > 0\<close> and \<open>j > 0\<close> the block-0 candidate set \<open>S\<close> is non-empty
+  (sorry-free, clause-iv-free).\<close>  Since every column ascends at \<open>t > 0\<close>
+  (@{thm all_ascend_row0}), the level-0 \<open>m\<close>-parent of \<open>s + j\<close> exists at some
+  \<open>p \<in> [s, s+j)\<close> (@{thm m_parent_row0_ge_b0_start_when_ascends}), witnessing a
+  block-0 column \<open>p = s + x\<close> with \<open>x < j\<close> whose verbatim row-0 value
+  (@{thm row0_value_AEn_idx_B_block0}) is strictly below that of offset \<open>j\<close>.
+  Consequently the cross-block \<open>S = []\<close> obligation reduces to the block start
+  \<open>j = 0\<close>: for every \<open>j > 0\<close> the within-block \<open>m\<close>-parent route applies instead.\<close>
+
+lemma row0_S_nonempty_when_t_pos_and_j_pos:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and j_lt: "j < l1 A" and j_pos: "0 < j"
+  shows "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                       < elem (A[n]) (idx_B_in_expansion A 0 j) 0] \<noteq> []"
+proof -
+  have asc_j: "ascends A j 0" using all_ascend_row0[OF A_BMS A_ne b0 mp t_pos j_lt] .
+  obtain p where mpA: "m_parent A 0 (s + j) = Some p" and p_ge: "s \<le> p"
+    using m_parent_row0_ge_b0_start_when_ascends[OF b0 mp t_pos j_lt j_pos asc_j]
+    by blast
+  have p_lt: "p < s + j" using m_parent_lt[OF mpA] .
+  have pv: "elem A p 0 < elem A (s + j) 0" using m_parent_elem_lt[OF mpA] .
+  define x where "x = p - s"
+  have p_eq: "p = s + x" using p_ge x_def by simp
+  have x_lt_j: "x < j" using p_eq p_lt by simp
+  have x_lt_l1: "x < l1 A" using x_lt_j j_lt by linarith
+  have vx: "elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+    using row0_value_AEn_idx_B_block0[OF A_BMS A_ne b0 mp t_pos n_pos x_lt_l1] .
+  have vj: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = elem A (s + j) 0"
+    using row0_value_AEn_idx_B_block0[OF A_BMS A_ne b0 mp t_pos n_pos j_lt] .
+  have val_lt: "elem (A[n]) (idx_B_in_expansion A 0 x) 0
+              < elem (A[n]) (idx_B_in_expansion A 0 j) 0"
+    using vx vj pv p_eq by simp
+  have mem: "x \<in> set [j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                            < elem (A[n]) (idx_B_in_expansion A 0 j) 0]"
+    using x_lt_j val_lt by simp
+  show ?thesis
+  proof
+    assume "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                       < elem (A[n]) (idx_B_in_expansion A 0 j) 0] = []"
+    thus False using mem by simp
+  qed
+qed
+
 text \<open>\<^bold>\<open>\<open>m\<close>-ancestor coincidence from \<open>m\<close>-parent coincidence on the \<open>G\<close>-prefix
   (sorry-free).\<close>  If \<open>A[n]\<close> and \<open>A\<close> share the \<open>m\<close>-parent at every \<open>G\<close>-prefix
   column \<open>q < s\<close>, then they share the \<open>m\<close>-ancestry from any \<open>G\<close>-prefix column
