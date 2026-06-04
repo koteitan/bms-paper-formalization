@@ -9932,6 +9932,109 @@ proof -
   show ?thesis by (rule m_anc_AEn_eq_of_parent_eq_on_G[OF pc i_lt])
 qed
 
+text \<open>\<^bold>\<open>GAP C: row-0 recursive invariant for \<open>A[n]\<close> when \<open>b0_start A = None\<close>
+  (sorry-free, clause-iv-free).\<close>  With no \<open>B\<^sub>0\<close> block, \<open>A[n] = strip_zero_rows
+  (butlast A)\<close> (@{thm expansion_no_b0_eq_zero} composed with @{thm expansion_def}).
+  A column \<open>i\<close> of \<open>A[n]\<close> with \<open>0 < length (A[n] ! i)\<close> sits inside \<open>butlast A\<close>
+  (so \<open>i < arr_len A - 1\<close>), and its row-0 value/parent transport verbatim:
+  through the strip (@{thm elem_strip_lt_keep}, @{thm m_parent_m_ancestor_strip}
+  with \<open>0 < keep\<close> from the length hypothesis) and through the \<open>butlast\<close>
+  (@{thm elem_butlast}, @{thm m_parent_butlast}).  The \<open>A\<close>-instance of the
+  invariant (the IH) at \<open>i\<close> then yields the \<open>A[n]\<close>-instance, the parent
+  \<open>p < i\<close> also staying inside \<open>butlast A\<close>.\<close>
+
+lemma row0_recursive_AEn_when_b0_none:
+  fixes A :: array and i n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = None"
+      and i_lt: "i < arr_len (A[n])"
+      and len_pos: "0 < length ((A[n]) ! i)"
+      and IH: "elem A i 0
+             = (case m_parent A 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) i 0
+       = (case m_parent (A[n]) 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  let ?BL = "butlast A"
+  have An_eq: "A[n] = strip_zero_rows ?BL"
+  proof -
+    have "A[n] = A[0]" using expansion_no_b0_eq_zero[OF A_ne b0] .
+    also have "\<dots> = strip_zero_rows (G_block A @ Bs_concat A 0)"
+      unfolding expansion_def using A_ne by simp
+    also have "G_block A @ Bs_concat A 0 = ?BL"
+    proof -
+      have g: "G_block A = ?BL" using b0 by (simp add: G_block_def)
+      have bs: "Bs_concat A 0 = []"
+        using Bs_concat_zero[OF A_ne] b0 by (simp add: B0_block_def)
+      show ?thesis using g bs by simp
+    qed
+    finally show ?thesis .
+  qed
+  have BL_is_arr: "is_array ?BL" using is_array_butlast[OF is_arr] .
+  \<comment> \<open>The column index sits inside \<open>butlast A\<close>.\<close>
+  have len_An: "arr_len (A[n]) = arr_len ?BL"
+    using An_eq by (simp add: length_strip_zero_rows)
+  have i_lt_BL: "i < arr_len ?BL" using i_lt len_An by simp
+  have i_lt_A1: "i < arr_len A - 1" using i_lt_BL by simp
+  have BL_ne: "?BL \<noteq> []" using i_lt_BL by (cases ?BL) auto
+  \<comment> \<open>\<open>0 < keep_of (butlast A)\<close> from the non-empty stripped column.\<close>
+  have keep_pos: "0 < keep_of ?BL"
+  proof (rule ccontr)
+    assume "\<not> 0 < keep_of ?BL"
+    hence k0: "keep_of ?BL = 0" by simp
+    have "length ((A[n]) ! i) = keep_of ?BL"
+      using An_eq length_col_strip[OF BL_is_arr BL_ne i_lt_BL] by simp
+    thus False using k0 len_pos by simp
+  qed
+  \<comment> \<open>Row-0 value transports verbatim.\<close>
+  have ei: "elem (A[n]) i 0 = elem A i 0"
+  proof -
+    have "elem (A[n]) i 0 = elem ?BL i 0"
+      using An_eq elem_strip_lt_keep[OF BL_ne i_lt_BL keep_pos] by simp
+    also have "\<dots> = elem A i 0" by (rule elem_butlast[OF i_lt_A1])
+    finally show ?thesis .
+  qed
+  \<comment> \<open>Level-0 \<open>m\<close>-parent transports verbatim.\<close>
+  have strip_par: "\<And>q. q < arr_len ?BL \<Longrightarrow>
+                     m_parent (strip_zero_rows ?BL) 0 q = m_parent ?BL 0 q"
+    using m_parent_m_ancestor_strip[OF BL_is_arr] by blast
+  have mp_i: "m_parent (A[n]) 0 i = m_parent A 0 i"
+  proof -
+    have "m_parent (A[n]) 0 i = m_parent (strip_zero_rows ?BL) 0 i"
+      by (rule arg_cong[where f="\<lambda>x. m_parent x 0 i", OF An_eq])
+    also have "\<dots> = m_parent ?BL 0 i" using strip_par[OF i_lt_BL] .
+    also have "\<dots> = m_parent A 0 i" by (rule m_parent_butlast[OF i_lt_A1])
+    finally show ?thesis .
+  qed
+  show ?thesis
+  proof (cases "m_parent A 0 i")
+    case None
+    have mpN: "m_parent (A[n]) 0 i = None" using mp_i None by (rule trans)
+    have vA: "elem A i 0 = 0" using IH by (simp only: None option.case)
+    have vAEn: "elem (A[n]) i 0 = 0" using ei vA by (rule trans)
+    show ?thesis by (simp only: mpN option.case vAEn)
+  next
+    case (Some p)
+    have p_lt_i: "p < i" using m_parent_lt[OF Some] .
+    have p_lt_BL: "p < arr_len ?BL" using p_lt_i i_lt_BL by linarith
+    have p_lt_A1: "p < arr_len A - 1" using p_lt_BL by simp
+    \<comment> \<open>Parent's row-0 value also transports verbatim.\<close>
+    have ep: "elem (A[n]) p 0 = elem A p 0"
+    proof -
+      have "elem (A[n]) p 0 = elem ?BL p 0"
+        using An_eq elem_strip_lt_keep[OF BL_ne p_lt_BL keep_pos] by simp
+      also have "\<dots> = elem A p 0" by (rule elem_butlast[OF p_lt_A1])
+      finally show ?thesis .
+    qed
+    have mpS: "m_parent (A[n]) 0 i = Some p" using mp_i Some by (rule trans)
+    have vA: "elem A i 0 = Suc (elem A p 0)"
+      using IH by (simp only: Some option.case)
+    have "elem (A[n]) i 0 = Suc (elem A p 0)" using ei vA by (rule trans)
+    also have "\<dots> = Suc (elem (A[n]) p 0)" using ep by simp
+    finally show ?thesis by (simp only: mpS option.case)
+  qed
+qed
+
 text \<open>\<^bold>\<open>\<open>G\<close>-prefix case of the row-0 recursive invariant for \<open>A[n]\<close> (sorry-free).\<close>
   For a \<open>G\<close>-prefix column \<open>i < s\<close> (\<open>= l0 A\<close>), the row-0 recursive relation of
   \<open>A[n]\<close> coincides with that of \<open>A\<close>: the row-0 value is verbatim
