@@ -9531,6 +9531,52 @@ proof -
   show ?thesis by (rule m_anc_AEn_eq_of_parent_eq_on_G[OF pc i_lt])
 qed
 
+text \<open>\<^bold>\<open>\<open>G\<close>-prefix case of the row-0 recursive invariant for \<open>A[n]\<close> (sorry-free).\<close>
+  For a \<open>G\<close>-prefix column \<open>i < s\<close> (\<open>= l0 A\<close>), the row-0 recursive relation of
+  \<open>A[n]\<close> coincides with that of \<open>A\<close>: the row-0 value is verbatim
+  (@{thm elem_AEn_eq_on_G_prefix}), the level-0 \<open>m\<close>-parent is verbatim
+  (@{thm m_parent_AEn_eq_on_G_prefix}), and any such \<open>m\<close>-parent \<open>q < i < s\<close>
+  again has verbatim row-0 value.  So the \<open>A\<close>-instance of the invariant at \<open>i\<close>
+  transports unchanged to \<open>A[n]\<close>.  The strip cutoff is handled by the single
+  hypothesis \<open>0 < keep\<close>.\<close>
+
+lemma row0_recursive_AEn_on_G_prefix:
+  fixes A :: array and s i n :: nat
+  assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
+      and keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+      and i_lt: "i < s"
+      and IH: "elem A i 0
+             = (case m_parent A 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) i 0
+       = (case m_parent (A[n]) 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  have ei: "elem (A[n]) i 0 = elem A i 0"
+    using elem_AEn_eq_on_G_prefix[OF A_ne b0 i_lt keep_pos] .
+  have mp: "m_parent (A[n]) 0 i = m_parent A 0 i"
+    using m_parent_AEn_eq_on_G_prefix[OF A_ne b0 keep_pos i_lt] .
+  show ?thesis
+  proof (cases "m_parent A 0 i")
+    case None
+    have mpN: "m_parent (A[n]) 0 i = None" using mp None by (rule trans)
+    have vA: "elem A i 0 = 0"
+      using IH by (simp only: None option.case)
+    have vAEn: "elem (A[n]) i 0 = 0" using ei vA by (rule trans)
+    show ?thesis by (simp only: mpN option.case vAEn)
+  next
+    case (Some q)
+    have q_lt_i: "q < i" using m_parent_lt[OF Some] .
+    have q_lt_s: "q < s" using q_lt_i i_lt by linarith
+    have eq: "elem (A[n]) q 0 = elem A q 0"
+      using elem_AEn_eq_on_G_prefix[OF A_ne b0 q_lt_s keep_pos] .
+    have mpS: "m_parent (A[n]) 0 i = Some q" using mp Some by (rule trans)
+    have vA: "elem A i 0 = Suc (elem A q 0)"
+      using IH by (simp only: Some option.case)
+    have vAEn: "elem (A[n]) i 0 = Suc (elem (A[n]) q 0)"
+      by (simp only: ei vA eq)
+    show ?thesis by (simp only: mpS option.case vAEn)
+  qed
+qed
+
 text \<open>\<^bold>\<open>Ancestry-restriction to the \<open>G\<close>-prefix, modulo the level-descent residual
   \<open>(R\<hyphen>b)\<close> (sorry-free).\<close>  The \<open>G\<close>-block sub-case of the \<open>ancestor_monotone\<close>
   self-transfer reduces to: a \<open>G\<close>-prefix \<open>m\<close>-ancestor \<open>q'\<close> of the new bad root
