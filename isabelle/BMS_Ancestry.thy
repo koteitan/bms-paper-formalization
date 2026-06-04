@@ -7432,6 +7432,137 @@ proof -
   qed
 qed
 
+text \<open>
+  (L6-asc) Higher-block (\<open>c \<le> n\<close>) ascending-prefix case of the row-0 recursive
+  invariant for \<open>A[n]\<close>.  For a column \<open>j\<close> whose whole prefix \<open>[0, j]\<close> ascends at
+  row 0, the block-\<open>c\<close> value of \<open>A[n]\<close> at \<open>idx_B (A,c,j)\<close> is the bumped
+  \<open>(A!(s+j))!0 + c * delta\<close> (@{thm row0_value_AEn_idx_B}), and its level-0
+  \<open>m\<close>-parent lands within block \<open>c\<close> at \<open>idx_B (A,c,(last S))\<close>
+  (@{thm m_parent_AEn_zero_idx_B_within_block_when_t_pos_prefix_asc}); the same
+  offset \<open>last S\<close> as block 0, whose original column \<open>s + last S\<close> equals \<open>A\<close>'s
+  level-0 \<open>m\<close>-parent of \<open>s + j\<close> (@{thm m_parent_row0_ascends_eq_block0_last}
+  bridged through \<open>x \<mapsto> s + x\<close>).  The common bump \<open>c * delta\<close> cancels, so the
+  \<open>Suc\<close>-increment is exactly \<open>A\<close>'s OWN row-0 invariant at \<open>s + j\<close> (fed in as
+  @{term IHj}).  Telescopes verbatim — no circular reference to the strengthened
+  invariant.
+\<close>
+
+lemma row0_recursive_AEn_block_c_when_prefix_ascends:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and c_le: "c \<le> n"
+      and j_lt: "j < l1 A" and j_pos: "0 < j"
+      and pre_asc: "\<forall>x. x \<le> j \<longrightarrow> ascends A x 0"
+      and IHj: "elem A (s + j) 0
+              = (case m_parent A 0 (s + j) of None \<Rightarrow> 0
+                 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) (idx_B_in_expansion A c j) 0
+       = (case m_parent (A[n]) 0 (idx_B_in_expansion A c j) of None \<Rightarrow> 0
+          | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  let ?P = "\<lambda>c. elem A c 0 < elem A (s + j) 0"
+  let ?S = "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                        < elem (A[n]) (idx_B_in_expansion A 0 j) 0]"
+  have asc_j: "ascends A j 0" using pre_asc by blast
+  \<comment> \<open>Block-0 verbatim values give the candidate filter agreement with \<open>?P (s + \<cdot>)\<close>.\<close>
+  have valx0: "\<And>x. x < l1 A \<Longrightarrow>
+                 elem (A[n]) (idx_B_in_expansion A 0 x) 0 = elem A (s + x) 0"
+    using row0_value_AEn_idx_B_block0[OF A_BMS A_ne b0 mp t_pos n_pos] .
+  have S_pred: "?S = [j' \<leftarrow> [0..<j]. ?P (s + j')]"
+  proof (rule filter_cong[OF refl])
+    fix x assume "x \<in> set [0..<j]"
+    hence x_lt_j: "x < j" by simp
+    hence x_lt_l1: "x < l1 A" using j_lt by linarith
+    show "(elem (A[n]) (idx_B_in_expansion A 0 x) 0
+            < elem (A[n]) (idx_B_in_expansion A 0 j) 0)
+        = ?P (s + x)"
+      using valx0[OF x_lt_l1] valx0[OF j_lt] by simp
+  qed
+  \<comment> \<open>\<open>A\<close>'s level-0 m-parent of \<open>s+j\<close> is the last \<open>?P\<close>-candidate, \<open>\<ge> s\<close>.\<close>
+  have bridge: "m_parent A 0 (s + j)
+              = Some (last (filter ?P [s..<s + j]))"
+    using m_parent_row0_ascends_eq_block0_last[OF b0 mp t_pos j_lt j_pos asc_j] .
+  have range_map: "[s..<s + j] = map (\<lambda>x. s + x) [0..<j]"
+    using map_add_upt[of s j] by (simp add: add.commute)
+  have filt_map: "filter ?P [s..<s + j]
+                = map (\<lambda>x. s + x) (filter (\<lambda>x. ?P (s + x)) [0..<j])"
+    using range_map by (simp add: filter_map o_def)
+  obtain p where mpA: "m_parent A 0 (s + j) = Some p" and p_ge: "s \<le> p"
+    using m_parent_row0_ge_b0_start_when_ascends[OF b0 mp t_pos j_lt j_pos asc_j]
+    by blast
+  have p_lt: "p < s + j" using m_parent_lt[OF mpA] .
+  have pv: "?P p" using m_parent_elem_lt[OF mpA] .
+  have pmem: "p \<in> set (filter ?P [s..<s + j])" using p_ge p_lt pv by simp
+  hence filt_ne: "filter ?P [s..<s + j] \<noteq> []" by (cases "filter ?P [s..<s + j]") auto
+  have Sp_ne: "filter (\<lambda>x. ?P (s + x)) [0..<j] \<noteq> []"
+    using filt_ne filt_map by auto
+  have S_ne: "?S \<noteq> []" using S_pred Sp_ne by simp
+  \<comment> \<open>\<open>last S\<close> tracks \<open>last (filter ?P [s..<s+j])\<close> under \<open>x \<mapsto> s + x\<close>.\<close>
+  have last_link: "s + last ?S = last (filter ?P [s..<s + j])"
+  proof -
+    have "last (filter ?P [s..<s + j])
+        = last (map (\<lambda>x. s + x) (filter (\<lambda>x. ?P (s + x)) [0..<j]))"
+      using filt_map by simp
+    also have "\<dots> = s + last (filter (\<lambda>x. ?P (s + x)) [0..<j])"
+      using Sp_ne by (simp add: last_map)
+    also have "\<dots> = s + last ?S" using S_pred by simp
+    finally show ?thesis by simp
+  qed
+  have p_is: "p = s + last ?S" using mpA bridge last_link by simp
+  have lastS_lt: "last ?S < l1 A"
+  proof -
+    have "last ?S \<in> set ?S" using last_in_set[OF S_ne] .
+    hence "last ?S < j" by simp
+    thus ?thesis using j_lt by linarith
+  qed
+  have lastS_lt_j: "last ?S < j"
+  proof -
+    have "last ?S \<in> set ?S" using last_in_set[OF S_ne] .
+    thus ?thesis by simp
+  qed
+  have asc_lastS: "ascends A (last ?S) 0" using pre_asc lastS_lt_j by simp
+  \<comment> \<open>Block-\<open>c\<close> bumped values at \<open>j\<close> and at \<open>last S\<close>.\<close>
+  have v_j_c: "elem (A[n]) (idx_B_in_expansion A c j) 0
+             = (A ! (s + j)) ! 0 + c * delta A 0"
+    using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos j_lt c_le] asc_j
+    by simp
+  have v_lastS_c: "elem (A[n]) (idx_B_in_expansion A c (last ?S)) 0
+                 = (A ! (s + last ?S)) ! 0 + c * delta A 0"
+    using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos lastS_lt c_le]
+          asc_lastS by simp
+  \<comment> \<open>The within-block m-parent at block \<open>c\<close>.\<close>
+  have mpAEn: "m_parent (A[n]) 0 (idx_B_in_expansion A c j)
+             = Some (idx_B_in_expansion A c (last ?S))"
+    using m_parent_AEn_zero_idx_B_within_block_when_t_pos_prefix_asc
+            [OF A_BMS A_ne b0 mp t_pos n_pos pre_asc c_le j_lt S_ne] .
+  \<comment> \<open>\<open>A\<close>'s invariant at \<open>s+j\<close> gives the \<open>Suc\<close> increment over \<open>p = s + last S\<close>.\<close>
+  have IH_val: "elem A (s + j) 0 = Suc (elem A p 0)"
+    using IHj mpA by (simp only: option.case)
+  have IH_base: "(A ! (s + j)) ! 0 = Suc ((A ! (s + last ?S)) ! 0)"
+    using IH_val p_is unfolding elem_def by simp
+  \<comment> \<open>The common bump \<open>c * delta\<close> cancels: pure-arith \<open>Suc\<close>.\<close>
+  have target_val: "elem (A[n]) (idx_B_in_expansion A c j) 0
+                  = Suc (elem (A[n]) (idx_B_in_expansion A c (last ?S)) 0)"
+  proof -
+    have "elem (A[n]) (idx_B_in_expansion A c j) 0
+        = (A ! (s + j)) ! 0 + c * delta A 0" using v_j_c .
+    also have "\<dots> = Suc ((A ! (s + last ?S)) ! 0) + c * delta A 0"
+      using IH_base by (rule arg_cong[where f = "\<lambda>z. z + c * delta A 0"])
+    also have "\<dots> = Suc ((A ! (s + last ?S)) ! 0 + c * delta A 0)" by simp
+    also have "\<dots> = Suc (elem (A[n]) (idx_B_in_expansion A c (last ?S)) 0)"
+      using v_lastS_c[symmetric] by (rule arg_cong)
+    finally show ?thesis .
+  qed
+  have case_eq: "(case m_parent (A[n]) 0 (idx_B_in_expansion A c j) of None \<Rightarrow> 0
+                  | Some p \<Rightarrow> Suc (elem (A[n]) p 0))
+               = Suc (elem (A[n]) (idx_B_in_expansion A c (last ?S)) 0)"
+    by (subst mpAEn) (rule option.case(2))
+  show ?thesis using target_val case_eq[symmetric] by (rule trans)
+qed
+
 text \<open>\<^bold>\<open>Block-0 within-block parent at level \<open>Suc k'\<close> (sorry-free, 续61).\<close>
   The \<open>Suc k'\<close>-analogue of @{thm m_parent_AEn_zero_idx_B_within_block_at_block0}:
   block 0 is \<^emph>\<open>unbumped\<close> at every level, so its within-block candidate set

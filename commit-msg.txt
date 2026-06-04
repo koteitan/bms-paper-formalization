@@ -1,9 +1,10 @@
-v0.1.95/Land the unified block-0 row-0 recursive case (verbatim copy, ascension-independent)
+v0.1.96/Land the higher-block ascending-prefix row-0 recursive case (delta-cancellation telescope)
 
-row0_recursive_AEn_block0: at block 0 the whole tile is a verbatim copy of
-A columns [s, s+l1), so elem and m_parent agree at level 0 (< t) between A
-and A[n] via elem_orig_eq_AEn_shared_below_l1 / m_parent_orig_eq_AEn_shared_B0.
-Transports A row-0 invariant verbatim, covering BOTH ascending and
-non-ascending block-0 columns without any nearest-smaller filter.
+row0_recursive_AEn_block_c_when_prefix_ascends: for a prefix-ascending
+column j at block c<=n, the bumped value (A!(s+j))!0 + c*delta has its
+level-0 m_parent within block c at idx_B(c,last S) (same offset last S as
+block 0, = A m_parent of s+j). The common c*delta cancels, so the Suc-step
+is exactly A own row-0 invariant at s+j. Telescopes; no strengthened-invariant
+reference.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
