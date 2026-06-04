@@ -10250,6 +10250,174 @@ proof -
   finally show ?thesis using mp_within by (simp only: option.case)
 qed
 
+text \<open>\<^bold>\<open>GAP B prefix-equality, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  On the
+  \<open>G + B\<^sub>0\<close> prefix \<open>[0..<s + l1]\<close> the row-0 value of \<open>A[n]\<close> agrees with that of
+  \<open>A\<close>: a \<open>G\<close>-prefix column (\<open>i < s\<close>) is verbatim (@{thm elem_AEn_eq_on_G_prefix}),
+  and a block-0 \<open>B\<^sub>0\<close> column \<open>s + x\<close> (\<open>x < l1\<close>) is verbatim because \<open>t = 0 \<Rightarrow>
+  \<not> ascends\<close> (@{thm elem_AEn_cross_block_when_not_ascends} at \<open>c = 0\<close>, where
+  \<open>idx_B (A,0,x) = s + x\<close>).\<close>
+
+lemma elem_AEn_eq_on_GB0_prefix_when_t_zero:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+      and i_lt: "i < s + l1 A"
+  shows "elem (A[n]) i 0 = elem A i 0"
+proof -
+  have l0_eq: "l0 A = s" using l0_eq_s_of_b0[OF A_ne b0] .
+  show ?thesis
+  proof (cases "i < s")
+    case True
+    show ?thesis using elem_AEn_eq_on_G_prefix[OF A_ne b0 True keep_pos] .
+  next
+    case False
+    hence s_le: "s \<le> i" by simp
+    define x where "x = i - s"
+    have i_eq: "i = s + x" using s_le x_def by simp
+    have x_lt: "x < l1 A" using i_lt i_eq by simp
+    have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+    have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+    have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+    have l1_eq: "l1 A = last_col_idx A - s"
+    proof -
+      have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+        using b0 by (simp add: B0_block_def)
+      have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+        using B0_form by simp
+      also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+      finally show ?thesis unfolding l1_def by simp
+    qed
+    have sx_lt_arr: "s + x < arr_len A"
+    proof -
+      have "s + x < s + l1 A" using x_lt by simp
+      also have "\<dots> = last_col_idx A" using l1_eq s_lt_last by simp
+      finally show ?thesis using last_lt_arr by linarith
+    qed
+    have len_pos: "0 < length (A ! (s + x))"
+    proof -
+      let ?P = "G_block A @ Bs_concat A n"
+      have l1_pos: "0 < l1 A" using x_lt by simp
+      have len_P: "length ?P = l0 A + Suc n * l1 A"
+        by (simp add: l0_def l1_def length_Bs_concat)
+      have P_ne: "?P \<noteq> []" using len_P l1_pos by auto
+      have all_A: "\<forall>c \<in> set A. length c = height A"
+        using is_arr unfolding is_array_def by blast
+      have all_G: "\<forall>c \<in> set (G_block A). length c = height A"
+        using G_block_subset_A all_A by blast
+      have all_Bs: "\<forall>c \<in> set (Bs_concat A n). length c = height A"
+        using Bs_concat_uniform[OF is_arr A_ne] .
+      have all_P: "\<forall>c \<in> set ?P. length c = height A" using all_G all_Bs by auto
+      have hd_in: "hd ?P \<in> set ?P" using P_ne by (cases ?P) auto
+      have hd_len: "length (hd ?P) = height A" using all_P hd_in by blast
+      have hP: "height ?P = height A" using P_ne hd_len by (cases ?P) auto
+      have "keep_of ?P \<le> height ?P" by (rule keep_of_le_height)
+      hence "keep_of ?P \<le> height A" using hP by simp
+      hence H_pos: "0 < height A" using keep_pos by linarith
+      have "length (A ! (s + x)) = height A"
+        using length_col_arr[OF is_arr A_ne sx_lt_arr] .
+      thus ?thesis using H_pos by simp
+    qed
+    have not_asc_x: "\<not> ascends A x 0"
+      unfolding ascends_def using b0 mp0 by simp
+    have idx0x: "idx_B_in_expansion A 0 x = s + x"
+      using l0_eq unfolding idx_B_in_expansion_def by simp
+    have "elem (A[n]) (idx_B_in_expansion A 0 x) 0 = (A ! (s + x)) ! 0"
+      using elem_AEn_cross_block_when_not_ascends
+              [OF A_BMS A_ne b0 not_asc_x le0 x_lt keep_pos len_pos] .
+    thus ?thesis using idx0x i_eq unfolding elem_def by simp
+  qed
+qed
+
+text \<open>\<^bold>\<open>GAP B \<open>m\<close>-parent agreement on the \<open>G + B\<^sub>0\<close> prefix, \<open>t = 0\<close> (sorry-free).\<close>
+  Level-0 \<open>m\<close>-parent is value-only over \<open>[0..<i]\<close>, so prefix-value agreement
+  (@{thm elem_AEn_eq_on_GB0_prefix_when_t_zero}) makes the candidate lists of
+  \<open>A[n]\<close> and \<open>A\<close> at any prefix column \<open>i \<le> s + j\<close> literally equal.\<close>
+
+lemma m_parent_AEn_eq_on_GB0_prefix_when_t_zero:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+      and i_lt: "i < s + l1 A"
+  shows "m_parent (A[n]) 0 i = m_parent A 0 i"
+proof -
+  have ei: "elem (A[n]) i 0 = elem A i 0"
+    using elem_AEn_eq_on_GB0_prefix_when_t_zero[OF A_BMS A_ne b0 mp0 keep_pos i_lt] .
+  have filt_eq: "[p \<leftarrow> [0..<i]. elem (A[n]) p 0 < elem (A[n]) i 0]
+               = [p \<leftarrow> [0..<i]. elem A p 0 < elem A i 0]"
+  proof (rule filter_cong[OF refl])
+    fix p assume "p \<in> set [0..<i]"
+    hence p_lt_i: "p < i" by simp
+    hence p_lt: "p < s + l1 A" using i_lt by linarith
+    have ep: "elem (A[n]) p 0 = elem A p 0"
+      using elem_AEn_eq_on_GB0_prefix_when_t_zero[OF A_BMS A_ne b0 mp0 keep_pos p_lt] .
+    show "(elem (A[n]) p 0 < elem (A[n]) i 0) = (elem A p 0 < elem A i 0)"
+      using ep ei by simp
+  qed
+  show ?thesis using filt_eq by (simp add: Let_def)
+qed
+
+text \<open>\<^bold>\<open>GAP B block-0 case, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  For a block-0
+  column \<open>idx_B (A,0,j) = s + j\<close> (\<open>j < l1\<close>) the \<open>A[n]\<close> row-0 value and level-0
+  \<open>m\<close>-parent coincide with \<open>A\<close>'s on the whole \<open>G + B\<^sub>0\<close> prefix
+  (@{thm elem_AEn_eq_on_GB0_prefix_when_t_zero},
+  @{thm m_parent_AEn_eq_on_GB0_prefix_when_t_zero}); the \<open>m\<close>-parent \<open>q < s + j\<close>
+  also has a prefix-verbatim value, so \<open>A\<close>'s OWN row-0 invariant at \<open>s + j\<close>
+  (@{term IHj}) transports unchanged.\<close>
+
+lemma row0_recursive_AEn_block0_when_t_zero:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+      and j_lt: "j < l1 A"
+      and IHj: "elem A (s + j) 0
+              = (case m_parent A 0 (s + j) of None \<Rightarrow> 0
+                 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) (idx_B_in_expansion A 0 j) 0
+       = (case m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) of None \<Rightarrow> 0
+          | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  have l0_eq: "l0 A = s" using l0_eq_s_of_b0[OF A_ne b0] .
+  have idx_j: "idx_B_in_expansion A 0 j = s + j"
+    using l0_eq unfolding idx_B_in_expansion_def by simp
+  have sj_lt: "s + j < s + l1 A" using j_lt by simp
+  have ev_j: "elem (A[n]) (s + j) 0 = elem A (s + j) 0"
+    using elem_AEn_eq_on_GB0_prefix_when_t_zero
+            [OF A_BMS A_ne b0 mp0 keep_pos sj_lt] .
+  have mp_j: "m_parent (A[n]) 0 (s + j) = m_parent A 0 (s + j)"
+    using m_parent_AEn_eq_on_GB0_prefix_when_t_zero
+            [OF A_BMS A_ne b0 mp0 keep_pos sj_lt] .
+  show ?thesis
+  proof (cases "m_parent A 0 (s + j)")
+    case None
+    have mpN: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) = None"
+      using mp_j None idx_j by simp
+    have vA: "elem A (s + j) 0 = 0" using IHj None by (simp only: option.case)
+    have vAEn: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = 0"
+      using ev_j vA idx_j by simp
+    show ?thesis by (simp only: mpN option.case vAEn)
+  next
+    case (Some q)
+    have q_lt: "q < s + j" using m_parent_lt[OF Some] .
+    have q_lt_prefix: "q < s + l1 A" using q_lt sj_lt by linarith
+    have ev_q: "elem (A[n]) q 0 = elem A q 0"
+      using elem_AEn_eq_on_GB0_prefix_when_t_zero
+              [OF A_BMS A_ne b0 mp0 keep_pos q_lt_prefix] .
+    have mpS: "m_parent (A[n]) 0 (idx_B_in_expansion A 0 j) = Some q"
+      using mp_j Some idx_j by simp
+    have vA: "elem A (s + j) 0 = Suc (elem A q 0)"
+      using IHj Some by (simp only: option.case)
+    have vAEn: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = Suc (elem (A[n]) q 0)"
+      using ev_j vA ev_q idx_j by simp
+    show ?thesis by (simp only: mpS option.case vAEn)
+  qed
+qed
+
 text \<open>\<^bold>\<open>Ancestry-restriction to the \<open>G\<close>-prefix, modulo the level-descent residual
   \<open>(R\<hyphen>b)\<close> (sorry-free).\<close>  The \<open>G\<close>-block sub-case of the \<open>ancestor_monotone\<close>
   self-transfer reduces to: a \<open>G\<close>-prefix \<open>m\<close>-ancestor \<open>q'\<close> of the new bad root
