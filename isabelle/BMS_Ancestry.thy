@@ -6953,6 +6953,64 @@ next
 qed
 
 text \<open>
+  (L4-a) An \<open>m\<close>-ancestor lower-bounds the \<open>m\<close>-parent: if \<open>a\<close> is a
+  level-\<open>m\<close> m-ancestor of \<open>i\<close>, then \<open>i\<close> has a level-\<open>m\<close> m-parent \<open>p\<close>
+  with \<open>a \<le> p\<close>.  The first step of the strictly-decreasing m-parent
+  chain from \<open>i\<close> down to \<open>a\<close> cannot land below \<open>a\<close> (otherwise \<open>a\<close>
+  could not be reached).  Pure m-parent fact (no BMS structure, no
+  plateau restriction): @{thm m_anc_via_parent_some} splits on the
+  first parent, @{thm m_ancestor_target_lt} bounds the recursive case.
+\<close>
+lemma m_ancestor_le_m_parent:
+  assumes anc: "m_ancestor A m i a"
+  obtains p where "m_parent A m i = Some p" and "a \<le> p"
+proof -
+  obtain p where mp: "m_parent A m i = Some p"
+             and case_p: "p = a \<or> m_ancestor A m p a"
+    using anc by (cases "m_parent A m i") auto
+  have a_le_p: "a \<le> p"
+  proof (cases "p = a")
+    case True thus ?thesis by simp
+  next
+    case False
+    hence "m_ancestor A m p a" using case_p by simp
+    hence "a < p" using m_ancestor_target_lt by blast
+    thus ?thesis by simp
+  qed
+  show ?thesis using that[OF mp a_le_p] .
+qed
+
+text \<open>
+  (L4-b) Block-0 \<open>\<leftrightarrow>\<close> A-global m_parent bridge (residual flagged by
+  the prior run): when block-0 column \<open>j\<close> (\<open>j > 0\<close>) ascends at row 0,
+  \<open>A\<close>'s full level-0 m-parent of \<open>s + j\<close> stays at or above the bad
+  root \<open>s\<close> (it does NOT descend into the \<open>G\<close>-prefix \<open>[0, s)\<close>).  Hunter's
+  ascension makes \<open>s\<close> a level-0 m-ancestor of \<open>s + j\<close>
+  (@{thm ascends_row0_iff_strict_min} \<open>\<rightarrow>\<close> @{thm m_anc_zero_strict_min}),
+  and @{thm m_ancestor_le_m_parent} lower-bounds the m-parent by \<open>s\<close>.
+  Plateau-permitting: no all-ascend / consecutiveness hypothesis.
+\<close>
+lemma m_parent_row0_ge_b0_start_when_ascends:
+  fixes A :: array
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_lt: "j < l1 A"
+      and j_pos: "0 < j"
+      and asc: "ascends A j 0"
+  obtains p where "m_parent A 0 (s + j) = Some p" and "s \<le> p"
+proof -
+  have strict_min: "\<forall>c. s < c \<and> c \<le> s + j \<longrightarrow> elem A s 0 < elem A c 0"
+    using ascends_row0_iff_strict_min[OF b0 mp t_pos j_lt] asc by blast
+  have sj_gt: "s < s + j" using j_pos by simp
+  have anc: "m_ancestor A 0 (s + j) s"
+    using m_anc_zero_strict_min[OF sj_gt strict_min] .
+  obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
+    using m_ancestor_le_m_parent[OF anc] by blast
+  show ?thesis using that[OF mp_p s_le_p] .
+qed
+
+text \<open>
   (B2) Row-0 candidate implication, mirror of
   @{thm elem_AEn_lt_block_implies_block_zero_when_j_not_asc} at level 0:
   if \<open>j\<close> does not ascend at row 0, a block-\<open>c\<close> row-0 candidate \<open>x\<close>
