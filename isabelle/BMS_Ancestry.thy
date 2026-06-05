@@ -18152,6 +18152,66 @@ next
   qed
 qed
 
+text \<open>\<^bold>\<open>\<open>mpl\<close> upper bounds from the predecessor height (sorry-free reductions).\<close>
+  The \<open>Hmpl_le1\<close> / \<open>Hmpl_gt1\<close> premises of @{thm ancestor_monotone_expand} are upper
+  bounds on \<open>t' = mpl (A[n])\<close>.  They reduce — sorry-free — to a single \<open>BMS\<close>
+  structural fact about the \<^emph>\<open>predecessor\<close>: \<open>height A \<le> mpl A + 2\<close> (and the sharper
+  \<open>height A \<le> mpl A + 1\<close> when \<open>l\<^sub>1 A > 1\<close>).  Since the strip never raises the
+  height (@{thm height_expansion_le}), the expansion inherits the bound, and at a
+  row \<open>\<ge> height (A[n])\<close> the last column has no \<open>m\<close>-parent
+  (@{thm m_parent_None_at_ge_height}), so @{thm mpl_lt_of_no_parent} caps \<open>t'\<close>.
+  Empirically the two height bounds are exact (\<open>verify/probe_mpl_relation.py\<close>:
+  \<open>0 / 2990\<close> for \<open>height A \<le> mpl A + 2\<close> and the \<open>l\<^sub>1 > 1\<close> sharpening; the induced
+  \<open>mpl\<close> bounds \<open>0 / 29748\<close>).\<close>
+
+lemma mpl_expansion_le_from_height_bound:
+  fixes A :: array and n s' t' tA :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0E: "b0_start (A[n]) = Some s'"
+      and mpE: "max_parent_level (A[n]) = Some t'"
+      and hbound: "height A \<le> tA + 2"
+  shows "t' \<le> tA + 1"
+proof -
+  have An_BMS: "A[n] \<in> BMS" using expand_in_BMS[OF A_BMS] .
+  have is_arr: "is_array (A[n])" using BMS_is_array[OF An_BMS] .
+  have ne: "A[n] \<noteq> []"
+  proof
+    assume "A[n] = []"
+    hence "b0_start (A[n]) = None" by (simp add: b0_start_def max_parent_level_def)
+    thus False using b0E by simp
+  qed
+  have hle: "height (A[n]) \<le> tA + 2"
+    using order_trans[OF height_expansion_le[OF A_BMS A_ne] hbound] .
+  have none: "m_parent (A[n]) (tA + 2) (last_col_idx (A[n])) = None"
+    using m_parent_None_at_ge_height[OF is_arr ne hle] .
+  have "t' < tA + 2" using mpl_lt_of_no_parent[OF b0E mpE none] .
+  thus ?thesis by simp
+qed
+
+lemma mpl_expansion_le_from_height_bound_sharp:
+  fixes A :: array and n s' t' tA :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0E: "b0_start (A[n]) = Some s'"
+      and mpE: "max_parent_level (A[n]) = Some t'"
+      and hbound: "height A \<le> tA + 1"
+  shows "t' \<le> tA"
+proof -
+  have An_BMS: "A[n] \<in> BMS" using expand_in_BMS[OF A_BMS] .
+  have is_arr: "is_array (A[n])" using BMS_is_array[OF An_BMS] .
+  have ne: "A[n] \<noteq> []"
+  proof
+    assume "A[n] = []"
+    hence "b0_start (A[n]) = None" by (simp add: b0_start_def max_parent_level_def)
+    thus False using b0E by simp
+  qed
+  have hle: "height (A[n]) \<le> tA + 1"
+    using order_trans[OF height_expansion_le[OF A_BMS A_ne] hbound] .
+  have none: "m_parent (A[n]) (tA + 1) (last_col_idx (A[n])) = None"
+    using m_parent_None_at_ge_height[OF is_arr ne hle] .
+  have "t' < tA + 1" using mpl_lt_of_no_parent[OF b0E mpE none] .
+  thus ?thesis by simp
+qed
+
 text \<open>\<^bold>\<open>The BMS \<open>mpl\<close>-definedness keystone, modulo the single tall-expansion
   obligation \<open>c4'\<close> (machine-verified reduction).\<close>  Empirically
   (\<open>verify/probe_mpl_none_linchpin.py\<close>, 0 fails / 1784 faithful BMS arrays):
