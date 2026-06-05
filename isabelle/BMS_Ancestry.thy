@@ -18425,6 +18425,51 @@ proof -
   thus ?thesis by simp
 qed
 
+text \<open>\<^bold>\<open>Row-0 consecutiveness from row-0 adjacent monotonicity (sorry-free).\<close>  If the
+  \<open>B\<^sub>0\<close>-region columns strictly increase at row 0 (\<open>mono\<close>), then each \<open>s+c\<close>'s level-0
+  \<open>m\<close>-parent is its left neighbour \<open>s+c-1\<close> (@{thm m_parent_zero_ge_anchor}: the
+  adjacent strictly-smaller column is the rightmost candidate), so the row-0
+  invariant (@{thm row0_invariant}) forces \<open>elem A (s+j) 0 = elem A s 0 + j\<close>.  This
+  is the \<open>consec\<close> hypothesis of the bumped-tiling machinery, here derived — sorry-free
+  — from row-0 adjacent monotonicity (the row-0 face of \<open>adjacent_value_monotone\<close>,
+  i.e.\ of the value crux \<open>ancestor_monotone\<close>).\<close>
+
+lemma consec_row0_from_mono:
+  fixes A :: array and s :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and HA_pos: "0 < height A"
+      and mono: "\<And>d. s < d \<Longrightarrow> d \<le> last_col_idx A
+                   \<Longrightarrow> elem A (d - 1) 0 < elem A d 0"
+  shows "\<And>j. s + j \<le> last_col_idx A \<Longrightarrow> elem A (s + j) 0 = elem A s 0 + j"
+proof -
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  fix j show "s + j \<le> last_col_idx A \<Longrightarrow> elem A (s + j) 0 = elem A s 0 + j"
+  proof (induct j)
+    case 0 show ?case by simp
+  next
+    case (Suc j)
+    have c_le: "s + Suc j \<le> last_col_idx A" by (rule Suc.prems)
+    have prev_le: "s + j \<le> last_col_idx A" using c_le by simp
+    have IH: "elem A (s + j) 0 = elem A s 0 + j" using Suc.hyps prev_le by simp
+    have lt: "elem A (s + j) 0 < elem A (s + Suc j) 0"
+      using mono[of "s + Suc j"] c_le by simp
+    obtain p where mp_eq: "m_parent A 0 (s + Suc j) = Some p"
+               and p_ge: "s + j \<le> p" and p_lt: "p < s + Suc j"
+      using m_parent_zero_ge_anchor[of "s + j" "s + Suc j" A] lt by auto
+    have p_eq: "p = s + j" using p_ge p_lt by simp
+    have sSj_arr: "s + Suc j < arr_len A" using c_le last_lt_arr by simp
+    have col_pos: "0 < length (A ! (s + Suc j))"
+      using length_col_arr[OF is_arr A_ne sSj_arr] HA_pos by simp
+    have "elem A (s + Suc j) 0
+        = (case m_parent A 0 (s + Suc j) of None \<Rightarrow> 0 | Some q \<Rightarrow> Suc (elem A q 0))"
+      using row0_invariant[OF A_BMS] A_ne sSj_arr col_pos by blast
+    also have "\<dots> = Suc (elem A (s + j) 0)" using mp_eq p_eq by simp
+    also have "\<dots> = elem A s 0 + Suc j" using IH by simp
+    finally show ?case .
+  qed
+qed
+
 text \<open>\<^bold>\<open>A row-0-all-zero \<open>BMS\<close> array has height \<open>0\<close> (sorry-free).\<close>  If every column's
   row-0 entry is \<open>0\<close>, then (@{thm col_row0_zero_imp_col_zero}) every column is
   identically \<open>0\<close>, so the whole array is all-zero; since \<open>BMS\<close> arrays are stripped
