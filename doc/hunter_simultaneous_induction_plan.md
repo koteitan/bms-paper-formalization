@@ -273,7 +273,23 @@ genuinely violated (`probe_anc_monotone_boundary`: 1660, all G-prefix) ⟹ range
 no extension route. Broad G-prefix monotone is false (`probe_gprefix_monotone`: 28k+). So Htop
 is ONLY the narrow chain-staircase, never a broad value statement.
 
-**First incremental step for next session (net-neutral, GREEN-keeping):** discharge the two
-mpl-relation premises `Hmpl_gt1`/`Hmpl_le1` as standalone lemmas (likely provable from existing
-`mpl_bound_from_R2` + an R1 analogue), so @15879's residual collapses to exactly `{Rb_cond, Htop}`
-= the two named cruxes — then the bundle restructure handles Rb_cond, leaving Htop alone.
+**First incremental step (DONE, v0.1.114):** the two mpl-relation premises `Hmpl_gt1`/`Hmpl_le1`
+are discharged sorry-free by `mpl_expansion_le_from_height_bound` / `..._sharp`, reducing them to
+a single *predecessor-only* BMS fact:
+
+> **HBND:** `A ∈ BMS ⟹ A ≠ [] ⟹ mpl A = Some t ⟹ height A ≤ t + 2`
+> (sharper `height A ≤ t + 1` when `l1 A > 1`).
+
+Empirically exact (`verify/probe_mpl_relation.py`: `0/2990`). With the known lower bound
+`max_parent_level_lt` (`t < height A`), HBND pins `height A ∈ {t+1, t+2}` exactly.
+
+**HBND proof path (next target):** `BMS.induct`. Seed: `height(seed n)=n`, `mpl=n-1`, so
+`n ≤ (n-1)+2` ✓. Expand: `height(A[n]) ≤ height A ≤ tA+2` (IH + `height_expansion_le`); the ONLY
+gap is the **R1 regime** where `mpl(A[n]) = tA-1` (mpl drops by one) — there the IH bound `tA+2`
+overshoots the needed `t'+2 = tA+1` by one, so it needs the **strip-drop fact** (when the
+expansion's mpl drops, the strip removes a row: `R1 ⟹ height(A[n]) ≤ tA+1`). That strip↔mpl
+interaction is the single residual behind HBND.
+
+So @15879's full premise residual is now exactly `{HBND, Rb_cond, Htop}`: `Rb_cond` is handled by
+the joint bundle (clause-i from IH), and `HBND`/`Htop` are the two structural facts left. The
+grand crux remains **Htop** (the same-level circularity).
