@@ -101,6 +101,7 @@
     - 🚨 onestep_anc (bumped: idx_B A (c-1) j が idx_B A c j の k-祖先; chain maximality=clause(iv)要, SI内)
   - 🚨 lemma_2_5_i_clause_step_forward_case_not_ascends
   - 🚨 lemma_2_5_i_clause_step_backward_case_not_ascends
+  - 🚨 clause_i_iff_when_not_ascends (T=[] above-t vacuity に帰着, leftmost_gateway_iff_when_T_empty 呼ぶだけ)
   - ✅ clause (i) @ j=0 slice (P1b に十分, level 帰納):
     - ✅ m_anc_eq_of_m_parent_eq (m_parent 一致 ⟹ m_anc 一致)
     - ✅ clause_i_j0_step_not_asc (not-asc level: P1_from_struct で m_parent 一致)
@@ -117,6 +118,20 @@
   - 🚨 lemma_2_5_v_clause_step_iff
     - ✅ clause_v_asc_iff_from_onestep (asc case ⟸ onestep_anc, clause(i) asc と共通 crux)
     - 🚨 onestep_anc (clause(i) asc と共有) + not-asc case (値一致, 別 argument)
+
+- 🚨 row0-linchpin route → STRUCT mpl-definedness linchpin (単一 crux c4' に帰着)
+  - ✅ row0_invariant
+  - ✅ mpl_none_imp_last_col_row0_zero
+  - ✅ mpl_some_imp_last_col_row0_pos
+  - ✅ m_parent_level_down_ne
+  - ✅ expansion_no_b0_eq_strip_butlast
+  - ✅ height_expansion_le
+  - ✅ height_ge2_imp_b0_some_cond (c4' modulo)
+  - ✅ mpl_le_zero_expansion_of_height_le1
+  - ✅ mpl_none_imp_mpl_le_zero_expansion_cond (STRUCT linchpin, c4' modulo)
+  - ✅ ascends_antitone_level
+  - ✅ drop_dom_ancestor_from_onestep (V ⟸ V1)
+  - 🚨 V1 / c4' (= col-nonincreasing = ancestor_monotone = drop-domination; clause-i 必須)
 
 - ✅ Lemma 2.5 helpers
   - ✅ m_anc_build_Suc (PSS le1_build 移植: stratified 支配→高レベル祖先 build, endpoint 帰納; SI ancestry step 用)
