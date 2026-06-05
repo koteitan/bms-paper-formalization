@@ -10196,6 +10196,90 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>\<open>n = 0\<close> case of the row-0 recursive invariant (sorry-free, clause-iv-free).\<close>
+  For ANY non-empty \<open>A\<close>, \<open>A[0] = strip_zero_rows (butlast A)\<close>
+  (@{thm expansion_zero_eq}), so a column \<open>i\<close> of \<open>A[0]\<close> with positive length sits
+  inside \<open>butlast A\<close> (\<open>i < arr_len A - 1\<close>) and its row-0 value/level-0 \<open>m\<close>-parent
+  transport verbatim through the strip (@{thm elem_strip_lt_keep},
+  @{thm m_parent_m_ancestor_strip}) and the \<open>butlast\<close> (@{thm elem_butlast},
+  @{thm m_parent_butlast}).  \<open>A\<close>'s invariant at \<open>i\<close> (the IH) then yields \<open>A[0]\<close>'s,
+  the parent \<open>p < i\<close> also staying inside \<open>butlast A\<close>.  (Mirrors
+  @{thm row0_recursive_AEn_when_b0_none} but anchored on \<open>expansion_zero_eq\<close>
+  instead of \<open>b0_start A = None\<close>, so it covers the \<open>b0_start A = Some s\<close> case at \<open>n = 0\<close>.)\<close>
+
+lemma row0_recursive_A0:
+  fixes A :: array and i :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and i_lt: "i < arr_len (A[0])"
+      and len_pos: "0 < length ((A[0]) ! i)"
+      and IH: "elem A i 0
+             = (case m_parent A 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[0]) i 0
+       = (case m_parent (A[0]) 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (A[0]) p 0))"
+proof -
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  let ?BL = "butlast A"
+  have An_eq: "A[0] = strip_zero_rows ?BL" using expansion_zero_eq[OF A_ne] .
+  have BL_is_arr: "is_array ?BL" using is_array_butlast[OF is_arr] .
+  have len_An: "arr_len (A[0]) = arr_len ?BL"
+    using An_eq by (simp add: length_strip_zero_rows)
+  have i_lt_BL: "i < arr_len ?BL" using i_lt len_An by simp
+  have i_lt_A1: "i < arr_len A - 1" using i_lt_BL by simp
+  have BL_ne: "?BL \<noteq> []" using i_lt_BL by (cases ?BL) auto
+  have keep_pos: "0 < keep_of ?BL"
+  proof (rule ccontr)
+    assume "\<not> 0 < keep_of ?BL"
+    hence k0: "keep_of ?BL = 0" by simp
+    have "length ((A[0]) ! i) = keep_of ?BL"
+      using An_eq length_col_strip[OF BL_is_arr BL_ne i_lt_BL] by simp
+    thus False using k0 len_pos by simp
+  qed
+  have ei: "elem (A[0]) i 0 = elem A i 0"
+  proof -
+    have "elem (A[0]) i 0 = elem ?BL i 0"
+      using An_eq elem_strip_lt_keep[OF BL_ne i_lt_BL keep_pos] by simp
+    also have "\<dots> = elem A i 0" by (rule elem_butlast[OF i_lt_A1])
+    finally show ?thesis .
+  qed
+  have strip_par: "\<And>q. q < arr_len ?BL \<Longrightarrow>
+                     m_parent (strip_zero_rows ?BL) 0 q = m_parent ?BL 0 q"
+    using m_parent_m_ancestor_strip[OF BL_is_arr] by blast
+  have mp_i: "m_parent (A[0]) 0 i = m_parent A 0 i"
+  proof -
+    have "m_parent (A[0]) 0 i = m_parent (strip_zero_rows ?BL) 0 i"
+      by (rule arg_cong[where f="\<lambda>x. m_parent x 0 i", OF An_eq])
+    also have "\<dots> = m_parent ?BL 0 i" using strip_par[OF i_lt_BL] .
+    also have "\<dots> = m_parent A 0 i" by (rule m_parent_butlast[OF i_lt_A1])
+    finally show ?thesis .
+  qed
+  show ?thesis
+  proof (cases "m_parent A 0 i")
+    case None
+    have mpN: "m_parent (A[0]) 0 i = None" using mp_i None by (rule trans)
+    have vA: "elem A i 0 = 0" using IH by (simp only: None option.case)
+    have vAEn: "elem (A[0]) i 0 = 0" using ei vA by (rule trans)
+    show ?thesis by (simp only: mpN option.case vAEn)
+  next
+    case (Some p)
+    have p_lt_i: "p < i" using m_parent_lt[OF Some] .
+    have p_lt_BL: "p < arr_len ?BL" using p_lt_i i_lt_BL by linarith
+    have p_lt_A1: "p < arr_len A - 1" using p_lt_BL by simp
+    have ep: "elem (A[0]) p 0 = elem A p 0"
+    proof -
+      have "elem (A[0]) p 0 = elem ?BL p 0"
+        using An_eq elem_strip_lt_keep[OF BL_ne p_lt_BL keep_pos] by simp
+      also have "\<dots> = elem A p 0" by (rule elem_butlast[OF p_lt_A1])
+      finally show ?thesis .
+    qed
+    have mpS: "m_parent (A[0]) 0 i = Some p" using mp_i Some by (rule trans)
+    have vA: "elem A i 0 = Suc (elem A p 0)"
+      using IH by (simp only: Some option.case)
+    have "elem (A[0]) i 0 = Suc (elem A p 0)" using ei vA by (rule trans)
+    also have "\<dots> = Suc (elem (A[0]) p 0)" using ep by simp
+    finally show ?thesis by (simp only: mpS option.case)
+  qed
+qed
+
 text \<open>\<^bold>\<open>\<open>G\<close>-prefix case of the row-0 recursive invariant for \<open>A[n]\<close> (sorry-free).\<close>
   For a \<open>G\<close>-prefix column \<open>i < s\<close> (\<open>= l0 A\<close>), the row-0 recursive relation of
   \<open>A[n]\<close> coincides with that of \<open>A\<close>: the row-0 value is verbatim
@@ -11253,6 +11337,372 @@ text \<open>\<^bold>\<open>Ancestry-restriction to the \<open>G\<close>-prefix, 
   \<open>8748/0\<close>) — this lemma discharges the rest: localize the \<open>A[n]\<close>-ancestry of \<open>q'\<close>
   back to \<open>A\<close> (@{thm m_anc_AEn_eq_on_G_prefix}) and chain through \<open>s'\<close> by
   @{thm m_ancestor_trans}.\<close>
+
+text \<open>\<^bold>\<open>Keep-positivity of the pre-strip from a positive-length expansion column
+  (sorry-free, clause-iv-free).\<close>  If a column \<open>i\<close> of \<open>A[n]\<close> has positive length, then
+  the pre-strip \<open>G_block A @ Bs_concat A n\<close> has positive keep: the column length equals
+  the stripped height \<open>= keep_of\<close> (@{thm length_col_arr}, @{thm height_strip_eq_keep}).\<close>
+
+lemma keep_pos_of_AEn_col_len:
+  fixes A :: array and i n :: nat
+  assumes A_ne: "A \<noteq> []"
+      and i_lt: "i < arr_len (A[n])"
+      and len_pos: "0 < length ((A[n]) ! i)"
+  shows "0 < keep_of (G_block A @ Bs_concat A n)"
+proof -
+  let ?P = "G_block A @ Bs_concat A n"
+  have An_eq: "A[n] = strip_zero_rows ?P" unfolding expansion_def using A_ne by simp
+  have len_An: "arr_len (A[n]) = arr_len ?P"
+    using An_eq by (simp add: length_strip_zero_rows)
+  have i_lt_P: "i < arr_len ?P" using i_lt len_An by simp
+  have P_ne: "?P \<noteq> []" using i_lt_P by (cases ?P) auto
+  have col_i: "(A[n]) ! i = take (keep_of ?P) (?P ! i)"
+  proof -
+    have "(A[n]) ! i = (strip_zero_rows ?P) ! i" using An_eq by simp
+    also have "\<dots> = (map (\<lambda>c. take (keep_of ?P) c) ?P) ! i"
+      using strip_zero_rows_eq_map_take[OF P_ne] by simp
+    also have "\<dots> = take (keep_of ?P) (?P ! i)" using i_lt_P by (rule nth_map)
+    finally show ?thesis .
+  qed
+  have "0 < length (take (keep_of ?P) (?P ! i))" using len_pos col_i by simp
+  thus ?thesis by (cases "keep_of ?P") auto
+qed
+
+text \<open>\<^bold>\<open>THE ROW-0 RECURSIVE INVARIANT (sorry-free, clause-iv-free).\<close>  For every
+  \<open>A \<in> BMS\<close> and every positive-length column \<open>i\<close>, the row-0 value equals \<open>0\<close> when
+  \<open>i\<close> has no level-0 \<open>m\<close>-parent and \<open>Suc\<close> of the parent's row-0 value otherwise.
+  Proven by \<open>BMS.induct\<close>: the seed is @{thm seed_row0_eq_recursive}; the expansion
+  step dispatches an arbitrary column of \<open>A[n]\<close> — \<open>n = 0\<close> (@{thm row0_recursive_A0}),
+  \<open>b0_start A = None\<close> (@{thm row0_recursive_AEn_when_b0_none}), \<open>G\<close>-prefix
+  (@{thm row0_recursive_AEn_on_G_prefix}), block-0 / block-\<open>c\<close> / block-start at both
+  \<open>t = 0\<close> and \<open>t > 0\<close> — feeding the BMS.induct IH (\<open>A\<close>'s own invariant) at the
+  appropriate \<open>B\<^sub>0\<close> offset or at the last column \<open>C\<close>.\<close>
+
+lemma row0_invariant:
+  fixes A :: array and i :: nat
+  assumes A_BMS: "A \<in> BMS"
+  shows "A \<noteq> [] \<Longrightarrow> i < arr_len A \<Longrightarrow> 0 < length (A ! i)
+       \<Longrightarrow> elem A i 0
+           = (case m_parent A 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+  using A_BMS
+proof (induct arbitrary: i rule: BMS.induct)
+  case (seed_in_BMS m)
+  have len2: "arr_len (seed m) = 2" using length_seed by simp
+  have i01: "i = 0 \<or> i = 1" using seed_in_BMS.prems(2) len2 by auto
+  have m_pos: "0 < m"
+  proof -
+    have "length ((seed m) ! i) = m"
+      using i01 unfolding seed_def by auto
+    thus ?thesis using seed_in_BMS.prems(3) by simp
+  qed
+  show ?case
+    using seed_row0_eq_recursive[OF m_pos seed_in_BMS.prems(2)] .
+next
+  case (expand_in_BMS A n)
+  note A_BMS = expand_in_BMS.hyps(1)
+  note IH = expand_in_BMS.hyps(2)
+  note An_ne = expand_in_BMS.prems(1)
+  note i_lt = expand_in_BMS.prems(2)
+  note len_pos = expand_in_BMS.prems(3)
+  have A_ne: "A \<noteq> []"
+  proof (cases "A = []")
+    case True
+    have "A[n] = []" using True unfolding expansion_def by simp
+    thus ?thesis using An_ne by simp
+  qed simp
+  have IH': "\<And>k. k < arr_len A \<Longrightarrow> 0 < length (A ! k) \<Longrightarrow>
+               elem A k 0
+             = (case m_parent A 0 k of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+    using IH A_ne by blast
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  show ?case
+  proof (cases "n = 0")
+    case True
+    have i_lt0: "i < arr_len (A[0])" using i_lt True by simp
+    have len0: "0 < length ((A[0]) ! i)" using len_pos True by simp
+    \<comment> \<open>\<open>i\<close> sits inside \<open>butlast A\<close>, with positive \<open>A\<close>-length (uniform height).\<close>
+    have A0_eq: "A[0] = strip_zero_rows (butlast A)" using expansion_zero_eq[OF A_ne] .
+    have BL_is_arr: "is_array (butlast A)" using is_array_butlast[OF is_arr] .
+    have i_lt_BL: "i < arr_len (butlast A)"
+      using i_lt0 A0_eq by (simp add: length_strip_zero_rows)
+    have BL_ne: "butlast A \<noteq> []" using i_lt_BL by (cases "butlast A") auto
+    have i_lt_A: "i < arr_len A" using i_lt_BL by simp
+    have keep_pos_BL: "0 < keep_of (butlast A)"
+      using keep_pos_of_AEn_col_len[OF A_ne i_lt0 len0] expansion_zero_eq[OF A_ne]
+            G_block_B0_block[OF A_ne] Bs_concat_zero[OF A_ne]
+      by (metis (no_types, lifting) append.right_neutral)
+    have hBL_pos: "0 < height (butlast A)"
+      using keep_pos_BL keep_of_le_height[of "butlast A"] by linarith
+    have hBL_eq: "height (butlast A) = height A"
+    proof -
+      have "hd (butlast A) = hd A"
+        using A_ne BL_ne by (metis append_butlast_last_id hd_append2)
+      thus ?thesis using A_ne BL_ne by simp
+    qed
+    have len_Ai: "0 < length (A ! i)"
+    proof -
+      have "length (A ! i) = height A"
+        using length_col_arr[OF is_arr A_ne i_lt_A] .
+      thus ?thesis using hBL_pos hBL_eq by simp
+    qed
+    have "elem (A[0]) i 0
+        = (case m_parent (A[0]) 0 i of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem (A[0]) p 0))"
+      using row0_recursive_A0[OF A_BMS A_ne i_lt0 len0 IH'[OF i_lt_A len_Ai]] .
+    thus ?thesis unfolding True .
+  next
+    case False
+    hence n_pos: "0 < n" by simp
+    show ?thesis
+    proof (cases "b0_start A")
+      case None
+      \<comment> \<open>\<open>A[n] = strip_zero_rows (butlast A)\<close> (\<open>n\<close>-independent), so \<open>i\<close> is in \<open>butlast A\<close>.\<close>
+      have An0: "A[n] = A[0]" using expansion_no_b0_eq_zero[OF A_ne None] .
+      have A0_eq: "A[0] = strip_zero_rows (butlast A)" using expansion_zero_eq[OF A_ne] .
+      have i_lt0: "i < arr_len (A[0])" using i_lt An0 by simp
+      have len0: "0 < length ((A[0]) ! i)" using len_pos An0 by simp
+      have BL_is_arr: "is_array (butlast A)" using is_array_butlast[OF is_arr] .
+      have i_lt_BL: "i < arr_len (butlast A)"
+        using i_lt0 A0_eq by (simp add: length_strip_zero_rows)
+      have BL_ne: "butlast A \<noteq> []" using i_lt_BL by (cases "butlast A") auto
+      have i_lt_A: "i < arr_len A" using i_lt_BL by simp
+      have GBs_eq: "G_block A @ Bs_concat A n = butlast A"
+      proof -
+        have g: "G_block A = butlast A" using None by (simp add: G_block_def)
+        have bs: "Bs_concat A n = []"
+          using None by (simp add: Bs_concat_def Bi_block_def B0_block_def)
+        show ?thesis using g bs by simp
+      qed
+      have keep_pos_BL: "0 < keep_of (butlast A)"
+        using keep_pos_of_AEn_col_len[OF A_ne i_lt len_pos] GBs_eq by simp
+      have hBL_pos: "0 < height (butlast A)"
+        using keep_pos_BL keep_of_le_height[of "butlast A"] by linarith
+      have hBL_eq: "height (butlast A) = height A"
+      proof -
+        have "hd (butlast A) = hd A"
+          using A_ne BL_ne by (metis append_butlast_last_id hd_append2)
+        thus ?thesis using A_ne BL_ne by simp
+      qed
+      have len_Ai: "0 < length (A ! i)"
+      proof -
+        have "length (A ! i) = height A"
+          using length_col_arr[OF is_arr A_ne i_lt_A] .
+        thus ?thesis using hBL_pos hBL_eq by simp
+      qed
+      show ?thesis
+        using row0_recursive_AEn_when_b0_none
+                [OF A_BMS A_ne None i_lt len_pos IH'[OF i_lt_A len_Ai]] .
+    next
+      case (Some s)
+      have keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+        using keep_pos_of_AEn_col_len[OF A_ne i_lt len_pos] .
+      have l0_eq: "l0 A = s" using l0_eq_s_of_b0[OF A_ne Some] .
+      have arr_eq: "arr_len (A[n]) = l0 A + Suc n * l1 A"
+        using arr_len_expansion_l01[OF A_ne] .
+      have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF Some A_ne])
+      have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+      have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by linarith
+      obtain t where mp: "max_parent_level A = Some t"
+        using Some unfolding b0_start_def by (cases "max_parent_level A") auto
+      have l1_pos: "0 < l1 A"
+        using Some s_lt_last last_lt_arr unfolding l1_def B0_block_def by simp
+      \<comment> \<open>\<open>height A > 0\<close>: the pre-strip has height \<open>= height A\<close> and positive keep.\<close>
+      have H_pos: "0 < height A"
+      proof -
+        let ?P = "G_block A @ Bs_concat A n"
+        have len_P: "length ?P = l0 A + Suc n * l1 A"
+          by (simp add: l0_def l1_def length_Bs_concat)
+        have P_ne: "?P \<noteq> []" using len_P l1_pos by auto
+        have all_A: "\<forall>c \<in> set A. length c = height A"
+          using is_arr unfolding is_array_def by blast
+        have all_G: "\<forall>c \<in> set (G_block A). length c = height A"
+          using G_block_subset_A all_A by blast
+        have all_Bs: "\<forall>c \<in> set (Bs_concat A n). length c = height A"
+          using Bs_concat_uniform[OF is_arr A_ne] .
+        have all_P: "\<forall>c \<in> set ?P. length c = height A" using all_G all_Bs by auto
+        have hd_in: "hd ?P \<in> set ?P" using P_ne by (cases ?P) auto
+        have hd_len: "length (hd ?P) = height A" using all_P hd_in by blast
+        have hP: "height ?P = height A" using P_ne hd_len by (cases ?P) auto
+        have "keep_of ?P \<le> height ?P" by (rule keep_of_le_height)
+        thus ?thesis using keep_pos hP by linarith
+      qed
+      show ?thesis
+      proof (cases "i < s")
+        case True
+        have i_lt_arr: "i < arr_len A" using True s_lt_arr by linarith
+        have len_Ai: "0 < length (A ! i)"
+          using length_col_arr[OF is_arr A_ne i_lt_arr] H_pos by simp
+        show ?thesis
+          using row0_recursive_AEn_on_G_prefix
+                  [OF A_ne Some keep_pos True IH'[OF i_lt_arr len_Ai]] .
+      next
+        case False
+        hence s_le_i: "s \<le> i" by simp
+        \<comment> \<open>Common \<open>B\<^sub>0\<close>-structure facts (\<open>s_lt_last\<close>, \<open>last_lt_arr\<close>, \<open>mp\<close>, \<open>H_pos\<close> hoisted).\<close>
+        have l1_eq: "l1 A = last_col_idx A - s"
+        proof -
+          have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+            using Some by (simp add: B0_block_def)
+          have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+            using B0_form by simp
+          also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+          finally show ?thesis unfolding l1_def by simp
+        qed
+        have last_eq: "last_col_idx A = s + l1 A" using l1_eq s_lt_last by simp
+        have sj_lt_arr: "\<And>x. x < l1 A \<Longrightarrow> s + x < arr_len A"
+          using last_eq last_lt_arr by simp
+        have all_len_pos: "\<And>x. x < l1 A \<Longrightarrow> 0 < length (A ! (s + x))"
+        proof -
+          fix x assume x_lt: "x < l1 A"
+          have "length (A ! (s + x)) = height A"
+            using length_col_arr[OF is_arr A_ne sj_lt_arr[OF x_lt]] .
+          thus "0 < length (A ! (s + x))" using H_pos by simp
+        qed
+        \<comment> \<open>\<open>A\<close>'s invariant at any \<open>B\<^sub>0\<close> offset, and at the last column \<open>C\<close>.\<close>
+        have IH_b0: "\<And>x. x < l1 A \<Longrightarrow>
+                       elem A (s + x) 0
+                     = (case m_parent A 0 (s + x) of None \<Rightarrow> 0
+                        | Some p \<Rightarrow> Suc (elem A p 0))"
+          using IH'[OF sj_lt_arr all_len_pos] by blast
+        have invC: "elem A (last_col_idx A) 0
+                  = (case m_parent A 0 (last_col_idx A) of None \<Rightarrow> 0
+                     | Some p \<Rightarrow> Suc (elem A p 0))"
+        proof -
+          have "0 < length (A ! (last_col_idx A))"
+            using length_col_arr[OF is_arr A_ne last_lt_arr] H_pos by simp
+          thus ?thesis using IH'[OF last_lt_arr] by blast
+        qed
+        \<comment> \<open>Decompose \<open>i = idx_B(t', j)\<close>.\<close>
+        define d where "d = i - l0 A"
+        define t' where "t' = d div l1 A"
+        define j where "j = d mod l1 A"
+        have l0_le_i: "l0 A \<le> i" using s_le_i l0_eq by simp
+        have d_eq: "d = t' * l1 A + j" unfolding t'_def j_def by simp
+        have j_lt: "j < l1 A" unfolding j_def using l1_pos by simp
+        have i_d: "i = l0 A + d" using l0_le_i d_def by simp
+        have i_eq: "i = idx_B_in_expansion A t' j"
+          unfolding idx_B_in_expansion_def using i_d d_eq by (simp add: add.assoc)
+        have d_lt: "d < Suc n * l1 A" using i_lt arr_eq i_d by simp
+        have t'_le: "t' \<le> n"
+        proof (rule ccontr)
+          assume "\<not> t' \<le> n"
+          hence "Suc n \<le> t'" by simp
+          hence "Suc n * l1 A \<le> t' * l1 A" by (rule mult_le_mono1)
+          also have "\<dots> \<le> d" using d_eq by simp
+          finally show False using d_lt by simp
+        qed
+        \<comment> \<open>Dispatch on \<open>t = max_parent_level A\<close> (\<open>mp\<close> hoisted).\<close>
+        have len_sj: "0 < length (A ! (s + j))" using all_len_pos[OF j_lt] .
+        have res: "elem (A[n]) (idx_B_in_expansion A t' j) 0
+                 = (case m_parent (A[n]) 0 (idx_B_in_expansion A t' j) of None \<Rightarrow> 0
+                    | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+        proof (cases t)
+          case 0
+          show ?thesis
+          proof (cases "j = 0")
+            case True
+            show ?thesis
+            proof (cases "t' = 0")
+              case True
+              show ?thesis
+                using row0_recursive_AEn_block0_when_t_zero
+                        [OF A_BMS A_ne Some mp[unfolded 0] keep_pos j_lt IH_b0[OF j_lt]]
+                      \<open>j = 0\<close> \<open>t' = 0\<close> by simp
+            next
+              case False
+              hence t'_ge: "1 \<le> t'" by simp
+              have IHs: "elem A s 0
+                       = (case m_parent A 0 s of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+                using IH_b0[OF l1_pos] \<open>j = 0\<close> by simp
+              show ?thesis
+                using row0_recursive_AEn_block_start_when_t_zero
+                        [OF A_BMS A_ne Some mp[unfolded 0] keep_pos t'_ge t'_le IHs]
+                      \<open>j = 0\<close> by simp
+            qed
+          next
+            case False
+            hence j_pos: "0 < j" by simp
+            \<comment> \<open>Within-block, \<open>t = 0\<close>: candidate set non-empty (offset 0 strictly below).\<close>
+            have S_ne: "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                                  < elem (A[n]) (idx_B_in_expansion A 0 j) 0] \<noteq> []"
+            proof -
+              have v0: "elem (A[n]) (idx_B_in_expansion A 0 0) 0 = elem A s 0"
+              proof -
+                have na: "\<not> ascends A 0 0"
+                  unfolding ascends_def using Some mp[unfolded 0] by simp
+                show ?thesis
+                  using elem_AEn_cross_block_when_not_ascends
+                          [OF A_BMS A_ne Some na le0 l1_pos keep_pos all_len_pos[OF l1_pos]]
+                  unfolding elem_def by simp
+              qed
+              have vj: "elem (A[n]) (idx_B_in_expansion A 0 j) 0 = elem A (s + j) 0"
+              proof -
+                have na: "\<not> ascends A j 0"
+                  unfolding ascends_def using Some mp[unfolded 0] by simp
+                show ?thesis
+                  using elem_AEn_cross_block_when_not_ascends
+                          [OF A_BMS A_ne Some na le0 j_lt keep_pos len_sj]
+                  unfolding elem_def by simp
+              qed
+              have "elem A s 0 < elem A (s + j) 0"
+                using elem_b0_start_lt_offset_row0_when_t_zero
+                        [OF A_ne Some mp[unfolded 0] j_pos j_lt] .
+              hence "elem (A[n]) (idx_B_in_expansion A 0 0) 0
+                   < elem (A[n]) (idx_B_in_expansion A 0 j) 0"
+                using v0 vj by simp
+              hence "0 \<in> set [j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                                  < elem (A[n]) (idx_B_in_expansion A 0 j) 0]"
+                using j_pos by simp
+              thus ?thesis by (cases "[j' \<leftarrow> [0..<j].
+                    elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                      < elem (A[n]) (idx_B_in_expansion A 0 j) 0]") auto
+            qed
+            show ?thesis
+              using row0_recursive_AEn_idx_B_when_t_zero_within_block
+                      [OF A_BMS A_ne Some mp[unfolded 0] t'_le j_lt len_sj keep_pos
+                          S_ne IH_b0[OF j_lt]] .
+          qed
+        next
+          case (Suc t0)
+          have t_pos: "0 < t" using Suc by simp
+          show ?thesis
+          proof (cases "t' = 0")
+            case True
+            show ?thesis
+              using row0_recursive_AEn_block0
+                      [OF A_BMS A_ne Some mp t_pos n_pos j_lt IH_b0[OF j_lt]]
+                    \<open>t' = 0\<close> by simp
+          next
+            case False
+            hence t'_ge: "1 \<le> t'" by simp
+            show ?thesis
+            proof (cases "j = 0")
+              case True
+              show ?thesis
+                using row0_recursive_AEn_block_start
+                        [OF A_BMS A_ne Some mp t_pos n_pos t'_ge t'_le invC]
+                      \<open>j = 0\<close> by simp
+            next
+              case False
+              hence j_pos: "0 < j" by simp
+              have pre_asc: "\<forall>x. x \<le> j \<longrightarrow> ascends A x 0"
+              proof (intro allI impI)
+                fix x assume x_le: "x \<le> j"
+                have x_lt: "x < l1 A" using x_le j_lt by linarith
+                show "ascends A x 0"
+                  using all_ascend_row0[OF A_BMS A_ne Some mp t_pos x_lt] .
+              qed
+              show ?thesis
+                using row0_recursive_AEn_block_c_when_prefix_ascends
+                        [OF A_BMS A_ne Some mp t_pos n_pos t'_le j_lt j_pos pre_asc
+                            IH_b0[OF j_lt]] .
+            qed
+          qed
+        qed
+        show ?thesis using res i_eq by simp
+      qed
+    qed
+  qed
+qed
 
 lemma ancestry_restriction_G_modulo_Rb:
   fixes A :: array and s m sp qp n :: nat
