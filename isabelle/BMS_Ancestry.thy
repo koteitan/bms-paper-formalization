@@ -18152,6 +18152,219 @@ next
   qed
 qed
 
+text \<open>\<^bold>\<open>Row-0-zero column is all-zero (sorry-free, value-crux-independent).\<close>  For
+  \<open>A \<in> BMS\<close>, any column whose row-0 entry is \<open>0\<close> is identically \<open>0\<close>.  Proved by
+  @{thm BMS.induct}.  Seed: column \<open>0 = replicate n 0\<close> is all-zero; column \<open>1\<close> has
+  row-0 \<open>= 1\<close> (vacuous).  Expand (\<open>A[n]\<close>): a \<open>G\<close>-prefix column equals the verbatim
+  \<open>A\<close>-column (IH); a \<open>B\<close>-region column \<open>idx_B(c, j)\<close> has value
+  \<open>(A!(s+j))!m + (ascends A j m ? c\<cdot>\<delta>\<^sub>m : 0)\<close>, whose row-0 being \<open>0\<close> forces the base
+  \<open>(A!(s+j))\<close> to have row-0 \<open>0\<close> hence (IH) be all-zero; then for \<open>j > 0\<close> an all-zero
+  base column has no \<open>m\<close>-parent so cannot ascend (bump \<open>= 0\<close>), and for \<open>j = 0\<close> the bad
+  root \<open>s\<close> is all-zero so \<open>\<delta>\<^sub>m = elem A C m\<close>, and \<open>c\<cdot>\<delta>\<^sub>0 = 0\<close> forces \<open>c = 0\<close> or (IH on
+  \<open>C\<close>) \<open>\<delta>\<^sub>m = 0\<close>.  This is the key supporting fact \<open>(c1)\<close> behind the STRUCT crux
+  \<open>c4'\<close> (\<open>verify/probe\<close>: \<open>0 / 2950\<close>).\<close>
+
+lemma col_row0_zero_imp_col_zero:
+  assumes A_BMS: "A \<in> BMS"
+  shows "\<forall>i m. i < arr_len A \<longrightarrow> m < height A \<longrightarrow> elem A i 0 = 0 \<longrightarrow> elem A i m = 0"
+  using A_BMS
+proof (induct A rule: BMS.induct)
+  case (seed_in_BMS n)
+  show ?case
+  proof (intro allI impI)
+    fix i m
+    assume i_lt: "i < arr_len (seed n)" and m_lt: "m < height (seed n)"
+       and z: "elem (seed n) i 0 = 0"
+    have n_pos: "0 < n" using m_lt by (simp add: height_seed)
+    have "i < 2" using i_lt by (simp add: length_seed)
+    hence "i = 0 \<or> i = 1" by auto
+    thus "elem (seed n) i m = 0"
+    proof
+      assume "i = 0"
+      thus ?thesis using m_lt by (simp add: elem_seed_0 height_seed)
+    next
+      assume i1: "i = 1"
+      have "elem (seed n) i 0 = 1" using elem_seed_1[OF n_pos] i1 by simp
+      thus ?thesis using z by simp
+    qed
+  qed
+next
+  case (expand_in_BMS A n)
+  note A_BMS = expand_in_BMS.hyps(1)
+  note IH = expand_in_BMS.hyps(2)
+  show ?case
+  proof (intro allI impI)
+    fix i m
+    assume i_lt: "i < arr_len (A[n])" and m_lt: "m < height (A[n])"
+       and z: "elem (A[n]) i 0 = 0"
+    have En_ne: "A[n] \<noteq> []" using i_lt by (cases "A[n]") auto
+    have A_ne: "A \<noteq> []" using En_ne by (auto simp: expansion_def)
+    have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+    have hle_HA: "height (A[n]) \<le> height A" using height_expansion_le[OF A_BMS A_ne] .
+    have m_lt_HA: "m < height A" using hle_HA m_lt by linarith
+    show "elem (A[n]) i m = 0"
+    proof (cases "0 < l1 A")
+      case False
+      hence l1_0: "l1 A = 0" by simp
+      have b0_none: "b0_start A = None"
+      proof (rule ccontr)
+        assume "b0_start A \<noteq> None"
+        then obtain s where bs: "b0_start A = Some s" by auto
+        have "s < last_col_idx A" by (rule b0_start_lt[OF bs A_ne])
+        hence "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne bs] by linarith
+        thus False using l1_0 by simp
+      qed
+      have An_eq: "A[n] = strip_zero_rows (butlast A)"
+        using expansion_no_b0_eq_strip_butlast[OF A_ne b0_none] .
+      have bl_ne: "butlast A \<noteq> []"
+      proof
+        assume "butlast A = []"
+        hence "A[n] = []" using An_eq by (simp add: strip_zero_rows_def)
+        thus False using En_ne by simp
+      qed
+      have arrAn: "arr_len (A[n]) = arr_len (butlast A)"
+        using An_eq by (simp add: length_strip_zero_rows)
+      have i_bl: "i < arr_len (butlast A)" using i_lt arrAn by simp
+      have i_lt_A1: "i < arr_len A - 1" using i_bl by simp
+      have i_lt_A: "i < arr_len A" using i_lt_A1 by simp
+      have heq_bl: "height (A[n]) = keep_of (butlast A)"
+      proof -
+        have "height (A[n]) = height (strip_zero_rows (butlast A))" using An_eq by simp
+        also have "\<dots> = keep_of (butlast A)" using height_strip_eq_keep[OF bl_ne] .
+        finally show ?thesis .
+      qed
+      have keep_m: "m < keep_of (butlast A)" using m_lt heq_bl by simp
+      have keep_0: "0 < keep_of (butlast A)" using keep_m by simp
+      have e_m: "elem (A[n]) i m = elem A i m"
+        using An_eq elem_strip_lt_keep[OF bl_ne i_bl keep_m] elem_butlast[OF i_lt_A1] by simp
+      have e_0: "elem (A[n]) i 0 = elem A i 0"
+        using An_eq elem_strip_lt_keep[OF bl_ne i_bl keep_0] elem_butlast[OF i_lt_A1] by simp
+      have zi: "elem A i 0 = 0" using z e_0 by simp
+        have "elem A i m = 0" using IH i_lt_A m_lt_HA zi by blast
+      thus ?thesis using e_m by simp
+    next
+      case True
+      obtain s where b0: "b0_start A = Some s"
+      proof (cases "b0_start A")
+        case None
+        hence "l1 A = 0" using A_ne unfolding l1_def B0_block_def b0_start_def
+          by (simp add: max_parent_level_def split: option.splits)
+        thus ?thesis using True by simp
+      next
+        case (Some s) thus ?thesis using that by simp
+      qed
+      have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+      have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+      have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+      have s_le_arr: "s \<le> arr_len A" using s_lt_arr by simp
+      have l0_eq: "l0 A = s" using b0 s_le_arr unfolding l0_def G_block_def by simp
+      have l1_last: "l1 A = last_col_idx A - s" using l1_eq_last_minus_b0[OF A_ne b0] .
+      have CA_eq: "last_col_idx A = s + l1 A" using l1_last s_lt_last by simp
+      have m_keep: "m < keep_of (G_block A @ Bs_concat A n)"
+        using height_expansion_eq_keep[OF A_BMS A_ne True] m_lt by simp
+      have keep_0: "0 < keep_of (G_block A @ Bs_concat A n)" using m_keep by simp
+      have col_len: "\<And>x. x < arr_len A \<Longrightarrow> length (A ! x) = height A"
+        using length_col_arr[OF is_arr A_ne] by blast
+      show "elem (A[n]) i m = 0"
+      proof (cases "i < l0 A")
+        case True
+        have i_lt_s: "i < s" using True l0_eq by simp
+        have e_m: "elem (A[n]) i m = elem A i m"
+          using elem_AEn_eq_on_G_prefix[OF A_ne b0 i_lt_s m_keep] .
+        have e_0: "elem (A[n]) i 0 = elem A i 0"
+          using elem_AEn_eq_on_G_prefix[OF A_ne b0 i_lt_s keep_0] .
+        have i_lt_A: "i < arr_len A" using i_lt_s s_lt_arr by simp
+        have zi: "elem A i 0 = 0" using z e_0 by simp
+        have "elem A i m = 0" using IH i_lt_A m_lt_HA zi by blast
+        thus ?thesis using e_m by simp
+      next
+        case False
+        have i_ge: "l0 A \<le> i" using False by simp
+        define r where "r = i - l0 A"
+        define c where "c = r div l1 A"
+        define j where "j = r mod l1 A"
+        have r_eq: "r = c * l1 A + j"
+          using c_def j_def by (simp add: mult.commute div_mult_mod_eq)
+        have j_lt: "j < l1 A" using j_def \<open>0 < l1 A\<close> by simp
+        have i_eq: "i = idx_B_in_expansion A c j"
+          using r_def i_ge r_eq l0_eq unfolding idx_B_in_expansion_def
+          by (simp add: mult.commute)
+        have arrEn: "arr_len (A[n]) = l0 A + Suc n * l1 A"
+          using A_ne by (simp add: arr_len_expansion_l01 l0_def l1_def)
+        have r_lt: "r < Suc n * l1 A" using i_lt arrEn r_def i_ge l0_eq by simp
+        have c_le: "c \<le> n"
+        proof -
+          have "c < Suc n" using less_mult_imp_div_less[OF r_lt] c_def by simp
+          thus ?thesis by simp
+        qed
+        have sj_lt_arr: "s + j < arr_len A" using j_lt CA_eq last_lt_arr by simp
+        have col_sj: "m < length (A ! (s + j))" using col_len[OF sj_lt_arr] m_lt_HA by simp
+        have col_sj0: "0 < length (A ! (s + j))" using col_sj by linarith
+        have val_m: "elem (A[n]) i m
+                   = (A!(s+j))!m + (if ascends A j m then c * delta A m else 0)"
+          using elem_AEn_idx_B_value[OF A_ne b0 c_le j_lt m_keep col_sj] i_eq by simp
+        have val_0: "elem (A[n]) i 0
+                   = (A!(s+j))!0 + (if ascends A j 0 then c * delta A 0 else 0)"
+          using elem_AEn_idx_B_value[OF A_ne b0 c_le j_lt keep_0 col_sj0] i_eq by simp
+        have base0: "(A!(s+j))!0 = 0"
+          and bump0: "(if ascends A j 0 then c * delta A 0 else 0) = 0"
+          using z val_0 by simp_all
+        have base_z0: "elem A (s+j) 0 = 0" using base0 unfolding elem_def by simp
+        have base_allzero: "\<And>m'. m' < height A \<Longrightarrow> elem A (s+j) m' = 0"
+          using IH sj_lt_arr base_z0 by blast
+        have base_m: "(A!(s+j))!m = 0"
+          using base_allzero[OF m_lt_HA] unfolding elem_def by simp
+        have bump_m: "(if ascends A j m then c * delta A m else 0) = 0"
+        proof (cases "ascends A j m")
+          case False thus ?thesis by simp
+        next
+          case True
+          show ?thesis
+          proof (cases "0 < j")
+            case True
+            have nsa: "non_strict_ancestor A m (s+j) s"
+              using \<open>ascends A j m\<close> b0 unfolding ascends_def
+              by (auto split: option.splits)
+            have manc: "m_ancestor A m (s+j) s"
+              using nsa True unfolding non_strict_ancestor_def by simp
+            have "m_parent A m (s+j) \<noteq> None"
+              using manc by (cases "m_parent A m (s+j)") (simp_all add: m_ancestor.simps)
+            then obtain p where mp: "m_parent A m (s+j) = Some p" by auto
+            have "elem A p m < elem A (s+j) m" by (rule m_parent_elem_lt[OF mp])
+            moreover have "elem A (s+j) m = 0" using base_m unfolding elem_def by simp
+            ultimately show ?thesis by simp
+          next
+            case False
+            hence j0: "j = 0" by simp
+            have asc0: "ascends A 0 0"
+              using ascends_level_downward[OF \<open>ascends A j m\<close> le0] j0 by simp
+            have cd0: "c * delta A 0 = 0" using bump0 asc0 j0 by simp
+            have es0: "elem A s 0 = 0" using base_z0 j0 by simp
+            have d_unfold: "delta A 0 = elem A (last_col_idx A) 0 - elem A s 0"
+              using b0 unfolding delta_def by simp
+            show ?thesis
+            proof (cases "c = 0")
+              case True thus ?thesis by simp
+            next
+              case False
+              hence "delta A 0 = 0" using cd0 by simp
+              hence C_z0: "elem A (last_col_idx A) 0 = 0" using d_unfold es0 by simp
+              have C_allzero: "elem A (last_col_idx A) m = 0"
+                using IH last_lt_arr m_lt_HA C_z0 by blast
+              have "delta A m = elem A (last_col_idx A) m - elem A s m"
+                using b0 unfolding delta_def by simp
+              also have "\<dots> = 0" using C_allzero es0 base_allzero[OF m_lt_HA] j0 by simp
+              finally have "delta A m = 0" .
+              thus ?thesis by simp
+            qed
+          qed
+        qed
+        show ?thesis using val_m base_m bump_m by simp
+      qed
+    qed
+  qed
+qed
+
 text \<open>\<^bold>\<open>\<open>mpl\<close> upper bounds from the predecessor height (sorry-free reductions).\<close>
   The \<open>Hmpl_le1\<close> / \<open>Hmpl_gt1\<close> premises of @{thm ancestor_monotone_expand} are upper
   bounds on \<open>t' = mpl (A[n])\<close>.  They reduce — sorry-free — to a single \<open>BMS\<close>
