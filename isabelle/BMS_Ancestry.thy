@@ -10691,6 +10691,252 @@ proof -
   show ?thesis using target case_eq[symmetric] by (rule trans)
 qed
 
+text \<open>\<^bold>\<open>\<open>s\<close> is the strict row-0 minimum of \<open>B\<^sub>0\<close> at \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>
+  When \<open>max_parent_level A = Some 0\<close>, the bad root \<open>s\<close> is the LEVEL-0 \<open>m\<close>-parent of
+  the last column \<open>C\<close> (@{thm b0_start_def}), i.e.\ the rightmost candidate over \<open>[0, C)\<close>
+  with value \<open>< elem A C 0\<close>.  So every interior column \<open>q \<in> (s, C)\<close> carries value
+  \<open>\<ge> elem A C 0 > elem A s 0\<close>.  As \<open>B\<^sub>0 = [s, C)\<close>, this gives \<open>elem A s 0 < elem A (s+j) 0\<close>
+  for every \<open>0 < j < l1\<close>.\<close>
+
+lemma elem_b0_start_lt_offset_row0_when_t_zero:
+  fixes A :: array
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and j_pos: "0 < j" and j_lt: "j < l1 A"
+  shows "elem A s 0 < elem A (s + j) 0"
+proof -
+  let ?C = "last_col_idx A"
+  let ?P = "\<lambda>q. elem A q 0 < elem A ?C 0"
+  have mpC: "m_parent A 0 ?C = Some s" using b0 mp0 unfolding b0_start_def by simp
+  have s_lt_C: "s < ?C" using m_parent_lt[OF mpC] .
+  have sv: "elem A s 0 < elem A ?C 0" using m_parent_elem_lt[OF mpC] .
+  have last_lt_arr: "?C < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = ?C - s"
+  proof -
+    have B0_form: "B0_block A = take (?C - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (?C - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = ?C - s" using s_lt_C last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have sj_lt_C: "s + j < ?C" using j_lt l1_eq s_lt_C by linarith
+  \<comment> \<open>\<open>s\<close> is the last candidate, so \<open>(s, C)\<close> carries no candidate.\<close>
+  have Ps: "?P s" using sv .
+  have filt_ne: "filter ?P [0..<?C] \<noteq> []"
+  proof -
+    have "s \<in> set (filter ?P [0..<?C])" using s_lt_C Ps by (simp add: set_filter)
+    thus ?thesis by (metis empty_iff empty_set)
+  qed
+  have s_is_last: "s = last (filter ?P [0..<?C])"
+    using m_parent_zero_eq_global_last[of A ?C] mpC filt_ne by simp
+  have srt: "sorted (filter ?P [0..<?C])" using sorted_filter_le[OF sorted_upt] .
+  have not_P_sj: "\<not> ?P (s + j)"
+  proof
+    assume Psj: "?P (s + j)"
+    have mem: "s + j \<in> set (filter ?P [0..<?C])"
+      using sj_lt_C Psj by (simp add: set_filter)
+    have "s + j \<le> last (filter ?P [0..<?C])"
+      using sorted_mem_le_last[OF srt mem] .
+    thus False using s_is_last j_pos by simp
+  qed
+  have "elem A ?C 0 \<le> elem A (s + j) 0" using not_P_sj by simp
+  thus ?thesis using sv by linarith
+qed
+
+text \<open>\<^bold>\<open>Block-start (\<open>j = 0\<close>) cross-block row-0 recursive invariant, \<open>t = 0\<close>
+  (sorry-free, clause-iv-free).\<close>  At \<open>t = 0\<close> no column ascends, so the block-start
+  value is verbatim \<open>elem A s 0\<close> (@{thm elem_AEn_cross_block_when_not_ascends}).  The
+  level-0 \<open>m\<close>-parent of \<open>idx_B(A,c,0)\<close> coincides with \<open>A\<close>'s level-0 \<open>m\<close>-parent of \<open>s\<close>,
+  which lies in the \<open>G\<close>-prefix \<open>[0, s)\<close> (the only place a row-0 value \<open>< elem A s 0\<close>
+  can sit: every \<open>B\<^sub>0\<close>-copy column \<open>idx_B(c',0)\<close> has value \<open>= elem A s 0\<close> and every
+  \<open>idx_B(c',j)\<close> with \<open>j > 0\<close> has value \<open>> elem A s 0\<close> by the strict minimality
+  @{thm elem_b0_start_lt_offset_row0_when_t_zero}).  \<open>G\<close>-prefix values are
+  verbatim (@{thm elem_AEn_eq_on_G_prefix}), so \<open>A\<close>'s OWN row-0 invariant at \<open>s\<close>
+  (fed as \<open>IHs\<close>) transports unchanged.\<close>
+
+lemma row0_recursive_AEn_block_start_when_t_zero:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp0: "max_parent_level A = Some 0"
+      and keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+      and c_ge: "1 \<le> c" and c_le: "c \<le> n"
+      and IHs: "elem A s 0
+              = (case m_parent A 0 s of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) (idx_B_in_expansion A c 0) 0
+       = (case m_parent (A[n]) 0 (idx_B_in_expansion A c 0) of None \<Rightarrow> 0
+          | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  let ?L0 = "l0 A" let ?L1 = "l1 A"
+  have l0_eq: "l0 A = s" using l0_eq_s_of_b0[OF A_ne b0] .
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+  proof -
+    have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have l1_pos: "0 < ?L1" using l1_eq s_lt_last last_lt_arr by simp
+  have sj_lt_arr: "\<And>x. x < l1 A \<Longrightarrow> s + x < arr_len A"
+  proof -
+    fix x assume "x < l1 A"
+    hence "s + x < s + l1 A" by simp
+    also have "\<dots> = last_col_idx A" using l1_eq s_lt_last by simp
+    finally show "s + x < arr_len A" using last_lt_arr by linarith
+  qed
+  have H_pos: "0 < height A" using max_parent_level_lt[OF mp0] by simp
+  have all_len_pos: "\<And>x. x < l1 A \<Longrightarrow> 0 < length (A ! (s + x))"
+  proof -
+    fix x assume x_lt: "x < l1 A"
+    have "length (A ! (s + x)) = height A"
+      using length_col_arr[OF is_arr A_ne sj_lt_arr[OF x_lt]] .
+    thus "0 < length (A ! (s + x))" using H_pos by simp
+  qed
+  \<comment> \<open>Block-start value is verbatim \<open>elem A s 0\<close>.\<close>
+  have not_asc0: "\<not> ascends A 0 0" unfolding ascends_def using b0 mp0 by simp
+  have len0: "0 < length (A ! (s + 0))" using all_len_pos[OF l1_pos] by simp
+  have v_eq: "elem (A[n]) (idx_B_in_expansion A c 0) 0 = elem A s 0"
+    using elem_AEn_cross_block_when_not_ascends
+            [OF A_BMS A_ne b0 not_asc0 c_le l1_pos keep_pos len0]
+    unfolding elem_def by simp
+  \<comment> \<open>Index arithmetic for \<open>idx_B(c,0)\<close>.\<close>
+  have idx_c0: "idx_B_in_expansion A c 0 = ?L0 + c * ?L1"
+    unfolding idx_B_in_expansion_def by simp
+  have s_le_idx: "s \<le> idx_B_in_expansion A c 0"
+    using idx_c0 l0_eq by simp
+  \<comment> \<open>Verbatim value/parent of any \<open>B\<^sub>0\<close>-copy column \<open>idx_B(c',x)\<close> (\<open>c' \<le> n\<close>).\<close>
+  have copy_val: "\<And>c' x. c' \<le> n \<Longrightarrow> x < ?L1 \<Longrightarrow>
+                    elem (A[n]) (idx_B_in_expansion A c' x) 0 = elem A (s + x) 0"
+  proof -
+    fix c' x assume c'_le: "c' \<le> n" and x_lt: "x < ?L1"
+    have not_asc_x: "\<not> ascends A x 0" unfolding ascends_def using b0 mp0 by simp
+    show "elem (A[n]) (idx_B_in_expansion A c' x) 0 = elem A (s + x) 0"
+      using elem_AEn_cross_block_when_not_ascends
+              [OF A_BMS A_ne b0 not_asc_x c'_le x_lt keep_pos all_len_pos[OF x_lt]]
+      unfolding elem_def by simp
+  qed
+  \<comment> \<open>Dispatch on \<open>A\<close>'s level-0 \<open>m\<close>-parent of \<open>s\<close>.\<close>
+  show ?thesis
+  proof (cases "m_parent A 0 s")
+    case None
+    have v0: "elem A s 0 = 0" using IHs None by (simp only: option.case)
+    \<comment> \<open>No column below \<open>idx_B(c,0)\<close> carries value \<open>< 0\<close>, so \<open>m\<close>-parent is \<open>None\<close>.\<close>
+    have no_cand: "filter (\<lambda>p. elem (A[n]) p 0 < elem (A[n]) (idx_B_in_expansion A c 0) 0)
+                          [0..<idx_B_in_expansion A c 0] = []"
+    proof -
+      have "\<forall>q \<in> set [0..<idx_B_in_expansion A c 0].
+              \<not> elem (A[n]) q 0 < elem (A[n]) (idx_B_in_expansion A c 0) 0"
+      proof
+        fix q assume "q \<in> set [0..<idx_B_in_expansion A c 0]"
+        show "\<not> elem (A[n]) q 0 < elem (A[n]) (idx_B_in_expansion A c 0) 0"
+          using v_eq v0 by simp
+      qed
+      thus ?thesis by (simp add: filter_empty_conv)
+    qed
+    have mpN: "m_parent (A[n]) 0 (idx_B_in_expansion A c 0) = None"
+      using no_cand by (simp add: Let_def)
+    have vAEn: "elem (A[n]) (idx_B_in_expansion A c 0) 0 = 0" using v_eq v0 by simp
+    show ?thesis by (simp only: mpN option.case vAEn)
+  next
+    case (Some p)
+    have p_lt_s: "p < s" using m_parent_lt[OF Some] .
+    have pv: "elem A p 0 < elem A s 0" using m_parent_elem_lt[OF Some] .
+    have v_suc: "elem A s 0 = Suc (elem A p 0)" using IHs Some by (simp only: option.case)
+    \<comment> \<open>\<open>p\<close> is a \<open>G\<close>-prefix index; its \<open>A[n]\<close> value is verbatim.\<close>
+    have ep: "elem (A[n]) p 0 = elem A p 0"
+      using elem_AEn_eq_on_G_prefix[OF A_ne b0 p_lt_s keep_pos] .
+    have p_lt_idx: "p < idx_B_in_expansion A c 0" using p_lt_s s_le_idx by linarith
+    have pv_AEn: "elem (A[n]) p 0 < elem (A[n]) (idx_B_in_expansion A c 0) 0"
+      using ep pv v_eq by simp
+    \<comment> \<open>No candidate strictly between \<open>p\<close> and \<open>idx_B(c,0)\<close>.\<close>
+    have no_between: "\<forall>q. p < q \<and> q < idx_B_in_expansion A c 0
+                        \<longrightarrow> \<not> elem (A[n]) q 0
+                               < elem (A[n]) (idx_B_in_expansion A c 0) 0"
+    proof (intro allI impI)
+      fix q assume H: "p < q \<and> q < idx_B_in_expansion A c 0"
+      hence q_lo: "p < q" and q_hi: "q < idx_B_in_expansion A c 0" by auto
+      show "\<not> elem (A[n]) q 0 < elem (A[n]) (idx_B_in_expansion A c 0) 0"
+      proof (cases "q < s")
+        case True
+        \<comment> \<open>\<open>G\<close>-prefix: \<open>p = m_parent A 0 s\<close> is the rightmost \<open>G\<close>-candidate \<open>< elem A s 0\<close>.\<close>
+        have eq_q: "elem (A[n]) q 0 = elem A q 0"
+          using elem_AEn_eq_on_G_prefix[OF A_ne b0 True keep_pos] .
+        let ?P = "\<lambda>r. elem A r 0 < elem A s 0"
+        have mem_or: "?P q \<longrightarrow> q \<in> set (filter ?P [0..<s])"
+          using True by (simp add: set_filter)
+        have filt_ne: "filter ?P [0..<s] \<noteq> []"
+        proof -
+          have "p \<in> set (filter ?P [0..<s])" using p_lt_s pv by (simp add: set_filter)
+          thus ?thesis by (metis empty_iff empty_set)
+        qed
+        have p_last: "p = last (filter ?P [0..<s])"
+          using m_parent_zero_eq_global_last[of A s] Some filt_ne by simp
+        have srt: "sorted (filter ?P [0..<s])" using sorted_filter_le[OF sorted_upt] .
+        have "\<not> ?P q"
+        proof
+          assume Pq: "?P q"
+          have mem: "q \<in> set (filter ?P [0..<s])" using mem_or Pq by simp
+          have "q \<le> last (filter ?P [0..<s])" using sorted_mem_le_last[OF srt mem] .
+          thus False using q_lo p_last by simp
+        qed
+        hence "elem A s 0 \<le> elem A q 0" by simp
+        thus ?thesis using eq_q v_eq by simp
+      next
+        case False
+        hence s_le_q: "s \<le> q" by simp
+        \<comment> \<open>\<open>B\<^sub>0\<close>-copy region: write \<open>q = idx_B(c', x)\<close>.\<close>
+        define d where "d = q - ?L0"
+        have l0_le_q: "?L0 \<le> q" using s_le_q l0_eq by simp
+        have q_eq: "q = ?L0 + d" unfolding d_def using l0_le_q by simp
+        define c' where "c' = d div ?L1"
+        define x where "x = d mod ?L1"
+        have d_eq: "d = c' * ?L1 + x" unfolding c'_def x_def by simp
+        have x_lt: "x < ?L1" unfolding x_def using l1_pos by simp
+        have q_idx: "q = idx_B_in_expansion A c' x"
+          unfolding idx_B_in_expansion_def using q_eq d_eq by (simp add: add.assoc)
+        \<comment> \<open>\<open>c' < c\<close> (\<open>q < idx_B(c,0) = L0 + c*L1\<close>), so \<open>c' \<le> n\<close>.\<close>
+        have q_lt_cL1: "d < c * ?L1" using q_hi idx_c0 q_eq by simp
+        have c'_lt_c: "c' < c"
+        proof (rule ccontr)
+          assume "\<not> c' < c"
+          hence "c \<le> c'" by simp
+          hence "c * ?L1 \<le> c' * ?L1" by (rule mult_le_mono1)
+          also have "\<dots> \<le> d" using d_eq by simp
+          finally show False using q_lt_cL1 by simp
+        qed
+        have c'_le_n: "c' \<le> n" using c'_lt_c c_le by linarith
+        have v_q: "elem (A[n]) q 0 = elem A (s + x) 0"
+          using q_idx copy_val[OF c'_le_n x_lt] by simp
+        show ?thesis
+        proof (cases "x = 0")
+          case True
+          have "elem (A[n]) q 0 = elem A s 0" using v_q True by simp
+          thus ?thesis using v_eq by simp
+        next
+          case False
+          hence x_pos: "0 < x" by simp
+          have "elem A s 0 < elem A (s + x) 0"
+            using elem_b0_start_lt_offset_row0_when_t_zero[OF A_ne b0 mp0 x_pos x_lt] .
+          hence "elem A s 0 \<le> elem (A[n]) q 0" using v_q by simp
+          thus ?thesis using v_eq by simp
+        qed
+      qed
+    qed
+    have mp_pin: "m_parent (A[n]) 0 (idx_B_in_expansion A c 0) = Some p"
+      using m_parent_zero_eq_Some_of_rightmost[OF p_lt_idx pv_AEn no_between] .
+    have target: "elem (A[n]) (idx_B_in_expansion A c 0) 0 = Suc (elem (A[n]) p 0)"
+      using v_eq v_suc ep by simp
+    show ?thesis by (simp only: mp_pin option.case) (rule target)
+  qed
+qed
+
 text \<open>\<^bold>\<open>GAP B within-block step, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  When the
   \<open>A[n]\<close> block-0 candidate list \<open>S\<close> of offset \<open>j\<close> is non-empty, the level-0
   \<open>m\<close>-parent of \<open>idx_B (A,c,j)\<close> stays within block \<open>c\<close> at offset \<open>last S\<close>
