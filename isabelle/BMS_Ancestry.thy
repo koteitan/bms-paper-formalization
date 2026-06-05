@@ -17917,6 +17917,62 @@ proof -
   finally show ?thesis .
 qed
 
+text \<open>\<^bold>\<open>Expansion does not increase the height (sorry-free).\<close>  The
+  \<open>l\<^sub>1 > 0\<close> case is @{thm height_expansion_eq_keep} composed with
+  \<open>keep_of \<le> height\<close> and @{thm height_pre_strip_eq}; the \<open>l\<^sub>1 = 0\<close>
+  (no-bad-root) case uses \<open>A[n] = strip (butlast A)\<close>
+  (@{thm expansion_no_b0_eq_strip_butlast}) and \<open>strip\<close>/\<open>butlast\<close>
+  never raise the height.  Keystone ingredient for the BMS \<open>mpl\<close>-definedness
+  linchpin: it lets the predecessor's height bound the expansion's.\<close>
+
+lemma height_expansion_le:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+  shows "height (A[n]) \<le> height A"
+proof (cases "0 < l1 A")
+  case True
+  have "height (A[n]) = keep_of (G_block A @ Bs_concat A n)"
+    using height_expansion_eq_keep[OF A_BMS A_ne True] .
+  also have "\<dots> \<le> height (G_block A @ Bs_concat A n)"
+    using keep_of_le_height by blast
+  also have "\<dots> = height A" using height_pre_strip_eq[OF A_BMS A_ne True] .
+  finally show ?thesis .
+next
+  case False
+  hence l1_0: "l1 A = 0" by simp
+  have b0_none: "b0_start A = None"
+  proof (rule ccontr)
+    assume "b0_start A \<noteq> None"
+    then obtain s where "b0_start A = Some s" by auto
+    hence "0 < l1 A"
+      using A_ne b0_start_lt[of A s] b0_start_lt_last[of A s]
+      unfolding l1_def B0_block_def by simp
+    thus False using l1_0 by simp
+  qed
+  have An_eq: "A[n] = strip_zero_rows (butlast A)"
+    using expansion_no_b0_eq_strip_butlast[OF A_ne b0_none] .
+  show ?thesis
+  proof (cases "butlast A = []")
+    case True
+    have "A[n] = []" using An_eq True by (simp add: strip_zero_rows_def)
+    thus ?thesis by simp
+  next
+    case False
+    have bl_pos: "0 < length (butlast A)" using False by (cases "butlast A") auto
+    have h_bl: "height (butlast A) = height A"
+    proof -
+      have "(butlast A) ! 0 = A ! 0" using bl_pos by (rule nth_butlast)
+      thus ?thesis using A_ne False by (cases A; cases "butlast A") auto
+    qed
+    have "height (A[n]) = height (strip_zero_rows (butlast A))"
+      using An_eq by simp
+    also have "\<dots> = keep_of (butlast A)" using height_strip_eq_keep[OF False] .
+    also have "\<dots> \<le> height (butlast A)" using keep_of_le_height by blast
+    also have "\<dots> = height A" using h_bl .
+    finally show ?thesis .
+  qed
+qed
+
 text \<open>\<^bold>\<open>P1 keystone in the R2 regime (sorry-free).\<close>  Assembles the structural
   ancestry identity \<open>b0_start (A[n]) = m_parent A t' (b0_start A)\<close> (with
   \<open>t' = mpl (A[n])\<close>) from its two now-discharged obligations:
