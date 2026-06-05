@@ -197,3 +197,42 @@ exhausted). The sorry-free INTV→MONO→floor→R2 chain (v0.1.92, @15939–163
 assembled scaffolding; the remaining work is the joint induction carrying the value/top-level clause.
 
 Most self-contained next sub-target: the **BMS structural linchpin** (mpl-definedness monotone under expansion).
+
+## The STRUCT linchpin, fully reduced (2026-06-05) — row0_invariant landed, one crux left
+
+`row0_invariant` (elem A i 0 = case m_parent A 0 i of None=>0 | Some p=>Suc(elem A p 0))
+is now **landed on main, sorry-free, clause-iv-free** (v0.1.105, @11381). Built on it:
+
+- `mpl_none_imp_last_col_row0_zero` (v0.1.106, @~11716): mpl A=None => elem A (last) 0 = 0.
+- `expansion_no_b0_eq_strip_butlast` (v0.1.107, BMS_Defs): b0_start A=None => A[n]=strip(butlast A).
+- `height_expansion_le` (v0.1.108, @~17946): A∈BMS => height(A[n]) <= height A.
+
+**The linchpin `A∈BMS ⟹ mpl A=None ⟹ mpl_le_zero(A[n])` reduces to the single keystone**
+
+  **(c2)  A∈BMS ⟹ height A ≥ 2 ⟹ b0_start A ≠ None**   (equiv. mpl A=None ⟹ height A≤1)
+
+because: mpl A=None ⟹ height A≤1 ⟹ height(A[n])≤height A≤1 ⟹ no level≥1 on A[n]'s last
+col (m_parent_None_at_ge_height) ⟹ mpl_le_zero(A[n]) vacuously.
+
+**c2 is provable by BMS.induct** (all pieces empirically 0-fail over 1784 faithful BMS arrays,
+verify/probe_mpl_none_linchpin.py):
+- seed m: height m≥2 ⟹ last col [1..1] has col-0 [0..0] as parent. **TODO (easy)**.
+- expand A[n], height(A[n])≥2:
+  - if b0_start A=None: IH contrapositive gives height A≤1, and height(A[n])≤height A≤1
+    (height_expansion_le) contradicts height(A[n])≥2 — **vacuous. DONE (mechanical)**.
+  - if b0_start A=Some s: height(A[n])≤height A (height_expansion_le) ⟹ height A≥2, then need
+    **(c4')  b0_start A=Some s ∧ height(A[n])≥2 ⟹ b0_start(A[n]) ≠ None**.
+
+**STATUS (v0.1.110): the whole reduction above is now LANDED sorry-free on main**, with c4'
+carried as an explicit premise: `height_ge2_imp_b0_some_cond` (keystone), 
+`mpl_le_zero_expansion_of_height_le1` (vacuity, unconditional), and
+`mpl_none_imp_mpl_le_zero_expansion_cond` (the full STRUCT linchpin modulo c4'). Discharging
+c4' unconditionally instantly turns all three unconditional.
+
+**c4' is the SOLE remaining crux** (= the open STRUCT linchpin @187). Empirically 0-fail.
+NOTE: the naive "b0(A)≠None ⟹ b0(A[n])≠None" is **FALSE** (128/1784 fails, e.g. (0)(1)(0)(1)(0)(1));
+the height(A[n])≥2 guard is essential. Reduction of c4' (via cascade+col0+row0_invariant on A[n]):
+b0(A[n])=None ⟺ elem(A[n])(last_col A[n]) 0 = 0; last col of A[n] = bump of A-col (last_col_idx A −1)
+at block n, so this is a fact about the bumped row-0 tiling closed form (chainlen0_bumped_tiling @556).
+Supporting facts available: (c1) elem A i 0=0 ⟹ col i all-zero [0-fail, unproven];
+(c3) b0≠None ⟹ elem(last,0)≥1 [provable via upward m_parent cascade, no consec needed].
