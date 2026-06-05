@@ -10392,6 +10392,81 @@ proof -
     using m_parent_zero_eq_global_last[of A i] ne last_eq by simp
 qed
 
+text \<open>\<^bold>\<open>\<open>A\<close>'s last-column level-0 \<open>m\<close>-parent lands in \<open>B\<^sub>0\<close> (sorry-free,
+  clause-iv-free).\<close>  The bad root \<open>s = b0_start A\<close> is the level-\<open>t\<close> \<open>m\<close>-parent of
+  the last column \<open>C = last_col_idx A\<close> (@{thm b0_start_def}); for \<open>t > 0\<close> it is a
+  level-0 \<open>m\<close>-ancestor of \<open>C\<close> (@{thm m_parent_Suc_implies_m_ancestor} +
+  @{thm m_ancestor_mono}), so @{thm m_ancestor_le_m_parent} lower-bounds \<open>C\<close>'s
+  level-0 \<open>m\<close>-parent by \<open>s\<close>: it lies in \<open>[s, C)\<close>, i.e.\ inside \<open>B\<^sub>0\<close>.
+  (\<open>tmp/probe_genuine_blockstart.py\<close>: \<open>7840/0\<close> on genuine BMS.)\<close>
+
+lemma m_parent_row0_last_col_ge_b0_start:
+  fixes A :: array
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+  obtains p where "m_parent A 0 (last_col_idx A) = Some p" and "s \<le> p"
+proof -
+  have mp_t_C: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
+  have mp_Suc: "m_parent A (Suc t') (last_col_idx A) = Some s"
+    using mp_t_C t_eq by simp
+  have anc_t': "m_ancestor A t' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mp_Suc] .
+  have anc0: "m_ancestor A 0 (last_col_idx A) s"
+    using m_ancestor_mono[OF le0 anc_t'] .
+  obtain p where mp_p: "m_parent A 0 (last_col_idx A) = Some p" and s_le_p: "s \<le> p"
+    using m_ancestor_le_m_parent[OF anc0] by blast
+  show ?thesis using that[OF mp_p s_le_p] .
+qed
+
+text \<open>\<^bold>\<open>\<open>elem A C 0 - 1\<close> is realized at a \<open>B\<^sub>0\<close> column (sorry-free, clause-iv-free).\<close>
+  Given \<open>A\<close>'s OWN row-0 invariant at the last column \<open>C = last_col_idx A\<close> (supplied as
+  the IH-hypothesis \<open>invC\<close>), the predecessor value \<open>elem A C 0 - 1\<close> is exactly the row-0
+  value of \<open>C\<close>'s level-0 \<open>m\<close>-parent \<open>p\<close>, which lies in \<open>B\<^sub>0\<close> (\<open>s \<le> p < C\<close>,
+  @{thm m_parent_row0_last_col_ge_b0_start}).  Writing \<open>p = s + j\<close> with \<open>j < l1 A\<close>
+  exhibits the realizing \<open>B\<^sub>0\<close>-offset.  (\<open>delta A 0 = elem A C 0 - elem A s 0\<close>, so this
+  value is \<open>(A!s)!0 + delta - 1\<close>, the block-start predecessor target.)\<close>
+
+lemma row0_b0_offset_realizes_C_pred:
+  fixes A :: array
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and invC: "elem A (last_col_idx A) 0
+               = (case m_parent A 0 (last_col_idx A) of None \<Rightarrow> 0
+                  | Some p \<Rightarrow> Suc (elem A p 0))"
+  obtains j where "j < l1 A"
+              and "elem A (s + j) 0 = elem A (last_col_idx A) 0 - 1"
+proof -
+  obtain p where mpC: "m_parent A 0 (last_col_idx A) = Some p" and s_le_p: "s \<le> p"
+    using m_parent_row0_last_col_ge_b0_start[OF A_ne b0 mp t_pos] by blast
+  have p_lt_C: "p < last_col_idx A" using m_parent_lt[OF mpC] .
+  have vC: "elem A (last_col_idx A) 0 = Suc (elem A p 0)"
+    using invC mpC by (simp only: option.case)
+  have pred_eq: "elem A p 0 = elem A (last_col_idx A) 0 - 1" using vC by simp
+  \<comment> \<open>Re-coordinate \<open>p\<close> as \<open>s + j\<close> inside \<open>B\<^sub>0\<close>.\<close>
+  obtain j where j_eq: "p = s + j" using s_le_p by (metis le_Suc_ex)
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+  proof -
+    have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have j_lt: "j < l1 A" using j_eq p_lt_C l1_eq by linarith
+  have val_eq: "elem A (s + j) 0 = elem A (last_col_idx A) 0 - 1"
+    using pred_eq j_eq by simp
+  show ?thesis using that[OF j_lt val_eq] .
+qed
+
 text \<open>\<^bold>\<open>GAP B within-block step, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  When the
   \<open>A[n]\<close> block-0 candidate list \<open>S\<close> of offset \<open>j\<close> is non-empty, the level-0
   \<open>m\<close>-parent of \<open>idx_B (A,c,j)\<close> stays within block \<open>c\<close> at offset \<open>last S\<close>
