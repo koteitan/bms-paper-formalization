@@ -18674,6 +18674,98 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>\<open>c4'\<close> assembled to two residual height bounds (sorry-free).\<close>  Combining
+  @{thm b0_start_expansion_some_when_n_pos} (\<open>t > 0, n > 0\<close>),
+  @{thm b0_start_expansion_some_when_l1_ge2} (\<open>t > 0, l\<^sub>1 \<ge> 2\<close>) and
+  @{thm b0_start_expansion_zero_some_of_penult_parent} (\<open>n = 0\<close>, via the row-0
+  invariant turning \<open>(A!s)!0 \<noteq> 0\<close> into a level-0 parent of the penultimate
+  column), the \<open>c4'\<close> obligation is discharged on every branch \<^emph>\<open>except\<close> the two
+  degenerate ones \<open>t = 0\<close> and \<open>l\<^sub>1 = 1 \<and> n = 0 \<and> (A!s)!0 = 0\<close>, where it is
+  vacuous because the expansion has height \<open>\<le> 1\<close>.  Those height bounds (the
+  \<open>mpl = 0 \<Longrightarrow> height \<le> 1\<close> and seed-corner facts) are carried as the single
+  hypothesis \<open>Hres\<close> — the residual height structure to which \<open>c4'\<close> is now
+  reduced.\<close>
+
+lemma b0_start_expansion_some_modulo_height:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0_ne: "b0_start A \<noteq> None"
+      and h2: "2 \<le> height (A[n])"
+      and Hres: "\<And>s t. b0_start A = Some s \<Longrightarrow> max_parent_level A = Some t
+                   \<Longrightarrow> (t = 0 \<or> (l1 A = 1 \<and> n = 0 \<and> (A ! s) ! 0 = 0))
+                   \<Longrightarrow> height (A[n]) \<le> 1"
+  shows "b0_start (A[n]) \<noteq> None"
+proof -
+  obtain s where b0: "b0_start A = Some s" using b0_ne by auto
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def by (cases "max_parent_level A") auto
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have l1_pos: "0 < l1 A" using l1_eq_last_minus_b0[OF A_ne b0] s_lt_last by linarith
+  show ?thesis
+  proof (cases "t = 0")
+    case True
+    have "height (A[n]) \<le> 1" using Hres[OF b0 mp] True by simp
+    thus ?thesis using h2 by simp
+  next
+    case False
+    hence t_pos: "0 < t" by simp
+    show ?thesis
+    proof (cases "2 \<le> l1 A")
+      case True
+      show ?thesis
+        by (rule b0_start_expansion_some_when_l1_ge2[OF A_BMS A_ne b0 mp t_pos True])
+    next
+      case False
+      hence l1_1: "l1 A = 1" using l1_pos by simp
+      show ?thesis
+      proof (cases "0 < n")
+        case True
+        show ?thesis
+          by (rule b0_start_expansion_some_when_n_pos[OF A_BMS A_ne b0 mp t_pos True])
+      next
+        case False
+        hence n0: "n = 0" by simp
+        show ?thesis
+        proof (cases "(A ! s) ! 0 = 0")
+          case True
+          have "height (A[n]) \<le> 1" using Hres[OF b0 mp] l1_1 n0 True by simp
+          thus ?thesis using h2 by simp
+        next
+          case False
+          have HA_pos: "0 < height A" using max_parent_level_lt[OF mp] t_pos by linarith
+          have col_s_pos: "0 < length (A ! s)"
+            using length_col_arr[OF is_arr A_ne s_lt_arr] HA_pos by simp
+          have ri: "elem A s 0
+                  = (case m_parent A 0 s of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+            using row0_invariant[OF A_BMS] A_ne s_lt_arr col_s_pos by blast
+          have par_s: "m_parent A 0 s \<noteq> None"
+          proof
+            assume h: "m_parent A 0 s = None"
+            have "elem A s 0 = 0" using ri[unfolded h] by simp
+            thus False using False unfolding elem_def by simp
+          qed
+          have last_eq: "last_col_idx A = s + l1 A"
+            using l1_eq_last_minus_b0[OF A_ne b0] s_lt_last by simp
+          have penult_eq: "last_col_idx A - 1 = s" using last_eq l1_1 by simp
+          have par: "m_parent A 0 (last_col_idx A - 1) \<noteq> None"
+            using par_s penult_eq by simp
+          have arr2: "2 \<le> arr_len A"
+          proof -
+            have "1 \<le> last_col_idx A" using last_eq l1_1 by simp
+            thus ?thesis using last_lt_arr by simp
+          qed
+          have "b0_start (A[0]) \<noteq> None"
+            by (rule b0_start_expansion_zero_some_of_penult_parent[OF A_BMS A_ne arr2 par])
+          thus ?thesis using n0 by simp
+        qed
+      qed
+    qed
+  qed
+qed
+
 text \<open>\<^bold>\<open>The BMS \<open>mpl\<close>-definedness keystone, modulo the single tall-expansion
   obligation \<open>c4'\<close> (machine-verified reduction).\<close>  Empirically
   (\<open>verify/probe_mpl_none_linchpin.py\<close>, 0 fails / 1784 faithful BMS arrays):
