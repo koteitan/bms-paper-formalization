@@ -18598,6 +18598,82 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>\<open>c4'\<close> \<open>n = 0\<close> case from a level-0 parent of the penultimate column
+  (sorry-free).\<close>  The zero-block expansion is \<open>A[0] = strip (butlast A)\<close>
+  (@{thm expansion_zero_eq}), whose last column is \<open>A\<close>'s penultimate
+  \<open>C-1 = last_col_idx A - 1\<close>.  If \<open>C-1\<close> already has a level-0 \<open>m\<close>-parent in \<open>A\<close>,
+  then \<open>butlast\<close> (which only drops the strictly-later column \<open>C\<close>,
+  @{thm m_parent_m_ancestor_butlast}) and \<open>strip\<close> (@{thm m_parent_m_ancestor_strip})
+  both preserve it, so the last column of \<open>A[0]\<close> has a level-0 parent, forcing
+  \<open>max_parent_level (A[0]) \<noteq> None\<close>, i.e.\ a bad root.  With the row-0 invariant,
+  \<open>C-1\<close> has a level-0 parent iff its row-0 value is \<open>\<ge> 1\<close>; for \<open>l\<^sub>1 \<ge> 2\<close> the bad
+  root strictly dominates it, and for \<open>l\<^sub>1 = 1\<close> it holds unless the bad root is
+  all-zero (the seed corner, where \<open>A[0]\<close> has height \<open>0\<close>).\<close>
+
+lemma b0_start_expansion_zero_some_of_penult_parent:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and arr2: "2 \<le> arr_len A"
+      and par: "m_parent A 0 (last_col_idx A - 1) \<noteq> None"
+  shows "b0_start (A[0]) \<noteq> None"
+proof -
+  define cm1 where "cm1 = last_col_idx A - 1"
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have is_arr0: "is_array (A[0])" using BMS_is_array[OF expand_in_BMS[OF A_BMS]] .
+  have bl_ne: "butlast A \<noteq> []" using arr2 by (cases A) auto
+  have is_arr_bl: "is_array (butlast A)" using is_array_butlast[OF is_arr] .
+  have len_bl: "arr_len (butlast A) = arr_len A - 1" by simp
+  have cm1_lt: "cm1 < arr_len A - 1" using arr2 unfolding cm1_def by simp
+  have par_bl: "m_parent (butlast A) 0 cm1 = m_parent A 0 cm1"
+    using m_parent_m_ancestor_butlast cm1_lt by blast
+  have A0_eq: "A[0] = strip_zero_rows (butlast A)" using expansion_zero_eq[OF A_ne] .
+  have cm1_lt_bl: "cm1 < arr_len (butlast A)" using cm1_lt len_bl by simp
+  have par_strip: "m_parent (strip_zero_rows (butlast A)) 0 cm1
+                 = m_parent (butlast A) 0 cm1"
+    using m_parent_m_ancestor_strip[OF is_arr_bl] cm1_lt_bl by blast
+  have par_A0: "m_parent (A[0]) 0 cm1 = m_parent A 0 cm1"
+    using A0_eq par_strip par_bl by simp
+  have par_A0_ne: "m_parent (A[0]) 0 cm1 \<noteq> None"
+    using par_A0 par unfolding cm1_def by simp
+  have arr_A0: "arr_len (A[0]) = arr_len A - 1"
+    using A0_eq len_bl by (simp add: length_strip_zero_rows)
+  have A0_ne: "A[0] \<noteq> []" using arr_A0 arr2 by auto
+  have lastA0: "last_col_idx (A[0]) = cm1"
+    using arr_A0 unfolding cm1_def by simp
+  have par_last: "m_parent (A[0]) 0 (last_col_idx (A[0])) \<noteq> None"
+    using par_A0_ne lastA0 by simp
+  have H0_pos: "0 < height (A[0])"
+  proof (rule ccontr)
+    assume "\<not> 0 < height (A[0])"
+    hence "height (A[0]) \<le> 0" by simp
+    hence "m_parent (A[0]) 0 (last_col_idx (A[0])) = None"
+      using m_parent_None_at_ge_height[OF is_arr0 A0_ne] by blast
+    thus False using par_last by simp
+  qed
+  have mpl_ne: "max_parent_level (A[0]) \<noteq> None"
+  proof
+    assume mplN: "max_parent_level (A[0]) = None"
+    have ms_empty: "[m \<leftarrow> [0..<height (A[0])].
+                      m_parent (A[0]) m (last_col_idx (A[0])) \<noteq> None] = []"
+      using mplN A0_ne unfolding max_parent_level_def
+      by (auto simp: Let_def split: if_split_asm)
+    have allm: "\<forall>m \<in> set [0..<height (A[0])].
+                  m_parent (A[0]) m (last_col_idx (A[0])) = None"
+      using ms_empty by (simp add: filter_empty_conv)
+    have zero_in: "0 \<in> set [0..<height (A[0])]" using H0_pos by simp
+    have "m_parent (A[0]) 0 (last_col_idx (A[0])) = None"
+      using allm zero_in by blast
+    thus False using par_last by blast
+  qed
+  show "b0_start (A[0]) \<noteq> None"
+  proof
+    assume "b0_start (A[0]) = None"
+    hence "max_parent_level (A[0]) = None"
+      by (rule b0_start_None_imp_max_parent_level_None[OF A0_ne])
+    thus False using mpl_ne by simp
+  qed
+qed
+
 text \<open>\<^bold>\<open>The BMS \<open>mpl\<close>-definedness keystone, modulo the single tall-expansion
   obligation \<open>c4'\<close> (machine-verified reduction).\<close>  Empirically
   (\<open>verify/probe_mpl_none_linchpin.py\<close>, 0 fails / 1784 faithful BMS arrays):
