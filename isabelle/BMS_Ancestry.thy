@@ -18425,6 +18425,41 @@ proof -
   thus ?thesis by simp
 qed
 
+text \<open>\<^bold>\<open>A row-0-all-zero \<open>BMS\<close> array has height \<open>0\<close> (sorry-free).\<close>  If every column's
+  row-0 entry is \<open>0\<close>, then (@{thm col_row0_zero_imp_col_zero}) every column is
+  identically \<open>0\<close>, so the whole array is all-zero; since \<open>BMS\<close> arrays are stripped
+  (@{thm BMS_keep_of_eq_height}), \<open>keep_of = 0\<close> forces \<open>height = 0\<close>.  This turns the
+  degenerate \<open>c4'\<close> sub-cases (where the expansion's last column is the row-0 max and
+  is \<open>0\<close>) into height \<open>0\<close>, hence vacuity.\<close>
+
+lemma height_zero_of_row0_all_zero:
+  assumes A_BMS: "A \<in> BMS"
+      and allz: "\<And>i. i < arr_len A \<Longrightarrow> elem A i 0 = 0"
+  shows "height A = 0"
+proof (cases "A = []")
+  case True thus ?thesis by simp
+next
+  case False
+  have c1: "\<And>i m. i < arr_len A \<Longrightarrow> m < height A \<Longrightarrow> elem A i 0 = 0
+              \<Longrightarrow> elem A i m = 0"
+    using col_row0_zero_imp_col_zero[OF A_BMS] by blast
+  have all_zero: "\<forall>m. 0 \<le> m \<and> m < height A \<longrightarrow> (\<forall>c \<in> set A. c ! m = 0)"
+  proof (intro allI impI)
+    fix m assume m: "0 \<le> m \<and> m < height A"
+    show "\<forall>c \<in> set A. c ! m = 0"
+    proof
+      fix c assume "c \<in> set A"
+      then obtain i where i_lt: "i < arr_len A" and ci: "c = A ! i"
+        by (metis in_set_conv_nth)
+      have "elem A i m = 0" using c1[OF i_lt _ allz[OF i_lt]] m by simp
+      thus "c ! m = 0" using ci unfolding elem_def by simp
+    qed
+  qed
+  have "keep_of A \<le> 0" using keep_of_least[of 0 A] all_zero by simp
+  hence "keep_of A = 0" by simp
+  thus ?thesis using BMS_keep_of_eq_height[OF A_BMS] by simp
+qed
+
 text \<open>\<^bold>\<open>\<open>c4'\<close> main case: a positive-block expansion of a bad-rooted array keeps a
   bad root (sorry-free).\<close>  For \<open>A \<in> BMS\<close> with bad root \<open>s\<close>, \<open>mpl = Some t\<close>,
   \<open>t > 0\<close> and \<open>n > 0\<close>, the last column of \<open>A[n]\<close> is \<open>idx_B(n, l\<^sub>1-1)\<close>
@@ -18763,6 +18798,48 @@ proof -
         qed
       qed
     qed
+  qed
+qed
+
+text \<open>\<^bold>\<open>\<open>c4'\<close> from the row-0 maximality of the last column (sorry-free, uniform).\<close>
+  A uniform discharge of \<open>c4'\<close> with no \<open>t / n / l\<^sub>1\<close> case split: if \<open>height (A[n]) \<ge> 2\<close>
+  then not every column is row-0-zero (@{thm height_zero_of_row0_all_zero}), so some
+  column has row-0 value \<open>\<ge> 1\<close>; if the last column is the row-0 \<^emph>\<open>maximum\<close> of \<open>A[n]\<close>
+  (\<open>lastmax\<close>) then it too is \<open>\<ge> 1\<close>, and the contrapositive of
+  @{thm mpl_none_imp_last_col_row0_zero} forces a bad root.  This reduces \<open>c4'\<close> to the
+  single residual \<open>lastmax\<close> — the last column is the row-0 maximum — which subsumes
+  both height residuals of @{thm b0_start_expansion_some_modulo_height}.\<close>
+
+lemma b0_start_expansion_some_modulo_lastmax:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS"
+      and h2: "2 \<le> height (A[n])"
+      and lastmax: "\<And>i. i < arr_len (A[n])
+                     \<Longrightarrow> elem (A[n]) i 0 \<le> elem (A[n]) (last_col_idx (A[n])) 0"
+  shows "b0_start (A[n]) \<noteq> None"
+proof -
+  have An_BMS: "A[n] \<in> BMS" using expand_in_BMS[OF A_BMS] .
+  have En_ne: "A[n] \<noteq> []" using h2 by (cases "A[n]") auto
+  have HEn_pos: "0 < height (A[n])" using h2 by simp
+  have "\<not> (\<forall>i. i < arr_len (A[n]) \<longrightarrow> elem (A[n]) i 0 = 0)"
+  proof
+    assume "\<forall>i. i < arr_len (A[n]) \<longrightarrow> elem (A[n]) i 0 = 0"
+    hence "height (A[n]) = 0"
+      using height_zero_of_row0_all_zero[OF An_BMS] by blast
+    thus False using h2 by simp
+  qed
+  then obtain i where i_lt: "i < arr_len (A[n])"
+                  and i_pos: "elem (A[n]) i 0 \<noteq> 0" by auto
+  have pos: "0 < elem (A[n]) (last_col_idx (A[n])) 0"
+    using i_pos lastmax[OF i_lt] by simp
+  show "b0_start (A[n]) \<noteq> None"
+  proof
+    assume bN: "b0_start (A[n]) = None"
+    have mplN: "max_parent_level (A[n]) = None"
+      by (rule b0_start_None_imp_max_parent_level_None[OF En_ne bN])
+    have "elem (A[n]) (last_col_idx (A[n])) 0 = 0"
+      using mpl_none_imp_last_col_row0_zero[OF An_BMS En_ne HEn_pos mplN] .
+    thus False using pos by simp
   qed
 qed
 
