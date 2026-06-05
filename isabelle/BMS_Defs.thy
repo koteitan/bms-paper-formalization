@@ -1894,6 +1894,26 @@ proof -
   finally show ?thesis .
 qed
 
+text \<open>
+  Closed form of the \<open>b0_start = None\<close> (no bad root) expansion: it is
+  \<^emph>\<open>independent of\<close> \<open>n\<close> and equals the strip of \<open>butlast A\<close>.
+  Combines @{thm expansion_no_b0_eq_zero} (n-independence) with
+  @{thm expansion_zero_eq} (the \<open>n = 0\<close> closed form).  This is the
+  reusable handle for the \<open>mpl\<close>-definedness linchpin: a no-bad-root
+  expansion simply deletes the last column and re-strips.
+\<close>
+
+lemma expansion_no_b0_eq_strip_butlast:
+  fixes A :: array
+  assumes "A \<noteq> []" "b0_start A = None"
+  shows "A[n] = strip_zero_rows (butlast A)"
+proof -
+  have "A[n] = A[0]" using expansion_no_b0_eq_zero[OF assms] .
+  also have "\<dots> = strip_zero_rows (butlast A)"
+    using expansion_zero_eq[OF assms(1)] .
+  finally show ?thesis .
+qed
+
 
 section \<open>The set BMS (Definition 1.1, last paragraph)\<close>
 
