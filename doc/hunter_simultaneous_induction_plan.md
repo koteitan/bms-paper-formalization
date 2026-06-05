@@ -283,12 +283,18 @@ a single *predecessor-only* BMS fact:
 Empirically exact (`verify/probe_mpl_relation.py`: `0/2990`). With the known lower bound
 `max_parent_level_lt` (`t < height A`), HBND pins `height A ∈ {t+1, t+2}` exactly.
 
-**HBND proof path (next target):** `BMS.induct`. Seed: `height(seed n)=n`, `mpl=n-1`, so
-`n ≤ (n-1)+2` ✓. Expand: `height(A[n]) ≤ height A ≤ tA+2` (IH + `height_expansion_le`); the ONLY
-gap is the **R1 regime** where `mpl(A[n]) = tA-1` (mpl drops by one) — there the IH bound `tA+2`
-overshoots the needed `t'+2 = tA+1` by one, so it needs the **strip-drop fact** (when the
-expansion's mpl drops, the strip removes a row: `R1 ⟹ height(A[n]) ≤ tA+1`). That strip↔mpl
-interaction is the single residual behind HBND.
+**HBND proof path (next target):** `BMS.induct`, proving HBND *and* the SHARP variant jointly.
+Seed: `height(seed n)=n`, `mpl=n-1`, so `n ≤ (n-1)+2` ✓ (and `l1=1`, no sharp obligation). Expand
+(`mpl(A[n]) = Some t'`): `height(A[n]) ≤ height A` (`height_expansion_le`); split on `t'` vs `tA`:
+- `t' ≥ tA` (mpl stays/rises): `height(A[n]) ≤ height A ≤ tA+2 ≤ t'+2` from IH HBND for `A`. ✓
+- `t' < tA` (mpl DROPS): empirically (`probe`, **0/384**) the predecessor is then already **sharp**,
+  `height A ≤ tA+1`, so `height(A[n]) ≤ tA+1 = (tA-1)+2`; with `t' = tA-1` (the drop is by exactly
+  one) this is `t'+2`. ✓
+
+So the single residual behind HBND is the lever **`mpl(A[n]) < mpl A ⟹ height A ≤ mpl A + 1`**
+(equivalently, contrapositive: when `A` has maximal height slack `height A = mpl A + 2`, the
+expansion's mpl does NOT drop) plus **the drop is by exactly one** (`t' = tA-1`, not less). Both
+are clean BMS structural facts about how `mpl` moves under expansion — the genuine next sub-target.
 
 So @15879's full premise residual is now exactly `{HBND, Rb_cond, Htop}`: `Rb_cond` is handled by
 the joint bundle (clause-i from IH), and `HBND`/`Htop` are the two structural facts left. The
