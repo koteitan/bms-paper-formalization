@@ -10547,6 +10547,150 @@ proof -
   show ?thesis using that[OF j_lt val_eq right_ge] .
 qed
 
+text \<open>\<^bold>\<open>Block-start (\<open>j = 0\<close>) cross-block row-0 recursive invariant, \<open>t > 0\<close>
+  (sorry-free, clause-iv-free).\<close>  For \<open>1 \<le> c \<le> n\<close>, the level-0 \<open>m\<close>-parent of the
+  block-start column \<open>idx_B(A,c,0)\<close> lands in the previous block \<open>c-1\<close> at the offset
+  \<open>j\<close> of \<open>C\<close>'s level-0 \<open>m\<close>-parent.  Its bumped value is exactly \<open>v - 1\<close> where
+  \<open>v = (A!s)!0 + c\<cdot>delta\<close> is the block-start value: offset 0 ascends, and the
+  realizing offset carries \<open>(A!(s+j))!0 = elem A C 0 - 1 = (A!s)!0 + delta - 1\<close>
+  (@{thm row0_b0_offset_realizes_C_pred}), so after the \<open>(c-1)\<cdot>delta\<close> bump its value is
+  \<open>(A!s)!0 + c\<cdot>delta - 1 = v - 1\<close>.  Every later block-\<open>c-1\<close> offset \<open>j' > j\<close> carries
+  \<open>\<ge> elem A C 0\<close> (@{thm row0_b0_offset_right_ge_C}), hence bumped value \<open>\<ge> v\<close>; and the
+  columns strictly between \<open>idx_B(c-1,j)\<close> and \<open>idx_B(c,0)\<close> are exactly those offsets.
+  So @{thm m_parent_zero_eq_Some_of_rightmost} pins the \<open>m\<close>-parent, and the recursive
+  \<open>Suc\<close> follows.  \<open>A\<close>'s own row-0 invariant at \<open>C\<close> is fed as \<open>invC\<close> (the BMS.induct IH).\<close>
+
+lemma row0_recursive_AEn_block_start:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and c_ge: "1 \<le> c" and c_le: "c \<le> n"
+      and invC: "elem A (last_col_idx A) 0
+               = (case m_parent A 0 (last_col_idx A) of None \<Rightarrow> 0
+                  | Some p \<Rightarrow> Suc (elem A p 0))"
+  shows "elem (A[n]) (idx_B_in_expansion A c 0) 0
+       = (case m_parent (A[n]) 0 (idx_B_in_expansion A c 0) of None \<Rightarrow> 0
+          | Some p \<Rightarrow> Suc (elem (A[n]) p 0))"
+proof -
+  let ?C = "last_col_idx A"
+  let ?d = "delta A 0"
+  \<comment> \<open>\<open>elem A s 0 < elem A C 0\<close>, so \<open>elem A C 0 = (A!s)!0 + delta\<close>.\<close>
+  have parent: "m_parent A t ?C = Some s" using b0 mp unfolding b0_start_def by simp
+  have m_anc_t: "m_ancestor A t ?C s" using parent by simp
+  have m_anc_0: "m_ancestor A 0 ?C s"
+    using m_ancestor_mono[OF less_imp_le_nat[OF t_pos] m_anc_t] .
+  have base_lt: "elem A s 0 < elem A ?C 0" using m_ancestor_elem_lt[OF m_anc_0] .
+  have d_eq: "?d = elem A ?C 0 - elem A s 0" unfolding delta_def using b0 by simp
+  have C_eq: "elem A ?C 0 = (A ! s) ! 0 + ?d"
+    using d_eq base_lt unfolding elem_def by simp
+  have d_pos: "0 < ?d" using d_eq base_lt by simp
+  \<comment> \<open>The realizing \<open>B\<^sub>0\<close>-offset \<open>j\<close> with all later offsets \<open>\<ge> elem A C 0\<close>.\<close>
+  obtain j where j_lt: "j < l1 A"
+             and val_j: "elem A (s + j) 0 = elem A ?C 0 - 1"
+             and right_ge: "\<And>j'. j < j' \<Longrightarrow> j' < l1 A
+                                \<Longrightarrow> elem A ?C 0 \<le> elem A (s + j') 0"
+    using row0_b0_offset_right_ge_C[OF A_ne b0 mp t_pos invC] by blast
+  have valj_base: "(A ! (s + j)) ! 0 = (A ! s) ! 0 + ?d - 1"
+    using val_j C_eq unfolding elem_def by simp
+  \<comment> \<open>Offsets \<open>0\<close>, \<open>j\<close>, and any \<open>j' > j\<close> all ascend at \<open>t > 0\<close>.\<close>
+  have asc0: "ascends A 0 0"
+    using b0 mp t_pos unfolding ascends_def non_strict_ancestor_def by simp
+  have asc_j: "ascends A j 0" using all_ascend_row0[OF A_BMS A_ne b0 mp t_pos j_lt] .
+  have l1_pos: "0 < l1 A" using j_lt by simp
+  \<comment> \<open>Block-start value \<open>v = (A!s)!0 + c\<cdot>delta\<close>.\<close>
+  have v_eq: "elem (A[n]) (idx_B_in_expansion A c 0) 0 = (A ! s) ! 0 + c * ?d"
+  proof -
+    have "elem (A[n]) (idx_B_in_expansion A c 0) 0
+        = (A ! (s + 0)) ! 0 + (if ascends A 0 0 then c * ?d else 0)"
+      using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos l1_pos c_le] .
+    thus ?thesis using asc0 by simp
+  qed
+  \<comment> \<open>Candidate \<open>p* = idx_B(c-1, j)\<close> has bumped value \<open>v - 1\<close>.\<close>
+  have cm1_le: "c - 1 \<le> n" using c_le by simp
+  have v_pstar: "elem (A[n]) (idx_B_in_expansion A (c - 1) j) 0
+               = (A ! (s + j)) ! 0 + (c - 1) * ?d"
+    using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos j_lt cm1_le] asc_j
+    by simp
+  have v_pstar_eq: "elem (A[n]) (idx_B_in_expansion A (c - 1) j) 0
+                  = elem (A[n]) (idx_B_in_expansion A c 0) 0 - 1"
+  proof -
+    have "elem (A[n]) (idx_B_in_expansion A (c - 1) j) 0
+        = ((A ! s) ! 0 + ?d - 1) + (c - 1) * ?d"
+      using v_pstar valj_base by simp
+    also have "\<dots> = (A ! s) ! 0 + (?d + (c - 1) * ?d) - 1" using d_pos by simp
+    also have "\<dots> = (A ! s) ! 0 + c * ?d - 1"
+      using c_ge by (simp add: algebra_simps)
+    also have "\<dots> = elem (A[n]) (idx_B_in_expansion A c 0) 0 - 1" using v_eq by simp
+    finally show ?thesis .
+  qed
+  \<comment> \<open>Index arithmetic: \<open>p* < idx_B(c,0)\<close> and the between-columns are block-\<open>c-1\<close>.\<close>
+  let ?L0 = "l0 A" let ?L1 = "l1 A"
+  have idx_pstar: "idx_B_in_expansion A (c - 1) j = ?L0 + (c - 1) * ?L1 + j"
+    unfolding idx_B_in_expansion_def by simp
+  have idx_c0: "idx_B_in_expansion A c 0 = ?L0 + c * ?L1"
+    unfolding idx_B_in_expansion_def by simp
+  have cL1: "c * ?L1 = (c - 1) * ?L1 + ?L1" using c_ge by (simp add: algebra_simps)
+  have pstar_lt: "idx_B_in_expansion A (c - 1) j < idx_B_in_expansion A c 0"
+    using idx_pstar idx_c0 cL1 j_lt by simp
+  have pstar_v: "elem (A[n]) (idx_B_in_expansion A (c - 1) j) 0
+               < elem (A[n]) (idx_B_in_expansion A c 0) 0"
+    using v_pstar_eq v_eq d_pos c_ge by simp
+  \<comment> \<open>No candidate strictly between \<open>p*\<close> and \<open>idx_B(c,0)\<close>.\<close>
+  have no_between: "\<forall>q. idx_B_in_expansion A (c - 1) j < q
+                        \<and> q < idx_B_in_expansion A c 0
+                     \<longrightarrow> \<not> elem (A[n]) q 0
+                            < elem (A[n]) (idx_B_in_expansion A c 0) 0"
+  proof (intro allI impI)
+    fix q assume H: "idx_B_in_expansion A (c - 1) j < q
+                     \<and> q < idx_B_in_expansion A c 0"
+    hence q_lo: "?L0 + (c - 1) * ?L1 + j < q" using idx_pstar by simp
+    have q_hi: "q < ?L0 + (c - 1) * ?L1 + ?L1" using H idx_c0 cL1 by simp
+    \<comment> \<open>Write \<open>q = idx_B(c-1, j')\<close> with \<open>j < j' < l1\<close>.\<close>
+    define j' where "j' = q - (?L0 + (c - 1) * ?L1)"
+    have base_le_q: "?L0 + (c - 1) * ?L1 \<le> q" using q_lo by linarith
+    have q_eq: "q = ?L0 + (c - 1) * ?L1 + j'"
+      unfolding j'_def using base_le_q by simp
+    have j'_lo: "j < j'" using q_lo q_eq by simp
+    have j'_hi: "j' < ?L1" using q_hi q_eq by simp
+    have q_idx: "q = idx_B_in_expansion A (c - 1) j'"
+      using q_eq unfolding idx_B_in_expansion_def by simp
+    have asc_j': "ascends A j' 0" using all_ascend_row0[OF A_BMS A_ne b0 mp t_pos j'_hi] .
+    have v_q: "elem (A[n]) q 0 = (A ! (s + j')) ! 0 + (c - 1) * ?d"
+      using q_idx row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos j'_hi cm1_le]
+            asc_j' by simp
+    have base_ge: "elem A ?C 0 \<le> (A ! (s + j')) ! 0"
+      using right_ge[OF j'_lo j'_hi] unfolding elem_def by simp
+    have cd_split: "c * ?d = ?d + (c - 1) * ?d"
+    proof -
+      have "c * ?d = (1 + (c - 1)) * ?d" using c_ge by simp
+      thus ?thesis by (simp add: algebra_simps)
+    qed
+    have "elem (A[n]) (idx_B_in_expansion A c 0) 0 = (A ! s) ! 0 + c * ?d"
+      using v_eq .
+    also have "\<dots> = ((A ! s) ! 0 + ?d) + (c - 1) * ?d"
+      using cd_split by simp
+    also have "\<dots> = elem A ?C 0 + (c - 1) * ?d" using C_eq unfolding elem_def by simp
+    also have "\<dots> \<le> (A ! (s + j')) ! 0 + (c - 1) * ?d" using base_ge by simp
+    also have "\<dots> = elem (A[n]) q 0" using v_q by simp
+    finally have "elem (A[n]) (idx_B_in_expansion A c 0) 0 \<le> elem (A[n]) q 0" .
+    thus "\<not> elem (A[n]) q 0 < elem (A[n]) (idx_B_in_expansion A c 0) 0" by simp
+  qed
+  \<comment> \<open>Pin the \<open>m\<close>-parent and read off the recursive \<open>Suc\<close>.\<close>
+  have mp_pin: "m_parent (A[n]) 0 (idx_B_in_expansion A c 0)
+              = Some (idx_B_in_expansion A (c - 1) j)"
+    using m_parent_zero_eq_Some_of_rightmost[OF pstar_lt pstar_v no_between] .
+  have target: "elem (A[n]) (idx_B_in_expansion A c 0) 0
+              = Suc (elem (A[n]) (idx_B_in_expansion A (c - 1) j) 0)"
+    using v_pstar_eq pstar_v by simp
+  have case_eq: "(case m_parent (A[n]) 0 (idx_B_in_expansion A c 0) of None \<Rightarrow> 0
+                  | Some p \<Rightarrow> Suc (elem (A[n]) p 0))
+               = Suc (elem (A[n]) (idx_B_in_expansion A (c - 1) j) 0)"
+    by (subst mp_pin) (rule option.case(2))
+  show ?thesis using target case_eq[symmetric] by (rule trans)
+qed
+
 text \<open>\<^bold>\<open>GAP B within-block step, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  When the
   \<open>A[n]\<close> block-0 candidate list \<open>S\<close> of offset \<open>j\<close> is non-empty, the level-0
   \<open>m\<close>-parent of \<open>idx_B (A,c,j)\<close> stays within block \<open>c\<close> at offset \<open>last S\<close>
