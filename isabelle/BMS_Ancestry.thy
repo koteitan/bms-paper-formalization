@@ -13479,7 +13479,37 @@ lemma m_parent_block_n_stays_until_zero:
       and a_pos: "0 < a" and a_lt: "a < l1 A"
       and mp_eq: "m_parent (A[n]) m (idx_B_in_expansion A n a) = Some p"
   shows "idx_B_in_expansion A n 0 \<le> p"
-  sorry
+proof -
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def by (cases "max_parent_level A") auto
+  show ?thesis
+  proof (cases "m = 0 \<and> 0 < t \<and> 0 < n")
+    case True
+    hence m0: "m = 0" and t_pos: "0 < t" and n_pos: "0 < n" by auto
+    \<comment> \<open>Row-0, \<open>t > 0\<close>, \<open>n > 0\<close>: the block-start \<open>idx_B(n, 0)\<close> is a strict
+        candidate of the level-0 \<open>m\<close>-parent of \<open>idx_B(n, a)\<close> (proven row-0
+        machinery, @{thm elem_AEn_block_start_lt_offset_row0}, independent of
+        \<open>elem_lt_below_t\<close>); since \<open>p\<close> is the rightmost candidate
+        (@{thm m_parent_zero_candidate_le}), \<open>idx_B(n, 0) \<le> p\<close>.\<close>
+    have cand_lt: "elem (A[n]) (idx_B_in_expansion A n 0) 0
+                 < elem (A[n]) (idx_B_in_expansion A n a) 0"
+      using elem_AEn_block_start_lt_offset_row0
+              [OF A_BMS A_ne b0 mp t_pos n_pos order.refl a_pos a_lt] .
+    have idx_lt: "idx_B_in_expansion A n 0 < idx_B_in_expansion A n a"
+      using a_pos unfolding idx_B_in_expansion_def by simp
+    show ?thesis
+      using m_parent_zero_candidate_le[OF mp_eq[unfolded m0] idx_lt cand_lt] .
+  next
+    case False
+    \<comment> \<open>Residual: a positive level \<open>m = Suc m'\<close>, or \<open>t = 0\<close>, or \<open>n = 0\<close>.  At a
+        positive level the block-start candidacy of \<open>idx_B(n, 0)\<close> requires the
+        \<open>m'\<close>-ancestor condition (the gateway property one level down) AND the
+        strict value bound \<open>elem A s m < elem A (s + a) m\<close> (the \<open>elem_lt_below_t\<close>
+        crux), which folds into the simultaneous (i)--(v) \<open>k\<close>-induction.
+        Isolated as the single labelled \<open>sorry\<close>.\<close>
+    show ?thesis sorry
+  qed
+qed
 
 lemma clause_iv_intermediate_B_t_impossible_chain_through_Bn_first:
   fixes A :: array and n :: nat
