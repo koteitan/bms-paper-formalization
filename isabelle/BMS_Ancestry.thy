@@ -11742,13 +11742,87 @@ proof -
   qed
   have last_lt_arr: "?C < arr_len A" using A_ne by (cases A) auto
   have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
-  have len_C: "length (A ! ?C) = ?H"
+  have len_C: "length (A ! ?C) = height A"
     using length_col_arr[OF is_arr A_ne last_lt_arr] .
   have col_pos: "0 < length (A ! ?C)" using len_C H_pos by simp
   have "elem A ?C 0
       = (case m_parent A 0 ?C of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
     using row0_invariant[OF A_BMS A_ne last_lt_arr col_pos] .
   thus ?thesis using mp0 by simp
+qed
+
+text \<open>\<^bold>\<open>Level-down cascade for \<open>m_parent\<close>-definedness (sorry-free).\<close>  If a
+  column has an \<open>m\<close>-parent at \<^emph>\<open>any\<close> level it has one at level \<open>0\<close>: a
+  \<open>Suc k\<close>-parent forces a \<open>k\<close>-ancestor (@{thm m_parent_Suc_implies_m_ancestor}),
+  whose very first step is a \<open>k\<close>-parent, so definedness descends one level at a
+  time down to \<open>0\<close>.\<close>
+
+lemma m_parent_level_down_ne:
+  fixes A :: array
+  shows "m_parent A m i \<noteq> None \<Longrightarrow> m_parent A 0 i \<noteq> None"
+proof (induct m)
+  case 0
+  thus ?case .
+next
+  case (Suc m)
+  from Suc.prems obtain p where mp: "m_parent A (Suc m) i = Some p" by auto
+  have manc: "m_ancestor A m i p"
+    using m_parent_Suc_implies_m_ancestor[OF mp] .
+  have "m_parent A m i \<noteq> None"
+  proof (rule ccontr)
+    assume "\<not> m_parent A m i \<noteq> None"
+    hence "m_parent A m i = None" by simp
+    hence "\<not> m_ancestor A m i p" by (simp add: m_ancestor.simps)
+    thus False using manc by simp
+  qed
+  thus ?case using Suc.hyps by blast
+qed
+
+text \<open>\<^bold>\<open>Companion to @{thm mpl_none_imp_last_col_row0_zero}: a \<^emph>\<open>defined\<close>
+  \<open>mpl\<close> forces a positive last-column row-0 value (sorry-free, clause-iv-free).\<close>
+  \<open>max_parent_level A = Some t\<close> means the last column has a \<open>t\<close>-parent; the
+  level-down cascade (@{thm m_parent_level_down_ne}) gives it a level-\<open>0\<close> parent,
+  so by @{thm row0_invariant} its row-0 value is \<open>Suc _ \<ge> 1\<close>.  Together with
+  the \<open>None\<close> lemma this pins \<open>elem A (last) 0 = 0 \<longleftrightarrow> mpl A = None\<close>.\<close>
+
+lemma mpl_some_imp_last_col_row0_pos:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and H_pos: "0 < height A"
+      and mp: "max_parent_level A = Some t"
+  shows "1 \<le> elem A (last_col_idx A) 0"
+proof -
+  let ?C = "last_col_idx A"
+  define ms where "ms = [m \<leftarrow> [0..<height A]. m_parent A m ?C \<noteq> None]"
+  have mp_form: "max_parent_level A
+               = (if ms = [] then None else Some (Max (set ms)))"
+    using A_ne unfolding max_parent_level_def ms_def by (simp add: Let_def)
+  have ms_ne: "ms \<noteq> []"
+  proof
+    assume "ms = []"
+    hence "max_parent_level A = None" using mp_form by simp
+    thus False using mp by simp
+  qed
+  have t_eq: "t = Max (set ms)" using mp_form ms_ne mp by simp
+  have fin: "finite (set ms)" by simp
+  have set_ne: "set ms \<noteq> {}" using ms_ne by simp
+  have t_in: "t \<in> set ms"
+    using t_eq Max_in[OF fin set_ne] by simp
+  have mpt_ne: "m_parent A t ?C \<noteq> None"
+    using t_in unfolding ms_def set_filter by blast
+  have mp0_ne: "m_parent A 0 ?C \<noteq> None"
+    using m_parent_level_down_ne[OF mpt_ne] .
+  then obtain p where mp0: "m_parent A 0 ?C = Some p" by auto
+  have last_lt_arr: "?C < arr_len A" using A_ne by (cases A) auto
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have len_C: "length (A ! ?C) = height A"
+    using length_col_arr[OF is_arr A_ne last_lt_arr] .
+  have col_pos: "0 < length (A ! ?C)" using len_C H_pos by simp
+  have "elem A ?C 0
+      = (case m_parent A 0 ?C of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+    using row0_invariant[OF A_BMS A_ne last_lt_arr col_pos] .
+  also have "\<dots> = Suc (elem A p 0)" using mp0 by simp
+  finally show ?thesis by simp
 qed
 
 lemma ancestry_restriction_G_modulo_Rb:
