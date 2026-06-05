@@ -331,6 +331,40 @@ lemma elem_expansion_B_via_bump:
   using elem_expansion_B_lt_keep[OF A_ne t_le j_lt m_lt]
         elem_Bi_block_via_bump_col[OF j_lt] by simp
 
+text \<open>\<^bold>\<open>\<open>ascends\<close> is downward-closed in the row level (sorry-free).\<close>  If a
+  \<open>B\<^sub>0\<close>-column ascends at level \<open>Suc m\<close> it ascends at level \<open>m\<close>: the level
+  bound \<open>Suc m < m\<^sub>0\<close> gives \<open>m < m\<^sub>0\<close>, and the non-strict \<open>(Suc m)\<close>-ancestry of
+  \<open>s + j\<close> over \<open>s\<close> drops to level \<open>m\<close> by @{thm m_ancestor_Suc_implies_m_ancestor}.
+  Building block for the BMS row-monotonicity (column non-increasing) proof:
+  the bumped column's per-level analysis splits on \<open>ascends\<close> at adjacent levels,
+  and this lemma collapses the four cases to three (no \<open>Suc m\<close>-only ascent).\<close>
+
+lemma ascends_antitone_level:
+  fixes A :: array
+  assumes "ascends A j (Suc m)"
+  shows "ascends A j m"
+proof -
+  obtain s where s: "b0_start A = Some s"
+    using assms unfolding ascends_def by (cases "b0_start A") auto
+  obtain m\<^sub>0 where m0: "max_parent_level A = Some m\<^sub>0"
+    using assms s unfolding ascends_def by (cases "max_parent_level A") auto
+  have lvl: "Suc m < m\<^sub>0" and nsa: "non_strict_ancestor A (Suc m) (s + j) s"
+    using assms s m0 unfolding ascends_def by auto
+  have m_lt: "m < m\<^sub>0" using lvl by simp
+  have nsa_m: "non_strict_ancestor A m (s + j) s"
+  proof (cases "s + j = s")
+    case True thus ?thesis unfolding non_strict_ancestor_def by simp
+  next
+    case False
+    hence "m_ancestor A (Suc m) (s + j) s"
+      using nsa unfolding non_strict_ancestor_def by simp
+    hence "m_ancestor A m (s + j) s"
+      using m_ancestor_Suc_implies_m_ancestor by blast
+    thus ?thesis unfolding non_strict_ancestor_def by simp
+  qed
+  show ?thesis unfolding ascends_def using s m0 m_lt nsa_m by simp
+qed
+
 text \<open>
   Explicit value of \<open>elem (A[n]) (idx_B t j) k\<close> in terms of the
   underlying original column and the bump amount. Combines
