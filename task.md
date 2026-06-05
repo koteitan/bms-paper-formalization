@@ -133,11 +133,14 @@
   - ✅ mpl_none_imp_mpl_le_zero_expansion_cond (STRUCT linchpin, c4' modulo)
   - ✅ ascends_antitone_level
   - ✅ drop_dom_ancestor_from_onestep (V ⟸ V1)
-  - 🚨 c4' (STRUCT crux: tall expansion keeps bad root)
+  - 🚨 c4' (STRUCT crux: tall expansion keeps bad root) — 2 height 事実に還元済
     - ✅ col_row0_zero_imp_col_zero (c1: row0=0 列は全ゼロ)
     - ✅ b0_start_expansion_some_when_n_pos (c4' 主ケース t>0 ∧ n>0)
     - ✅ b0_start_expansion_some_when_l1_ge2 (t>0 ∧ l1≥2, 全 n)
-    - 🚨 残差 (t=0) ∪ (t>0,n=0,l1=1) = mpl=0⟹height≤1 系の height 構造 (HBND 絡み)
+    - ✅ b0_start_expansion_zero_some_of_penult_parent (n=0, penult が 0-parent)
+    - ✅ b0_start_expansion_some_modulo_height (assembly: c4' ⟸ Hres)
+    - 🚨 Hres-1: mpl A=0 ⟹ height(A[n])≤1 (t=0 vacuity)
+    - 🚨 Hres-2: l1=1 ∧ n=0 ∧ 不良根全ゼロ ⟹ height(A[0])≤1 (seed corner)
   - 🚨 V1 (value crux = ancestor_monotone = drop-domination; clause-i 必須)
 
 - ✅ Lemma 2.5 helpers
