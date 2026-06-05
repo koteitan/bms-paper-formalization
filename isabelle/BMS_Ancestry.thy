@@ -9869,6 +9869,120 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>Bad-root strict row-0 dominance over the \<open>B\<^sub>0\<close>-tail (sorry-free, clause-iv-free).\<close>
+  The bad root \<open>s\<close> is the level-0 \<open>m\<close>-ancestor of the last column \<open>C\<close>
+  (@{thm m_parent_Suc_implies_m_ancestor} + @{thm m_ancestor_mono} from the
+  level-\<open>t\<close> parent), so @{thm m_anc_zero_imp_strict_min} gives strict row-0
+  dominance of \<open>s\<close> over every interior \<open>s < c < C\<close>; as \<open>s + j < C\<close> for
+  \<open>0 < j < l\<^sub>1\<close>, \<open>(A!s)!0 < (A!(s+j))!0\<close>.\<close>
+
+lemma elem_b0_start_lt_offset_row0:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and j_pos: "0 < j" and j_lt: "j < l1 A"
+  shows "(A ! s) ! 0 < (A ! (s + j)) ! 0"
+proof -
+  have mp_t_C: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
+  have mp_Suc: "m_parent A (Suc t') (last_col_idx A) = Some s"
+    using mp_t_C t_eq by simp
+  have anc_t': "m_ancestor A t' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mp_Suc] .
+  have anc0: "m_ancestor A 0 (last_col_idx A) s"
+    using m_ancestor_mono[OF le0 anc_t'] .
+  have strict_int: "\<forall>c. s < c \<and> c < last_col_idx A \<longrightarrow> elem A s 0 < elem A c 0"
+    using m_anc_zero_imp_strict_min[OF anc0] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = last_col_idx A - s"
+  proof -
+    have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have sj_lt_C: "s + j < last_col_idx A" using j_lt l1_eq s_lt_last by linarith
+  have s_lt_sj: "s < s + j" using j_pos by simp
+  have "elem A s 0 < elem A (s + j) 0" using strict_int s_lt_sj sj_lt_C by blast
+  thus ?thesis unfolding elem_def by simp
+qed
+
+text \<open>\<^bold>\<open>Block-start is the strict row-0 minimum of its block (sorry-free,
+  clause-iv-free).\<close>  For \<open>0 < j < l\<^sub>1\<close> and any block \<open>c \<le> n\<close>, the block-start
+  column \<open>idx_B(A,c,0)\<close> has strictly smaller row-0 value than \<open>idx_B(A,c,j)\<close>.
+  Offset 0 always ascends, so its block-\<open>c\<close> value is \<open>(A!s)!0 + c\<cdot>delta\<close>; offset
+  \<open>j\<close> ascends too (@{thm all_ascend_row0}), so its value is \<open>(A!(s+j))!0 + c\<cdot>delta\<close>.
+  The bad-root domination @{thm elem_b0_start_lt_offset_row0} survives the common
+  bump.\<close>
+
+lemma elem_AEn_block_start_lt_offset_row0:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and c_le: "c \<le> n"
+      and j_pos: "0 < j" and j_lt: "j < l1 A"
+  shows "elem (A[n]) (idx_B_in_expansion A c 0) 0
+       < elem (A[n]) (idx_B_in_expansion A c j) 0"
+proof -
+  have asc0: "ascends A 0 0"
+    using b0 mp t_pos unfolding ascends_def non_strict_ancestor_def by simp
+  have l1_pos: "0 < l1 A" using j_lt by simp
+  have v0: "elem (A[n]) (idx_B_in_expansion A c 0) 0
+          = (A ! s) ! 0 + c * delta A 0"
+  proof -
+    have "elem (A[n]) (idx_B_in_expansion A c 0) 0
+        = (A ! (s + 0)) ! 0 + (if ascends A 0 0 then c * delta A 0 else 0)"
+      using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos l1_pos c_le] .
+    thus ?thesis using asc0 by simp
+  qed
+  have vj: "elem (A[n]) (idx_B_in_expansion A c j) 0
+          = (A ! (s + j)) ! 0 + (if ascends A j 0 then c * delta A 0 else 0)"
+    using row0_value_AEn_idx_B[OF A_BMS A_ne b0 mp t_pos n_pos j_lt c_le] .
+  have base_lt: "(A ! s) ! 0 < (A ! (s + j)) ! 0"
+    using elem_b0_start_lt_offset_row0[OF A_BMS A_ne b0 mp t_pos j_pos j_lt] .
+  have asc_j: "ascends A j 0"
+    using all_ascend_row0[OF A_BMS A_ne b0 mp t_pos j_lt] .
+  have "elem (A[n]) (idx_B_in_expansion A c 0) 0
+      = (A ! s) ! 0 + c * delta A 0" using v0 .
+  also have "\<dots> < (A ! (s + j)) ! 0 + c * delta A 0" using base_lt by simp
+  also have "\<dots> = elem (A[n]) (idx_B_in_expansion A c j) 0"
+    using vj asc_j by simp
+  finally show ?thesis .
+qed
+
+text \<open>\<^bold>\<open>For \<open>j > 0\<close> the cross-block within-block candidate set \<open>S\<close> is non-empty
+  (sorry-free, clause-iv-free).\<close>  Offset 0 is always a candidate of \<open>j\<close>
+  (@{thm elem_AEn_block_start_lt_offset_row0}), so the \<open>S = []\<close> cross-block
+  obligation can only arise at the block-start \<open>j = 0\<close>.\<close>
+
+lemma cross_block_S_ne_when_j_pos:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+      and j_pos: "0 < j" and j_lt: "j < l1 A"
+  shows "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                       < elem (A[n]) (idx_B_in_expansion A 0 j) 0] \<noteq> []"
+proof -
+  have zero_lt: "elem (A[n]) (idx_B_in_expansion A 0 0) 0
+              < elem (A[n]) (idx_B_in_expansion A 0 j) 0"
+    using elem_AEn_block_start_lt_offset_row0[OF A_BMS A_ne b0 mp t_pos n_pos le0 j_pos j_lt] .
+  have "0 \<in> set [j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                            < elem (A[n]) (idx_B_in_expansion A 0 j) 0]"
+    using j_pos zero_lt by simp
+  thus ?thesis by (cases "[j' \<leftarrow> [0..<j]. elem (A[n]) (idx_B_in_expansion A 0 j') 0
+                            < elem (A[n]) (idx_B_in_expansion A 0 j) 0]") auto
+qed
+
 text \<open>\<^bold>\<open>\<open>m\<close>-ancestor coincidence from \<open>m\<close>-parent coincidence on the \<open>G\<close>-prefix
   (sorry-free).\<close>  If \<open>A[n]\<close> and \<open>A\<close> share the \<open>m\<close>-parent at every \<open>G\<close>-prefix
   column \<open>q < s\<close>, then they share the \<open>m\<close>-ancestry from any \<open>G\<close>-prefix column
