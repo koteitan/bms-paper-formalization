@@ -18470,6 +18470,28 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>The last column is the row-0 max of the \<open>B\<^sub>0\<close>-region, from \<open>consec\<close> (sorry-free).\<close>
+  Under row-0 consecutiveness the values \<open>elem A c 0 = elem A s 0 + (c - s)\<close> increase
+  monotonically with the column index, so any \<open>s \<le> c \<le> C\<close> satisfies
+  \<open>elem A c 0 \<le> elem A C 0\<close>.  This is the \<open>B\<^sub>0\<close>-region half of the residual \<open>(A)\<close>
+  (last column is the row-0 maximum); the remaining half is the \<open>G\<close>-prefix bound,
+  which — like \<open>consec\<close> itself — funnels into the value crux.\<close>
+
+lemma b0_region_le_last_row0_from_consec:
+  fixes A :: array and s :: nat
+  assumes b0: "b0_start A = Some s" and A_ne: "A \<noteq> []"
+      and consec: "\<And>j. s + j \<le> last_col_idx A \<Longrightarrow> elem A (s + j) 0 = elem A s 0 + j"
+      and sc: "s \<le> c" and cC: "c \<le> last_col_idx A"
+  shows "elem A c 0 \<le> elem A (last_col_idx A) 0"
+proof -
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have ec: "elem A c 0 = elem A s 0 + (c - s)"
+    using consec[of "c - s"] sc cC by simp
+  have eC: "elem A (last_col_idx A) 0 = elem A s 0 + (last_col_idx A - s)"
+    using consec[of "last_col_idx A - s"] s_lt_last by simp
+  show ?thesis using ec eC cC sc by simp
+qed
+
 text \<open>\<^bold>\<open>A row-0-all-zero \<open>BMS\<close> array has height \<open>0\<close> (sorry-free).\<close>  If every column's
   row-0 entry is \<open>0\<close>, then (@{thm col_row0_zero_imp_col_zero}) every column is
   identically \<open>0\<close>, so the whole array is all-zero; since \<open>BMS\<close> arrays are stripped
