@@ -236,3 +236,44 @@ b0(A[n])=None ⟺ elem(A[n])(last_col A[n]) 0 = 0; last col of A[n] = bump of A-
 at block n, so this is a fact about the bumped row-0 tiling closed form (chainlen0_bumped_tiling @556).
 Supporting facts available: (c1) elem A i 0=0 ⟹ col i all-zero [0-fail, unproven];
 (c3) b0≠None ⟹ elem(last,0)≥1 [provable via upward m_parent cascade, no consec needed].
+
+---
+
+## v0.1.113 premise-map: how to discharge `ancestor_monotone` expand (@15879)
+
+Definitive analysis (2026-06-06). The entire formalization's open frontier = the single
+`sorry` at `ancestor_monotone`'s `expand_in_BMS` case (@15879). Its ready-made vehicle
+`ancestor_monotone_expand` (@15758, sorry-free, with R1/R2 step lemmas assembled) needs the
+premises below. Discharge status from a *bare* `BMS.induct` (predecessor `A`, IH = the
+`ancestor_monotone` statement for `A`):
+
+| premise | discharge |
+|---|---|
+| `A_BMS`, `A_ne` | `A∈BMS` from `expand_in_BMS`; handle `A=[]` vacuously (`A[]=[]`, b0=None ⟹ goal vacuous) |
+| `b0A`, `mpA` (`b0_start A=Some sA`, `mpl A=Some tA`) | case-split; **`b0_start A=None` branch is vacuous** via the height≤1 cascade (`height_expansion_le` + `mpl_le_zero_expansion_of_height_le1`): then `mpl(A[n])≤Some 0`, so the goal's `m<t'-1` is unsatisfiable |
+| `IH` | the `BMS.induct` IH for `A` — verbatim ✓ |
+| `b0E`, `mpE`, `m_lt`, `qor`, `q_lt`, `c_le` | from the unpacked goal for `A[n]` ✓ |
+| `keep` (`m<keep_of(G@Bs)`) | from `m<tE-1` + `keep_of_pre_strip_ge_max_parent_level` ✓ |
+| `Hmpl_gt1` (`1<l1 A ⟹ tE≤tA`) | mpl relation — **needs an `mpl(A[n])` vs `mpl A` bound lemma** (likely provable; `mpl_bound_from_R2` exists for R2; R1 side TBD) |
+| `Hmpl_le1` (`tE≤tA+1`) | mpl relation — same family, TBD-provable |
+| **`Rb_cond`** (`sE<sA ⟹ m_ancestor A m sA sE`) | **= `R2_new_root_anc_of_old` (@15105), which needs `lemma_2_5_i_clause A n t''`** → the clause-(i) entanglement. AVAILABLE in the joint bundle (IH carries ∀n k. clause_i). **CRUX #1** |
+| **`Htop`** (`l1 A=1 ⟹ m=tA-1 ⟹ elem(A[n])(c-1)m < elem(A[n]) c m`) | top-level adjacent-monotone over `(sE,sA]` at level `tA-1=tE-2`. NOT a boundary (tE-2 < tE-1) so TRUE, but = `ancestor_monotone (A[n])` at level tE-2 = **same-level self-reference**. **CRUX #2** — the irreducible same-level circularity Hunter resolves by the intra-level clause order (ii→iii→iv→i→DOM). |
+
+**Conclusion.** A *bare* `BMS.induct` cannot close @15879: `Rb_cond` needs clause-(i)
+(only the joint bundle supplies it) and `Htop` is the same-level circularity. The faithful
+restructure: prove `J A ≡ ancestor_monotone(A) ∧ (∀n k. clause_i..v A n k)` by `BMS.induct`;
+the expand case discharges `ancestor_monotone(A[n])` via `ancestor_monotone_expand` (Rb_cond ←
+clause_i from IH) and the 5 clauses via their `_clause_step` lemmas (DOM-leaves ← ancestor_monotone
+from IH). The single residual that survives even the bundle is **Htop / MONO** (design gap §2
+"l1=1 R2 G'-tail"), i.e. the staircase at level `tE-2` over `(sE,sA]`, which must come from the
+intra-level clause structure at the SAME k — not from lower k or the IH-for-A.
+
+**Empirical guard-rails (probes, 2026-06-06):** `ancestor_monotone` at boundary `m=t-1` is
+genuinely violated (`probe_anc_monotone_boundary`: 1660, all G-prefix) ⟹ range `m<t-1` is TIGHT,
+no extension route. Broad G-prefix monotone is false (`probe_gprefix_monotone`: 28k+). So Htop
+is ONLY the narrow chain-staircase, never a broad value statement.
+
+**First incremental step for next session (net-neutral, GREEN-keeping):** discharge the two
+mpl-relation premises `Hmpl_gt1`/`Hmpl_le1` as standalone lemmas (likely provable from existing
+`mpl_bound_from_R2` + an R1 analogue), so @15879's residual collapses to exactly `{Rb_cond, Htop}`
+= the two named cruxes — then the bundle restructure handles Rb_cond, leaving Htop alone.
