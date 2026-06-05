@@ -365,6 +365,47 @@ proof -
   show ?thesis unfolding ascends_def using s m0 m_lt nsa_m by simp
 qed
 
+text \<open>\<^bold>\<open>Chain composition of one-step drop-domination (sorry-free, unconditional
+  in the one-step premise).\<close>  Writing the per-level \<^emph>\<open>drop\<close> of a column as
+  \<open>elem A i m - elem A i (Suc m)\<close>, suppose the level-\<open>m\<close> \<^bold>\<open>parent\<close> always drops
+  no more than its child (\<open>V1\<close>: the one-step \<open>drop\<close>-domination).  Then the same
+  holds for any level-\<open>m\<close> \<^emph>\<open>ancestor\<close> (\<open>V\<close>), by composing \<open>V1\<close> along the
+  \<open>m\<close>-parent chain (strong induction on the child index, which strictly
+  decreases at each \<open>m\<close>-parent step via @{thm m_parent_lt}).
+
+  This isolates the BMS row-monotonicity / \<open>drop\<close>-domination crux to its single
+  atom \<open>V1\<close>.  \<open>V1\<close>'s own \<open>BMS.induct\<close> expand case is the genuine remaining
+  frontier (it needs the clause-(i) ancestry transfer for \<open>A[n]\<close>); but the
+  column-non-increasing fact \<open>P1\<close> then follows from \<open>V\<close> by the bumped-column
+  case split (using @{thm ascends_antitone_level} + @{thm delta_pos_of_lt_m0}),
+  so \<open>P1 \<Leftarrow> V \<Leftarrow> V1\<close> with \<open>V1\<close> the sole atom.\<close>
+
+lemma drop_dom_ancestor_from_onestep:
+  fixes A :: array and m :: nat
+  assumes V1: "\<And>x' q. m_parent A m x' = Some q
+                  \<Longrightarrow> elem A q m - elem A q (Suc m) \<le> elem A x' m - elem A x' (Suc m)"
+  shows "m_ancestor A m x y
+           \<Longrightarrow> elem A y m - elem A y (Suc m) \<le> elem A x m - elem A x (Suc m)"
+proof (induct x rule: less_induct)
+  case (less x)
+  obtain p where mp: "m_parent A m x = Some p"
+             and casep: "p = y \<or> m_ancestor A m p y"
+    using less.prems by (cases "m_parent A m x") auto
+  have p_lt: "p < x" using mp m_parent_lt by blast
+  have step: "elem A p m - elem A p (Suc m) \<le> elem A x m - elem A x (Suc m)"
+    using V1[OF mp] .
+  show ?case
+  proof (cases "p = y")
+    case True thus ?thesis using step by simp
+  next
+    case False
+    hence "m_ancestor A m p y" using casep by simp
+    hence "elem A y m - elem A y (Suc m) \<le> elem A p m - elem A p (Suc m)"
+      using less.hyps[OF p_lt] by simp
+    thus ?thesis using step by simp
+  qed
+qed
+
 text \<open>
   Explicit value of \<open>elem (A[n]) (idx_B t j) k\<close> in terms of the
   underlying original column and the bump amount. Combines
