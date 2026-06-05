@@ -133,7 +133,12 @@
   - ✅ mpl_none_imp_mpl_le_zero_expansion_cond (STRUCT linchpin, c4' modulo)
   - ✅ ascends_antitone_level
   - ✅ drop_dom_ancestor_from_onestep (V ⟸ V1)
-  - 🚨 V1 / c4' (= col-nonincreasing = ancestor_monotone = drop-domination; clause-i 必須)
+  - 🚨 c4' (STRUCT crux: tall expansion keeps bad root)
+    - ✅ col_row0_zero_imp_col_zero (c1: row0=0 列は全ゼロ)
+    - ✅ b0_start_expansion_some_when_n_pos (c4' 主ケース t>0 ∧ n>0)
+    - 🚨 t=0 edge (mpl A=0 ⟹ height A≤1 で vacuous)
+    - 🚨 n=0 edge (l1≥2 は strict-min / l1=1 corner)
+  - 🚨 V1 (value crux = ancestor_monotone = drop-domination; clause-i 必須)
 
 - ✅ Lemma 2.5 helpers
   - ✅ m_anc_build_Suc (PSS le1_build 移植: stratified 支配→高レベル祖先 build, endpoint 帰納; SI ancestry step 用)
