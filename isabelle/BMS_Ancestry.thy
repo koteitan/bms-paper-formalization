@@ -10273,6 +10273,62 @@ proof -
   show ?thesis using mp_eq full_ne last_eq by simp
 qed
 
+text \<open>\<^bold>\<open>Every row-0 value below a column's value is realized at an earlier column
+  (sorry-free, clause-iv-free).\<close>  For an array \<open>B\<close> whose every positive-length
+  column satisfies the recursive row-0 invariant
+  \<open>elem B k 0 = (case m_parent B 0 k of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem B p 0))\<close>
+  (and where every column has positive length, so the level-0 \<open>m\<close>-parent chain is
+  always usable), the level-0 \<open>m\<close>-parent chain from \<open>i\<close> decreases the row-0 value by
+  exactly \<open>1\<close> each step.  Hence for \<open>w < elem B i 0\<close> some \<open>q < i\<close> carries row-0
+  value exactly \<open>w\<close>.  Strong induction on \<open>elem B i 0\<close>: the parent \<open>p < i\<close> carries
+  \<open>elem B p 0 = elem B i 0 - 1\<close>; if \<open>w = elem B p 0\<close> take \<open>q = p\<close>, otherwise
+  \<open>w < elem B p 0\<close> and the IH at \<open>p\<close> (strictly smaller value) realizes \<open>w\<close> at some
+  \<open>q < p < i\<close>.\<close>
+
+lemma row0_value_realized_below:
+  fixes B :: array and i w :: nat
+  assumes INV: "\<And>k. k < arr_len B \<Longrightarrow> 0 < length (B ! k) \<Longrightarrow>
+                  elem B k 0
+                = (case m_parent B 0 k of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem B p 0))"
+      and LEN: "\<And>k. k < arr_len B \<Longrightarrow> 0 < length (B ! k)"
+      and i_lt: "i < arr_len B"
+      and w_lt: "w < elem B i 0"
+  shows "\<exists>q. q < i \<and> elem B q 0 = w"
+  using i_lt w_lt
+proof (induct "elem B i 0" arbitrary: i w rule: less_induct)
+  case less
+  have i_len: "0 < length (B ! i)" using LEN[OF less.prems(1)] .
+  have inv_i: "elem B i 0
+             = (case m_parent B 0 i of None \<Rightarrow> 0
+                | Some p \<Rightarrow> Suc (elem B p 0))"
+    using INV[OF less.prems(1) i_len] .
+  show ?case
+  proof (cases "m_parent B 0 i")
+    case None
+    have "elem B i 0 = 0" using inv_i None by (simp only: option.case)
+    thus ?thesis using less.prems(2) by simp
+  next
+    case (Some p)
+    have p_lt_i: "p < i" using m_parent_lt[OF Some] .
+    have p_lt_B: "p < arr_len B" using p_lt_i less.prems(1) by linarith
+    have vi: "elem B i 0 = Suc (elem B p 0)"
+      using inv_i Some by (simp only: option.case)
+    have vp_lt: "elem B p 0 < elem B i 0" using vi by simp
+    show ?thesis
+    proof (cases "w = elem B p 0")
+      case True
+      show ?thesis using p_lt_i True by blast
+    next
+      case False
+      have w_lt_p: "w < elem B p 0" using less.prems(2) vi False by simp
+      obtain q where q_lt_p: "q < p" and q_v: "elem B q 0 = w"
+        using less.hyps[OF vp_lt p_lt_B w_lt_p] by blast
+      have q_lt_i: "q < i" using q_lt_p p_lt_i by linarith
+      show ?thesis using q_lt_i q_v by blast
+    qed
+  qed
+qed
+
 text \<open>\<^bold>\<open>Level-0 \<open>m\<close>-parent as the global last strictly-smaller position (sorry-free,
   clause-iv-free).\<close>  Pure unfold of @{thm m_parent.simps(1)}: the level-0 \<open>m\<close>-parent
   of any column \<open>i\<close> is exactly the LAST index \<open>p < i\<close> whose row-0 value is strictly
