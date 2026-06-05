@@ -10467,6 +10467,86 @@ proof -
   show ?thesis using that[OF j_lt val_eq] .
 qed
 
+text \<open>\<^bold>\<open>The realizing \<open>B\<^sub>0\<close>-offset is the rightmost strictly-below-\<open>C\<close> position
+  (sorry-free, clause-iv-free).\<close>  Writing \<open>j\<close> for the offset of \<open>C\<close>'s level-0
+  \<open>m\<close>-parent (@{thm row0_b0_offset_realizes_C_pred} gives \<open>elem A (s+j) 0 = elem A C 0 - 1\<close>),
+  every \<open>B\<^sub>0\<close>-offset strictly to its right carries row-0 value \<open>\<ge> elem A C 0\<close>: the
+  \<open>m\<close>-parent is the LAST candidate over \<open>[0, C)\<close> (@{thm m_parent_zero_eq_global_last}),
+  so nothing in \<open>(s+j, C)\<close> is a candidate.\<close>
+
+lemma row0_b0_offset_right_ge_C:
+  fixes A :: array
+  assumes A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t"
+      and invC: "elem A (last_col_idx A) 0
+               = (case m_parent A 0 (last_col_idx A) of None \<Rightarrow> 0
+                  | Some p \<Rightarrow> Suc (elem A p 0))"
+  obtains j where "j < l1 A"
+              and "elem A (s + j) 0 = elem A (last_col_idx A) 0 - 1"
+              and "\<And>j'. j < j' \<Longrightarrow> j' < l1 A
+                       \<Longrightarrow> elem A (last_col_idx A) 0 \<le> elem A (s + j') 0"
+proof -
+  let ?C = "last_col_idx A"
+  let ?P = "\<lambda>q. elem A q 0 < elem A ?C 0"
+  obtain p where mpC: "m_parent A 0 ?C = Some p" and s_le_p: "s \<le> p"
+    using m_parent_row0_last_col_ge_b0_start[OF A_ne b0 mp t_pos] by blast
+  have p_lt_C: "p < ?C" using m_parent_lt[OF mpC] .
+  have vC: "elem A ?C 0 = Suc (elem A p 0)"
+    using invC mpC by (simp only: option.case)
+  have pred_eq: "elem A p 0 = elem A ?C 0 - 1" using vC by simp
+  obtain j where j_eq: "p = s + j" using s_le_p by (metis le_Suc_ex)
+  have s_lt_last: "s < ?C" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "?C < arr_len A" using A_ne by (cases A) auto
+  have l1_eq: "l1 A = ?C - s"
+  proof -
+    have B0_form: "B0_block A = take (?C - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (?C - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = ?C - s" using s_lt_last last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have last_eq: "?C = s + l1 A" using l1_eq s_lt_last by simp
+  have j_lt: "j < l1 A" using j_eq p_lt_C l1_eq by linarith
+  have val_eq: "elem A (s + j) 0 = elem A ?C 0 - 1" using pred_eq j_eq by simp
+  \<comment> \<open>\<open>p\<close> is the LAST candidate over \<open>[0, C)\<close>, so \<open>(p, C)\<close> carries no candidate.\<close>
+  have Pp: "?P p" using vC by simp
+  have filt_ne: "filter ?P [0..<?C] \<noteq> []"
+  proof -
+    have "p \<in> set (filter ?P [0..<?C])"
+      using p_lt_C Pp by (simp add: set_filter)
+    thus ?thesis by (metis empty_iff empty_set)
+  qed
+  have p_is_last: "p = last (filter ?P [0..<?C])"
+    using m_parent_zero_eq_global_last[of A ?C] mpC filt_ne by simp
+  have srt: "sorted (filter ?P [0..<?C])" using sorted_filter_le[OF sorted_upt] .
+  have no_after: "\<And>q. p < q \<Longrightarrow> q < ?C \<Longrightarrow> \<not> ?P q"
+  proof -
+    fix q assume q_lo: "p < q" and q_hi: "q < ?C"
+    show "\<not> ?P q"
+    proof
+      assume Pq: "?P q"
+      have q_mem: "q \<in> set (filter ?P [0..<?C])"
+        using q_hi Pq by (simp add: set_filter)
+      have "q \<le> last (filter ?P [0..<?C])"
+        using sorted_mem_le_last[OF srt q_mem] .
+      thus False using q_lo p_is_last by simp
+    qed
+  qed
+  have right_ge: "\<And>j'. j < j' \<Longrightarrow> j' < l1 A
+                      \<Longrightarrow> elem A ?C 0 \<le> elem A (s + j') 0"
+  proof -
+    fix j' assume jj': "j < j'" and j'_lt: "j' < l1 A"
+    have q_lo: "p < s + j'" using j_eq jj' by simp
+    have q_hi: "s + j' < ?C" using j'_lt last_eq by simp
+    have "\<not> ?P (s + j')" using no_after[OF q_lo q_hi] .
+    thus "elem A ?C 0 \<le> elem A (s + j') 0" by simp
+  qed
+  show ?thesis using that[OF j_lt val_eq right_ge] .
+qed
+
 text \<open>\<^bold>\<open>GAP B within-block step, \<open>t = 0\<close> (sorry-free, clause-iv-free).\<close>  When the
   \<open>A[n]\<close> block-0 candidate list \<open>S\<close> of offset \<open>j\<close> is non-empty, the level-0
   \<open>m\<close>-parent of \<open>idx_B (A,c,j)\<close> stays within block \<open>c\<close> at offset \<open>last S\<close>
