@@ -18047,6 +18047,107 @@ next
   qed
 qed
 
+text \<open>\<^bold>\<open>The BMS \<open>mpl\<close>-definedness keystone, modulo the single tall-expansion
+  obligation \<open>c4'\<close> (machine-verified reduction).\<close>  Empirically
+  (\<open>verify/probe_mpl_none_linchpin.py\<close>, 0 fails / 1784 faithful BMS arrays):
+  \<^bold>\<open>every BMS array of height \<open>\<ge> 2\<close> has a bad root.\<close>  This is the contrapositive
+  of \<open>mpl A = None \<Longrightarrow> height A \<le> 1\<close>, the keystone that collapses the STRUCT
+  linchpin (\<open>mpl A = None \<Longrightarrow> mpl_le_zero (A[n])\<close>) to vacuity.
+
+  The BMS induction is clean: the \<open>seed\<close> case is @{thm b0_start_seed}; the
+  expand case needs only @{thm height_expansion_le} (so \<open>2 \<le> height (A[n])\<close>
+  forces \<open>2 \<le> height A\<close>, whence the \<open>IH\<close> hands back \<open>b0_start A \<noteq> None\<close>) plus
+  the \<^emph>\<open>tall-expansion\<close> obligation
+
+    \<^bold>\<open>\<open>c4'\<close>\<close>:  \<open>A' \<in> BMS \<Longrightarrow> A' \<noteq> [] \<Longrightarrow> b0_start A' \<noteq> None
+                 \<Longrightarrow> 2 \<le> height (A'[n']) \<Longrightarrow> b0_start (A'[n']) \<noteq> None\<close>
+
+  carried here as an explicit hypothesis.  \<open>c4'\<close> is the SOLE remaining crux of
+  the STRUCT linchpin (the naive \<open>b0_start A' \<noteq> None \<Longrightarrow> b0_start (A'[n']) \<noteq> None\<close>
+  without the height guard is \<^emph>\<open>false\<close>: 128/1784, e.g. \<open>(0)(1)(0)(1)(0)(1)\<close>).
+  Stating \<open>c4'\<close> as a premise machine-checks the reduction while isolating it.\<close>
+
+lemma height_ge2_imp_b0_some_cond:
+  fixes A :: array
+  assumes c4: "\<And>A' n'. A' \<in> BMS \<Longrightarrow> A' \<noteq> [] \<Longrightarrow> b0_start A' \<noteq> None
+                  \<Longrightarrow> 2 \<le> height (A'[n']) \<Longrightarrow> b0_start (A'[n']) \<noteq> None"
+      and A_BMS: "A \<in> BMS"
+  shows "2 \<le> height A \<Longrightarrow> b0_start A \<noteq> None"
+  using A_BMS
+proof (induct rule: BMS.induct)
+  case (seed_in_BMS m)
+  have "0 < m" using seed_in_BMS.prems by (simp add: height_seed)
+  thus ?case by (simp add: b0_start_seed)
+next
+  case (expand_in_BMS A n)
+  note A_BMS' = expand_in_BMS.hyps(1)
+  note IH = expand_in_BMS.hyps(2)
+  have A_ne: "A \<noteq> []"
+  proof
+    assume "A = []"
+    hence "A[n] = []" by (simp add: expansion_def)
+    hence "height (A[n]) = 0" by simp
+    thus False using expand_in_BMS.prems by simp
+  qed
+  have h_le: "height (A[n]) \<le> height A"
+    using height_expansion_le[OF A_BMS' A_ne] .
+  have hA2: "2 \<le> height A" using expand_in_BMS.prems h_le by simp
+  have b0A: "b0_start A \<noteq> None" using IH hA2 by simp
+  show ?case using c4[OF A_BMS' A_ne b0A expand_in_BMS.prems] .
+qed
+
+text \<open>\<^bold>\<open>Vacuity step (sorry-free, unconditional): a height-\<open>\<le> 1\<close> expansion is
+  \<open>mpl_le_zero\<close>.\<close>  With \<open>height (A[n]) \<le> 1\<close> the level range \<open>0 < m < height (A[n])\<close>
+  of @{thm mpl_le_zero_iff_no_high_parent} is empty, so there is no high parent to
+  exclude.  This is the second half of the linchpin: combined with the keystone
+  \<open>mpl A = None \<Longrightarrow> height A \<le> 1\<close> it collapses the STRUCT obligation.\<close>
+
+lemma mpl_le_zero_expansion_of_height_le1:
+  fixes A :: array and n :: nat
+  assumes h1: "height (A[n]) \<le> 1"
+  shows "mpl_le_zero (A[n])"
+proof (cases "A[n] = []")
+  case True
+  thus ?thesis by (simp add: mpl_le_zero_def max_parent_level_def)
+next
+  case False
+  have "\<forall>m. 0 < m \<longrightarrow> m < height (A[n])
+              \<longrightarrow> m_parent (A[n]) m (last_col_idx (A[n])) = None"
+    using h1 by auto
+  thus ?thesis using mpl_le_zero_iff_no_high_parent[OF False] by blast
+qed
+
+text \<open>\<^bold>\<open>The STRUCT linchpin, modulo \<open>c4'\<close> (machine-verified full chain).\<close>  Assembling
+  the keystone (@{thm height_ge2_imp_b0_some_cond}) with the vacuity step
+  (@{thm mpl_le_zero_expansion_of_height_le1}) and the height bound
+  (@{thm height_expansion_le}): an \<open>mpl\<close>-undefined \<open>A\<close> has height \<open>\<le> 1\<close>
+  (keystone contrapositive), so its expansion does too, hence is \<open>mpl_le_zero\<close>.
+  The whole STRUCT linchpin \<open>mpl A = None \<Longrightarrow> mpl_le_zero (A[n])\<close> is therefore
+  reduced — sorry-free — to the single tall-expansion crux \<open>c4'\<close>.\<close>
+
+lemma mpl_none_imp_mpl_le_zero_expansion_cond:
+  fixes A :: array and n :: nat
+  assumes c4: "\<And>A' n'. A' \<in> BMS \<Longrightarrow> A' \<noteq> [] \<Longrightarrow> b0_start A' \<noteq> None
+                  \<Longrightarrow> 2 \<le> height (A'[n']) \<Longrightarrow> b0_start (A'[n']) \<noteq> None"
+      and A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and mpl_none: "max_parent_level A = None"
+  shows "mpl_le_zero (A[n])"
+proof -
+  have b0_none: "b0_start A = None"
+    using max_parent_level_None_imp_b0_start_None[OF mpl_none] .
+  have hA1: "height A \<le> 1"
+  proof (rule ccontr)
+    assume "\<not> height A \<le> 1"
+    hence hA2: "2 \<le> height A" by simp
+    have "b0_start A \<noteq> None"
+      using height_ge2_imp_b0_some_cond[OF c4 A_BMS] hA2 by simp
+    thus False using b0_none by simp
+  qed
+  have "height (A[n]) \<le> height A" using height_expansion_le[OF A_BMS A_ne] .
+  hence "height (A[n]) \<le> 1" using hA1 by simp
+  thus ?thesis using mpl_le_zero_expansion_of_height_le1 by simp
+qed
+
 text \<open>\<^bold>\<open>P1 keystone in the R2 regime (sorry-free).\<close>  Assembles the structural
   ancestry identity \<open>b0_start (A[n]) = m_parent A t' (b0_start A)\<close> (with
   \<open>t' = mpl (A[n])\<close>) from its two now-discharged obligations:
