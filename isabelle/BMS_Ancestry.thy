@@ -11704,6 +11704,53 @@ next
   qed
 qed
 
+text \<open>\<^bold>\<open>First application of \<open>row0_invariant\<close>: \<open>mpl A = None\<close> forces the
+  last column's row-0 value to \<open>0\<close> (sorry-free, clause-iv-free).\<close>
+  When \<open>max_parent_level A = None\<close>, the last column has no \<open>m\<close>-parent at
+  any level — in particular none at level \<open>0\<close>.  By @{thm row0_invariant}
+  (the \<open>None\<close> branch of the row-0 recursion), its row-0 value is therefore
+  exactly \<open>0\<close>.  This is the foundational leaf of the BMS structural
+  \<open>mpl\<close>-definedness linchpin: a ``\<open>mpl\<close>-undefined'' \<open>A\<close> tops out at value
+  \<open>0\<close> on row \<open>0\<close>, so any bad root the expansion \<open>A[n]\<close> develops is
+  confined to level \<open>0\<close>.\<close>
+
+lemma mpl_none_imp_last_col_row0_zero:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and H_pos: "0 < height A"
+      and mpl_none: "max_parent_level A = None"
+  shows "elem A (last_col_idx A) 0 = 0"
+proof -
+  let ?C = "last_col_idx A"
+  let ?H = "height A"
+  let ?ms = "[m \<leftarrow> [0..<?H]. m_parent A m ?C \<noteq> None]"
+  have mp_form: "max_parent_level A
+               = (if ?ms = [] then None else Some (Max (set ?ms)))"
+    using A_ne unfolding max_parent_level_def by (simp add: Let_def)
+  have ms_empty: "?ms = []"
+  proof (rule ccontr)
+    assume "?ms \<noteq> []"
+    hence "max_parent_level A = Some (Max (set ?ms))" using mp_form by simp
+    thus False using mpl_none by simp
+  qed
+  have zero_in: "0 \<in> set [0..<?H]" using H_pos by simp
+  have mp0: "m_parent A 0 ?C = None"
+  proof -
+    have "\<forall>x \<in> set [0..<?H]. m_parent A x ?C = None"
+      using ms_empty by (simp add: filter_empty_conv)
+    thus ?thesis using zero_in by blast
+  qed
+  have last_lt_arr: "?C < arr_len A" using A_ne by (cases A) auto
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have len_C: "length (A ! ?C) = ?H"
+    using length_col_arr[OF is_arr A_ne last_lt_arr] .
+  have col_pos: "0 < length (A ! ?C)" using len_C H_pos by simp
+  have "elem A ?C 0
+      = (case m_parent A 0 ?C of None \<Rightarrow> 0 | Some p \<Rightarrow> Suc (elem A p 0))"
+    using row0_invariant[OF A_BMS A_ne last_lt_arr col_pos] .
+  thus ?thesis using mp0 by simp
+qed
+
 lemma ancestry_restriction_G_modulo_Rb:
   fixes A :: array and s m sp qp n :: nat
   assumes A_ne: "A \<noteq> []" and b0: "b0_start A = Some s"
