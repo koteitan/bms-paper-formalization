@@ -139,8 +139,9 @@
     - ✅ b0_start_expansion_some_when_l1_ge2 (t>0 ∧ l1≥2, 全 n)
     - ✅ b0_start_expansion_zero_some_of_penult_parent (n=0, penult が 0-parent)
     - ✅ b0_start_expansion_some_modulo_height (assembly: c4' ⟸ Hres)
-    - 🚨 Hres-1: mpl A=0 ⟹ height(A[n])≤1 (t=0 vacuity)
-    - 🚨 Hres-2: l1=1 ∧ n=0 ∧ 不良根全ゼロ ⟹ height(A[0])≤1 (seed corner)
+    - ✅ height_zero_of_row0_all_zero (row0 全ゼロ ⟹ height 0)
+    - ✅ b0_start_expansion_some_modulo_lastmax (c4' ⟸ 単一 residual (A))
+    - 🚨 (A): last col が row-0 max ⟸ B0-row0-consecutive = value crux (隣接単調)
   - 🚨 V1 (value crux = ancestor_monotone = drop-domination; clause-i 必須)
 
 - ✅ Lemma 2.5 helpers
