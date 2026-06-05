@@ -73,3 +73,26 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ---------------------------------------------------------------------------
+# Structural findings for the HBND BMS.induct (2026-06-06), all strip-correct
+# genuine-seed BFS:
+#
+#   (1) mpl A = None  ==>  mpl (A[n]) = None              0 / 108
+#       => HBND's "mpl A = None" expand sub-case is VACUOUS (no t'); HBND does
+#          NOT need the c4'-dependent "mpl A = None => height A <= 1".
+#
+#   (2) mpl (A[n]) < mpl A  (the "drop") happens ONLY with l1 A = 1
+#       (l1 A > 1: 0 drops / l1 A = 1: 384 drops), and NEVER when the
+#       predecessor has maximal slack height A = mpl A + 2 (0 such drops).
+#       => drop  <=>  (l1 A = 1  AND  height A = mpl A + 1).
+#
+# Consequence for HBND (height A <= mpl A + 2) by BMS.induct, expand case
+# (mpl(A[n]) = Some t'):
+#   * mpl A = None       : vacuous by (1).
+#   * t' >= mpl A         : height(A[n]) <= height A <= mpl A + 2 <= t' + 2  (IH).
+#   * t' <  mpl A (drop)  : by (2) height A = mpl A + 1, t' = mpl A - 1, so
+#                           height(A[n]) <= height A = mpl A + 1 = t' + 2.
+# So HBND reduces to the two structural levers (1) mpl-None-propagation and
+# (2) drop => predecessor sharp (height A <= mpl A + 1).
