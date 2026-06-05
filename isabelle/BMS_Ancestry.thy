@@ -18425,6 +18425,82 @@ proof -
   thus ?thesis by simp
 qed
 
+text \<open>\<^bold>\<open>\<open>c4'\<close> main case: a positive-block expansion of a bad-rooted array keeps a
+  bad root (sorry-free).\<close>  For \<open>A \<in> BMS\<close> with bad root \<open>s\<close>, \<open>mpl = Some t\<close>,
+  \<open>t > 0\<close> and \<open>n > 0\<close>, the last column of \<open>A[n]\<close> is \<open>idx_B(n, l\<^sub>1-1)\<close>
+  (@{thm last_col_idx_expansion}), whose row-0 value is the bump
+  \<open>(A!(s+l\<^sub>1-1))!0 + n\<cdot>\<delta>\<^sub>0\<close> (@{thm elem_AEn_idx_B_value}, every \<open>B\<^sub>0\<close> offset ascends at
+  row 0 by @{thm all_ascend_row0}).  Since \<open>s\<close> is the \<open>t\<close>-parent hence a \<open>0\<close>-ancestor
+  of the last column \<open>C\<close>, \<open>\<delta>\<^sub>0 = elem A C 0 - elem A s 0 \<ge> 1\<close>, so the value is
+  \<open>\<ge> n \<ge> 1 > 0\<close>; the contrapositive of @{thm mpl_none_imp_last_col_row0_zero} then
+  forces \<open>mpl (A[n]) \<noteq> None\<close>, i.e.\ a bad root.  This discharges \<open>c4'\<close> on the
+  \<open>n > 0\<close> branch (the \<open>t = 0\<close> case never reaches height \<open>\<ge> 2\<close> empirically, and the
+  \<open>n = 0\<close> / \<open>butlast\<close> branch is the remaining residual).\<close>
+
+lemma b0_start_expansion_some_when_n_pos:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s" and mp: "max_parent_level A = Some t"
+      and t_pos: "0 < t" and n_pos: "0 < n"
+  shows "b0_start (A[n]) \<noteq> None"
+proof -
+  have An_BMS: "A[n] \<in> BMS" using expand_in_BMS[OF A_BMS] .
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have l1_pos: "0 < l1 A"
+    using l1_eq_last_minus_b0[OF A_ne b0] s_lt_last by linarith
+  have last_eq: "s + l1 A = last_col_idx A"
+    using l1_eq_last_minus_b0[OF A_ne b0] s_lt_last by simp
+  \<comment> \<open>\<open>\<delta>\<^sub>0 \<ge> 1\<close> from \<open>s\<close> being a \<open>0\<close>-ancestor of the last column.\<close>
+  obtain t' where t_eq: "t = Suc t'" using t_pos by (cases t) auto
+  have mpC: "m_parent A t (last_col_idx A) = Some s"
+    using b0 mp unfolding b0_start_def by simp
+  have anc_t': "m_ancestor A t' (last_col_idx A) s"
+    using m_parent_Suc_implies_m_ancestor[OF mpC[unfolded t_eq]] .
+  have anc0: "m_ancestor A 0 (last_col_idx A) s" using m_ancestor_mono[OF le0 anc_t'] .
+  have lt0: "elem A s 0 < elem A (last_col_idx A) 0" using m_ancestor_elem_lt[OF anc0] .
+  have delta0_pos: "0 < delta A 0" using lt0 b0 unfolding delta_def by simp
+  \<comment> \<open>last column of \<open>A[n]\<close> and its value.\<close>
+  have lastEn: "last_col_idx (A[n]) = idx_B_in_expansion A n (l1 A - 1)"
+    using last_col_idx_expansion[OF A_ne l1_pos] .
+  have j_lt: "l1 A - 1 < l1 A" using l1_pos by simp
+  have asc: "ascends A (l1 A - 1) 0"
+    using all_ascend_row0[OF A_BMS A_ne b0 mp t_pos j_lt] .
+  have keep_0: "0 < keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] t_pos by linarith
+  have HEn_pos: "0 < height (A[n])"
+    using height_expansion_eq_keep[OF A_BMS A_ne l1_pos] keep_0 by simp
+  have En_ne: "A[n] \<noteq> []" using HEn_pos by (cases "A[n]") auto
+  have sj_lt_arr: "s + (l1 A - 1) < arr_len A"
+    using j_lt last_eq last_lt_arr by simp
+  have col_len: "length (A ! (s + (l1 A - 1))) = height A"
+    using length_col_arr[OF is_arr A_ne sj_lt_arr] .
+  have HA_pos: "0 < height A" using max_parent_level_lt[OF mp] t_pos by linarith
+  have col0: "0 < length (A ! (s + (l1 A - 1)))" using col_len HA_pos by simp
+  have val: "elem (A[n]) (last_col_idx (A[n])) 0
+           = (A ! (s + (l1 A - 1))) ! 0 + n * delta A 0"
+  proof -
+    have "elem (A[n]) (idx_B_in_expansion A n (l1 A - 1)) 0
+        = (A ! (s + (l1 A - 1))) ! 0
+          + (if ascends A (l1 A - 1) 0 then n * delta A 0 else 0)"
+      using elem_AEn_idx_B_value[OF A_ne b0 order.refl j_lt keep_0 col0] .
+    thus ?thesis using lastEn asc by simp
+  qed
+  have pos: "0 < elem (A[n]) (last_col_idx (A[n])) 0"
+    using val delta0_pos n_pos by simp
+  show "b0_start (A[n]) \<noteq> None"
+  proof
+    assume bN: "b0_start (A[n]) = None"
+    have mplN: "max_parent_level (A[n]) = None"
+      using b0_start_None_imp_max_parent_level_None[OF En_ne bN] .
+    have "elem (A[n]) (last_col_idx (A[n])) 0 = 0"
+      using mpl_none_imp_last_col_row0_zero[OF An_BMS En_ne HEn_pos mplN] .
+    thus False using pos by simp
+  qed
+qed
+
 text \<open>\<^bold>\<open>The BMS \<open>mpl\<close>-definedness keystone, modulo the single tall-expansion
   obligation \<open>c4'\<close> (machine-verified reduction).\<close>  Empirically
   (\<open>verify/probe_mpl_none_linchpin.py\<close>, 0 fails / 1784 faithful BMS arrays):
