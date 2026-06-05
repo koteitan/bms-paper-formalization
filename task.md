@@ -136,8 +136,8 @@
   - 🚨 c4' (STRUCT crux: tall expansion keeps bad root)
     - ✅ col_row0_zero_imp_col_zero (c1: row0=0 列は全ゼロ)
     - ✅ b0_start_expansion_some_when_n_pos (c4' 主ケース t>0 ∧ n>0)
-    - 🚨 t=0 edge (mpl A=0 ⟹ height A≤1 で vacuous)
-    - 🚨 n=0 edge (l1≥2 は strict-min / l1=1 corner)
+    - ✅ b0_start_expansion_some_when_l1_ge2 (t>0 ∧ l1≥2, 全 n)
+    - 🚨 残差 (t=0) ∪ (t>0,n=0,l1=1) = mpl=0⟹height≤1 系の height 構造 (HBND 絡み)
   - 🚨 V1 (value crux = ancestor_monotone = drop-domination; clause-i 必須)
 
 - ✅ Lemma 2.5 helpers
