@@ -8,3 +8,6 @@ output/
 commit-msg.txt
 __pycache__/
 *.pyc
+
+# Hunter 原文逐語引用を含む訂正案 (著作権: git に載せない)
+corrections.md
