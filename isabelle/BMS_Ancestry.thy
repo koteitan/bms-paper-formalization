@@ -13471,6 +13471,141 @@ text \<open>
   helpers above, and equally not yet in the library --- bare \<open>sorry\<close>.
 \<close>
 
+text \<open>\<^bold>\<open>\<open>keep_of > 0\<close> from a level-0 expansion parent (sorry-free).\<close>  If a
+  column \<open>i\<close> of \<open>A[n]\<close> (with \<open>i\<close> inside the pre-strip length) has a level-0
+  \<open>m\<close>-parent, then the expansion has at least one kept row.  Contrapositive:
+  if \<open>keep_of = 0\<close> every expansion column is empty (@{thm strip_zero_rows_eq_map_take}
+  with \<open>take 0\<close>), so every \<open>elem (A[n]) j 0 = [] ! 0\<close> is the same value and the
+  level-0 candidate filter is empty, forcing \<open>m_parent = None\<close>.\<close>
+
+lemma keep_pos_of_m_parent_zero_AEn:
+  fixes A :: array and n i p :: nat
+  assumes A_ne: "A \<noteq> []"
+      and i_lt: "i < l0 A + Suc n * l1 A"
+      and mp: "m_parent (A[n]) 0 i = Some p"
+  shows "0 < keep_of (G_block A @ Bs_concat A n)"
+proof (rule ccontr)
+  let ?P = "G_block A @ Bs_concat A n"
+  let ?k = "keep_of ?P"
+  assume "\<not> 0 < ?k"
+  hence k0: "?k = 0" by simp
+  have lenP: "length ?P = l0 A + Suc n * l1 A"
+    by (simp add: l0_def l1_def length_Bs_concat)
+  have P_ne: "?P \<noteq> []" using i_lt lenP by auto
+  have str: "strip_zero_rows ?P = map (\<lambda>c. take ?k c) ?P"
+    by (rule strip_zero_rows_eq_map_take[OF P_ne])
+  have An: "A[n] = map (\<lambda>c. take ?k c) ?P"
+    using A_ne str by (simp add: expansion_def)
+  have lenAn: "length (A[n]) = length ?P" using An by simp
+  have all_empty: "\<forall>c \<in> set (A[n]). c = []"
+  proof
+    fix c assume "c \<in> set (A[n])"
+    then obtain d where "d \<in> set ?P" and "c = take ?k d" using An by auto
+    thus "c = []" using k0 by simp
+  qed
+  have i_lt_lenP: "i < length ?P" using i_lt lenP by simp
+  have const_elem: "\<And>j. j \<le> i \<Longrightarrow> elem (A[n]) j 0 = [] ! 0"
+  proof -
+    fix j assume "j \<le> i"
+    hence "j < length (A[n])" using i_lt_lenP lenAn by simp
+    hence "(A[n]) ! j \<in> set (A[n])" by (rule nth_mem)
+    hence "(A[n]) ! j = []" using all_empty by blast
+    thus "elem (A[n]) j 0 = [] ! 0" unfolding elem_def by simp
+  qed
+  have filt: "[j \<leftarrow> [0..<i]. elem (A[n]) j 0 < elem (A[n]) i 0] = []"
+  proof -
+    have "\<And>j. j \<in> set [0..<i] \<Longrightarrow> \<not> (elem (A[n]) j 0 < elem (A[n]) i 0)"
+    proof -
+      fix j assume "j \<in> set [0..<i]"
+      hence "j < i" by simp
+      hence "elem (A[n]) j 0 = [] ! 0" using const_elem by simp
+      moreover have "elem (A[n]) i 0 = [] ! 0" using const_elem by simp
+      ultimately show "\<not> (elem (A[n]) j 0 < elem (A[n]) i 0)" by simp
+    qed
+    thus ?thesis by (simp add: filter_empty_conv)
+  qed
+  have "m_parent (A[n]) 0 i = None" using filt by (simp add: Let_def)
+  thus False using mp by simp
+qed
+
+text \<open>\<^bold>\<open>Generalized block-start strict row-0 minimum of its block (sorry-free,
+  clause-iv-free, all \<open>t\<close> / all \<open>n\<close>).\<close>  Given a kept row (\<open>keep_of > 0\<close>),
+  the block-\<open>n\<close> start \<open>idx_B(n, 0)\<close> has strictly smaller row-0 value than any
+  interior column \<open>idx_B(n, a)\<close> (\<open>0 < a < l\<^sub>1\<close>).  Both copies carry the same
+  per-block bump (offset \<open>0\<close> and offset \<open>a\<close> either both ascend at row 0, when
+  \<open>t > 0\<close> via @{thm all_ascend_row0}, or neither does, when \<open>t = 0\<close>), so the
+  bad-root row-0 domination (@{thm elem_b0_start_lt_offset_row0} for \<open>t > 0\<close>,
+  @{thm elem_b0_start_lt_offset_row0_when_t_zero} for \<open>t = 0\<close>) survives the
+  common bump.  Generalizes @{thm elem_AEn_block_start_lt_offset_row0} off the
+  \<open>t > 0 \<and> n > 0\<close> regime.\<close>
+
+lemma elem_AEn_block_start_lt_offset_row0_gen:
+  fixes A :: array and n a :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and a_pos: "0 < a" and a_lt: "a < l1 A"
+      and keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+  shows "elem (A[n]) (idx_B_in_expansion A n 0) 0
+       < elem (A[n]) (idx_B_in_expansion A n a) 0"
+proof -
+  obtain t where mp: "max_parent_level A = Some t"
+    using b0 unfolding b0_start_def by (cases "max_parent_level A") auto
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have s_lt_arr: "s < arr_len A" using s_lt_last last_lt_arr by simp
+  have l1_eq: "l1 A = last_col_idx A - s"
+  proof -
+    have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+      using b0 by (simp add: B0_block_def)
+    have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+      using B0_form by simp
+    also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_arr by simp
+    finally show ?thesis unfolding l1_def by simp
+  qed
+  have l1_pos: "0 < l1 A" using a_pos a_lt by simp
+  have sa_lt_last: "s + a < last_col_idx A" using a_lt l1_eq s_lt_last by linarith
+  have sa_lt_arr: "s + a < arr_len A" using sa_lt_last last_lt_arr by linarith
+  have height_pos: "0 < height A" using max_parent_level_lt[OF mp] by linarith
+  have col0_pos: "0 < length (A ! (s + 0))"
+    using length_col_arr[OF is_arr A_ne s_lt_arr] height_pos by simp
+  have cola_pos: "0 < length (A ! (s + a))"
+    using length_col_arr[OF is_arr A_ne sa_lt_arr] height_pos by simp
+  have v0: "elem (A[n]) (idx_B_in_expansion A n 0) 0
+          = (A ! (s + 0)) ! 0 + (if ascends A 0 0 then n * delta A 0 else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 order.refl l1_pos keep_pos col0_pos] .
+  have va: "elem (A[n]) (idx_B_in_expansion A n a) 0
+          = (A ! (s + a)) ! 0 + (if ascends A a 0 then n * delta A 0 else 0)"
+    using elem_AEn_idx_B_value[OF A_ne b0 order.refl a_lt keep_pos cola_pos] .
+  show ?thesis
+  proof (cases t)
+    case 0
+    have nasc0: "\<not> ascends A 0 0"
+      using b0 mp[unfolded \<open>t = 0\<close>] unfolding ascends_def by simp
+    have nasca: "\<not> ascends A a 0"
+      using b0 mp[unfolded \<open>t = 0\<close>] unfolding ascends_def by simp
+    have e0: "elem (A[n]) (idx_B_in_expansion A n 0) 0 = (A ! s) ! 0"
+      using v0 nasc0 by simp
+    have ea: "elem (A[n]) (idx_B_in_expansion A n a) 0 = (A ! (s + a)) ! 0"
+      using va nasca by simp
+    have base: "elem A s 0 < elem A (s + a) 0"
+      using elem_b0_start_lt_offset_row0_when_t_zero[OF A_ne b0 mp[unfolded \<open>t = 0\<close>] a_pos a_lt] .
+    show ?thesis using e0 ea base unfolding elem_def by simp
+  next
+    case (Suc t')
+    hence t_pos: "0 < t" by simp
+    have asc0: "ascends A 0 0" using all_ascend_row0[OF A_BMS A_ne b0 mp t_pos l1_pos] .
+    have asca: "ascends A a 0" using all_ascend_row0[OF A_BMS A_ne b0 mp t_pos a_lt] .
+    have e0: "elem (A[n]) (idx_B_in_expansion A n 0) 0 = (A ! s) ! 0 + n * delta A 0"
+      using v0 asc0 by simp
+    have ea: "elem (A[n]) (idx_B_in_expansion A n a) 0 = (A ! (s + a)) ! 0 + n * delta A 0"
+      using va asca by simp
+    have base: "(A ! s) ! 0 < (A ! (s + a)) ! 0"
+      using elem_b0_start_lt_offset_row0[OF A_BMS A_ne b0 mp t_pos a_pos a_lt] .
+    show ?thesis using e0 ea base by simp
+  qed
+qed
+
 lemma m_parent_block_n_stays_until_zero:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
@@ -13483,30 +13618,33 @@ proof -
   obtain t where mp: "max_parent_level A = Some t"
     using b0 unfolding b0_start_def by (cases "max_parent_level A") auto
   show ?thesis
-  proof (cases "m = 0 \<and> 0 < t \<and> 0 < n")
-    case True
-    hence m0: "m = 0" and t_pos: "0 < t" and n_pos: "0 < n" by auto
-    \<comment> \<open>Row-0, \<open>t > 0\<close>, \<open>n > 0\<close>: the block-start \<open>idx_B(n, 0)\<close> is a strict
-        candidate of the level-0 \<open>m\<close>-parent of \<open>idx_B(n, a)\<close> (proven row-0
-        machinery, @{thm elem_AEn_block_start_lt_offset_row0}, independent of
-        \<open>elem_lt_below_t\<close>); since \<open>p\<close> is the rightmost candidate
+  proof (cases m)
+    case 0
+    \<comment> \<open>Row-0 (\<^emph>\<open>all\<close> \<open>t\<close>, \<^emph>\<open>all\<close> \<open>n\<close>): the block-start \<open>idx_B(n, 0)\<close> is a strict
+        candidate of the level-0 \<open>m\<close>-parent of \<open>idx_B(n, a)\<close>.  Existence of the
+        parent \<open>p\<close> forces \<open>keep_of > 0\<close> (@{thm keep_pos_of_m_parent_zero_AEn}),
+        whence the generalized block-start row-0 minimum
+        (@{thm elem_AEn_block_start_lt_offset_row0_gen}) gives the candidacy off
+        the old \<open>t > 0 \<and> n > 0\<close> regime; since \<open>p\<close> is the rightmost candidate
         (@{thm m_parent_zero_candidate_le}), \<open>idx_B(n, 0) \<le> p\<close>.\<close>
+    have a_lt_lenP: "idx_B_in_expansion A n a < l0 A + Suc n * l1 A"
+      using a_lt unfolding idx_B_in_expansion_def by (simp add: algebra_simps)
+    have keep_pos: "0 < keep_of (G_block A @ Bs_concat A n)"
+      using keep_pos_of_m_parent_zero_AEn[OF A_ne a_lt_lenP mp_eq[unfolded \<open>m = 0\<close>]] .
     have cand_lt: "elem (A[n]) (idx_B_in_expansion A n 0) 0
                  < elem (A[n]) (idx_B_in_expansion A n a) 0"
-      using elem_AEn_block_start_lt_offset_row0
-              [OF A_BMS A_ne b0 mp t_pos n_pos order.refl a_pos a_lt] .
+      using elem_AEn_block_start_lt_offset_row0_gen[OF A_BMS A_ne b0 a_pos a_lt keep_pos] .
     have idx_lt: "idx_B_in_expansion A n 0 < idx_B_in_expansion A n a"
       using a_pos unfolding idx_B_in_expansion_def by simp
     show ?thesis
-      using m_parent_zero_candidate_le[OF mp_eq[unfolded m0] idx_lt cand_lt] .
+      using m_parent_zero_candidate_le[OF mp_eq[unfolded \<open>m = 0\<close>] idx_lt cand_lt] .
   next
-    case False
-    \<comment> \<open>Residual: a positive level \<open>m = Suc m'\<close>, or \<open>t = 0\<close>, or \<open>n = 0\<close>.  At a
-        positive level the block-start candidacy of \<open>idx_B(n, 0)\<close> requires the
-        \<open>m'\<close>-ancestor condition (the gateway property one level down) AND the
-        strict value bound \<open>elem A s m < elem A (s + a) m\<close> (the \<open>elem_lt_below_t\<close>
-        crux), which folds into the simultaneous (i)--(v) \<open>k\<close>-induction.
-        Isolated as the single labelled \<open>sorry\<close>.\<close>
+    case (Suc m')
+    \<comment> \<open>Residual: a positive level \<open>m = Suc m'\<close>.  The block-start candidacy of
+        \<open>idx_B(n, 0)\<close> requires the \<open>m'\<close>-ancestor condition (the gateway property
+        one level down) AND the strict value bound \<open>elem A s m < elem A (s + a) m\<close>
+        (the \<open>elem_lt_below_t\<close> crux), which folds into the simultaneous (i)--(v)
+        \<open>k\<close>-induction.  Isolated as the single labelled \<open>sorry\<close>.\<close>
     show ?thesis sorry
   qed
 qed
