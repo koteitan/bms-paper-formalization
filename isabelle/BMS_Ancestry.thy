@@ -17417,7 +17417,45 @@ lemma lemma_2_5_v_clause_step_iff:
                               (idx_B_in_expansion A n\<^sub>0 i)
        \<longleftrightarrow> m_ancestor (A[n]) k (idx_B_in_expansion A (n\<^sub>1 + 1) j)
                                   (idx_B_in_expansion A n\<^sub>0 i)"
-  sorry
+proof (cases "ascends A j k")
+  case True
+  \<comment> \<open>Ascending source offset: the block-\<open>(n\<^sub>1+1)\<close> copy of column \<open>j\<close> is a
+      \<open>k\<close>-ancestor of its block-\<open>n\<^sub>1\<close> copy (one-step block-copy ancestry,
+      @{thm onestep_anc_when_ascends}).  Since the fixed target \<open>idx_B(n\<^sub>0, i)\<close>
+      lies strictly below both copies (\<open>n\<^sub>0 < n\<^sub>1\<close>), chain linearity transfers
+      the ancestry verdict across the one-block source shift
+      (@{thm m_anc_below_ancestor_transfer}).\<close>
+  have l1_pos: "0 < l1 A" using j_lt by simp
+  have c_pos: "0 < n\<^sub>1 + 1" by simp
+  have c_le: "n\<^sub>1 + 1 \<le> n" using n1n by simp
+  have onestep: "m_ancestor (A[n]) k (idx_B_in_expansion A (n\<^sub>1 + 1) j)
+                                     (idx_B_in_expansion A ((n\<^sub>1 + 1) - 1) j)"
+    by (rule onestep_anc_when_ascends[OF A_BMS A_ne b0 True j_lt c_pos c_le])
+  have onestep': "m_ancestor (A[n]) k (idx_B_in_expansion A (n\<^sub>1 + 1) j)
+                                      (idx_B_in_expansion A n\<^sub>1 j)"
+    using onestep by simp
+  have key: "n\<^sub>0 * l1 A + i < n\<^sub>1 * l1 A + j"
+  proof -
+    have h: "Suc n\<^sub>0 * l1 A \<le> n\<^sub>1 * l1 A"
+      using Suc_leI[OF n01] by (rule mult_le_mono1)
+    have "Suc n\<^sub>0 * l1 A = n\<^sub>0 * l1 A + l1 A" by simp
+    with h have "n\<^sub>0 * l1 A + l1 A \<le> n\<^sub>1 * l1 A" by simp
+    thus ?thesis using i_lt by linarith
+  qed
+  have tgt_lt: "idx_B_in_expansion A n\<^sub>0 i < idx_B_in_expansion A n\<^sub>1 j"
+    using key unfolding idx_B_in_expansion_def by simp
+  show ?thesis
+    using m_anc_below_ancestor_transfer[OF onestep' tgt_lt] by blast
+next
+  case False
+  \<comment> \<open>Non-ascending source offset: at level \<open>k\<close> the two source copies
+      \<open>idx_B(n\<^sub>1, j)\<close> and \<open>idx_B(n\<^sub>1+1, j)\<close> carry the \<^emph>\<open>same\<close> value (no bump),
+      so neither is a \<open>k\<close>-ancestor of the other and the one-step transfer does
+      not apply.  The source-shift invariance here is the within-\<open>A[n]\<close>
+      not-ascending analog of (ii)/(iii); it folds into the simultaneous
+      (i)--(v) \<open>k\<close>-induction.  Isolated as the single labelled \<open>sorry\<close>.\<close>
+  show ?thesis sorry
+qed
 
 text \<open>
   Forward step of (v): \<open>iffD1\<close> projection of
