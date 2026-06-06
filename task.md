@@ -84,8 +84,8 @@
   - ✅ idx_B_n_zero_gateway_aux
   - 🚨 m_parent_block_n_stays_until_zero
     - ✅ gateway_from_candidate_Suc (gateway ⟸ G1 bumped-DOM + G2 bumped-ANC)
-    - ✅ row-0 枝 (m=0 ∧ t>0 ∧ n>0)
-    - 🚨 残差 (Suc m' / t=0 / n=0) = elem_lt_below_t crux
+    - ✅ row-0 枝 m=0 全閉鎖 (全 t/全 n; v0.1.123) ⟸ keep_pos_of_m_parent_zero_AEn + elem_AEn_block_start_lt_offset_row0_gen
+    - 🚨 残差 m=Suc m' (positive level) のみ = elem_lt_below_t crux
     - 🚨 G1/G2 = simultaneous induction invariant (block-n DOM/ANC)
   - ✅ clause_iv_intermediate_B_t_impossible_at_zero_outside_lands_in_G
 
