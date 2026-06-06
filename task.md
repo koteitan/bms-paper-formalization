@@ -144,7 +144,11 @@
     - ✅ height_zero_of_row0_all_zero (row0 全ゼロ ⟹ height 0)
     - ✅ b0_start_expansion_some_modulo_lastmax (c4' ⟸ 単一 residual (A))
     - 🚨 (A): last col が row-0 max ⟸ B0-row0-consecutive = value crux (隣接単調)
-  - 🚨 V1 (value crux = ancestor_monotone = drop-domination; clause-i 必須)
+  - 🚨 V1 (value crux = ancestor_monotone = mono_A = drop-domination; 全 6 sorry がここに帰着)
+    - ⟸ ancestor_monotone_expand の7前提: Rb_cond(⟸clause_i)・Htop は joint bundle 必須
+    - Hmpl_le1/gt1 ⟸ HBND(height A≤mpl+2, sharp l1>1:≤+1; 真 0/2991) ⟸ F1+F2
+      - ✅ mc/mc_easy(F2-easy mpl≤mc)/seed cases/HBND_from_F1_F2 (v0.1.125, sorry-free)
+      - 🚨 full F2 ⟸ crux last_col_nonzero_imp_m_parent (m=0版 mpl_none_imp_last_col_row0_zero の level-m 一般化; BMS.induct) + F1
 
 - ✅ Lemma 2.5 helpers
   - ✅ m_anc_build_Suc (PSS le1_build 移植: stratified 支配→高レベル祖先 build, endpoint 帰納; SI ancestry step 用)
