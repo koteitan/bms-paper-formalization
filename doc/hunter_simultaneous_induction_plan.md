@@ -299,3 +299,56 @@ are clean BMS structural facts about how `mpl` moves under expansion — the gen
 So @15879's full premise residual is now exactly `{HBND, Rb_cond, Htop}`: `Rb_cond` is handled by
 the joint bundle (clause-i from IH), and `HBND`/`Htop` are the two structural facts left. The
 grand crux remains **Htop** (the same-level circularity).
+
+---
+
+## 2026-06-06 (workflow 5-agent 収束): 全 sorry ⟹ 単一 crux `mono_A`
+
+2 つの workflow (計 5 worktree-agent) が独立に同一の根本原因へ収束。全 attempt
+GREEN baseline 維持・patch 空 (= sorry-free な前進は mono_A 抜きでは存在しない、と
+機械的に再確認)。
+
+### 単一 crux
+全 6 bare sorry が以下の一点に帰着する:
+
+```
+mono_A :  A∈BMS, A≠[], b0_start A=Some s, max_parent_level A=Some m0,
+          s < c ≤ last_col_idx A, m < m0  ⟹  elem A (c-1) m < elem A c m
+```
+= 連続 B0 列の行単調性 = `adjacent_value_monotone` = `ancestor_monotone`(q=s)。
+経験的に真 (`verify/probe_block_translation.py` 系, 0/19689; `probe_*`)。
+`m < m0` 版 (m=m0-1 含む) も真。`ancestor_monotone` は `m < m0-1` のみ主張する
+ので、境界 `m = m0-1` は Htop 領域。
+
+### 6 sorry ≡ mono_A の地図
+- `ancestor_monotone` @16047 … mono_A 本体 (q=s 一般化 = ∀q 版)。
+- `onestep_anc_when_ascends` @14957 … 残差 mono_res = mono_A (m≤k, k<m0)。
+- `m_parent_block_n_stays_until_zero` @13648 (Suc m' 残差) … gateway。block-start
+  候補性 = elem strict bound = mono_A。
+- `iii_single_step_t_to_Suc_t` @12789 ≡ `lemma_2_5_v_clause_step_iff` ¬asc @17457
+  … **同一の block-translation 不変性 crux**。両端点/source-only どちらも mono_A 依存。
+- `clause_i_iff_when_not_ascends` @17086 … leftmost gateway、同 crux 系。
+
+### block-translation 不変性 (BT) の分解 (iii/v の正体)
+`m_anc(A[n]) k p q ⟷ m_anc(A[n]) k (p+l1)(q+l1)` (B-region, 両端点 +1 block)。
+probe: 真 (0/8.085M)。**target-only +l1 は偽** (474411 viol) ⟹ (BT) は
+source-shift + target-shift に分離不可。分解:
+1. **value 層 = 解決可能**: `k<m0 ⟹ ascends A x k (∀x<l1)` (probe 0/27762) ⟹ +l1 は
+   一様 +delta 平行移動 ⟹ value 比較合同は既存 `elem_AEn_lt_block_invariant_when_both_ascend`
+   (BMS_Ancestry.thy:3703) に帰着。**ただし「∀x ascend」自体が mono_A 経由**
+   (`ascends_offset_from_IH`/`consecutive_parent_from_mono` 経由で mono_A に底打ち)。
+2. **構造層 = gateway 必須**: `m_parent` は +l1 と**非可換** (probe 239935 viol;
+   G/block-0 境界で候補域 [0..<p] vs [0..<p+l1] が食い違う)。差は m_ancestor の
+   推移閉包でのみ washout = gateway 性質 (`m_parent_block_n_stays_until_zero`) で、
+   その Suc 残差が再び mono_A 依存。
+3. `m_anc_below_ancestor_transfer` (14205, BMS_Defs 依存のみ, 12691 より上流へ relocate 可)
+   は source-shift(target 固定)のみ閉じる。target-shift が偽不変性 (上記) のため
+   transfer-pair では iii を閉じられない。
+
+### 次手 (推奨)
+**mono_A を先に証明する**。すると:
+- (BT) ⟸ `elem_AEn_lt_block_invariant_when_both_ascend` + gateway transfer。
+- iii/v/gateway/onestep が一斉に解ける。
+mono_A は単独では閉じず、Hunter (i)-(v) 同時帰納に bundle 要 (Rb_cond ⟸ clause_i;
+Htop = 同 level 循環)。`joint_induction_design.md` の `bms_2_5_joint` (DOM+5clause を
+BMS.induct) が唯一の道。
