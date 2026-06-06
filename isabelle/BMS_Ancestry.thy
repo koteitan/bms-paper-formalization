@@ -5457,6 +5457,69 @@ proof -
   thus ?thesis using x_eq last_eq by simp
 qed
 
+text \<open>\<^bold>\<open>Leftmost (\<open>j = 0\<close>) bump-tail vacuity from a \<open>G\<close>-landing parent
+  (sorry-free, additive).\<close>  The bump-tail \<open>?T\<close> of the leftmost gateway is the
+  restriction of the level-\<open>Suc k'\<close> \<open>m\<close>-parent candidate list of \<open>idx_B(n, 0)\<close>
+  to the bumped region \<open>[l\<^sub>0 .. idx_B(n, 0))\<close>.  Since every candidate is
+  \<open>\<le>\<close> the \<^emph>\<open>last\<close> candidate (@{thm last_filter_upt_ge_member}), and the last
+  candidate is exactly the \<open>m\<close>-parent, a candidate sitting at or above \<open>l\<^sub>0\<close>
+  forces the \<open>m\<close>-parent itself to be \<open>\<ge> l\<^sub>0\<close>.  So if the \<open>m\<close>-parent of
+  \<open>idx_B(n, 0)\<close> lands in the \<open>G\<close>-prefix (\<open>< l\<^sub>0\<close>, or is \<open>None\<close>) — which is the
+  case empirically for \<^bold>\<open>all\<close> \<open>l\<^sub>1 > 1\<close> at \<open>Suc k' \<ge> t\<close>
+  (\<open>verify/probe_no_bump_when_l1_gt1.py\<close>: \<open>0/14958\<close>;
+  \<open>verify/probe_T_empty.py\<close>: \<open>0/13674\<close>) — the bump-tail is empty.  This packages
+  the bump-tail vacuity as a sorry-free reduction to the single parent-escape
+  hypothesis \<open>parent_in_G\<close>, feeding @{thm leftmost_gateway_iff_when_T_empty}.\<close>
+
+lemma leftmost_T_empty_from_parent_in_G:
+  fixes A :: array and n k' :: nat
+  assumes parent_in_G:
+      "m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0) = None
+       \<or> (\<exists>p. m_parent (A[n]) (Suc k') (idx_B_in_expansion A n 0) = Some p
+              \<and> p < l0 A)"
+  shows "filter (\<lambda>p. elem (A[n]) p (Suc k')
+                      < elem (A[n]) (idx_B_in_expansion A n 0) (Suc k')
+                    \<and> m_ancestor (A[n]) k' (idx_B_in_expansion A n 0) p)
+               [l0 A..<idx_B_in_expansion A n 0] = []"
+proof -
+  let ?i = "idx_B_in_expansion A n 0"
+  let ?cond = "\<lambda>p. elem (A[n]) p (Suc k') < elem (A[n]) ?i (Suc k')
+                 \<and> m_ancestor (A[n]) k' ?i p"
+  let ?cands = "filter ?cond [0..<?i]"
+  let ?T = "filter ?cond [l0 A..<?i]"
+  have mp_eq: "m_parent (A[n]) (Suc k') ?i
+             = (if ?cands = [] then None else Some (last ?cands))"
+    by (simp add: Let_def)
+  have l0_le_i: "l0 A \<le> ?i" unfolding idx_B_in_expansion_def by simp
+  have setT_sub: "set ?T \<subseteq> set ?cands"
+  proof
+    fix x assume "x \<in> set ?T"
+    hence x_cond: "?cond x" and x_rng: "x \<in> set [l0 A..<?i]" by auto
+    have "x \<in> set [0..<?i]" using x_rng l0_le_i by auto
+    thus "x \<in> set ?cands" using x_cond by simp
+  qed
+  show "?T = []"
+  proof (rule ccontr)
+    assume T_ne: "?T \<noteq> []"
+    define q where "q = last ?T"
+    have q_setT: "q \<in> set ?T" using T_ne last_in_set q_def by blast
+    have q_ge: "l0 A \<le> q" using q_setT by auto
+    have q_cand: "q \<in> set ?cands" using q_setT setT_sub by blast
+    have cands_ne: "?cands \<noteq> []"
+    proof
+      assume "?cands = []"
+      thus False using q_cand by simp
+    qed
+    have q_le_last: "q \<le> last ?cands"
+      using last_filter_upt_ge_member[OF q_cand] .
+    have mp_some: "m_parent (A[n]) (Suc k') ?i = Some (last ?cands)"
+      using mp_eq cands_ne by simp
+    have last_lt_l0: "last ?cands < l0 A"
+      using parent_in_G mp_some by auto
+    show False using q_ge q_le_last last_lt_l0 by linarith
+  qed
+qed
+
 text \<open>\<^bold>\<open>Last of a finer filter equals last of a coarser one (sorry-free, 续61).\<close>
   Pure list fact: if \<open>P\<close> implies \<open>Q\<close> on the elements of \<open>xs\<close> and the last
   \<open>Q\<close>-element also satisfies \<open>P\<close>, then the last \<open>P\<close>-element equals the last
