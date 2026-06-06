@@ -118,6 +118,8 @@
   - ✅ lemma_2_5_v_clause_step
   - ✅ lemma_2_5_v_clause_step_substantive / _forward / _backward
   - 🚨 lemma_2_5_v_clause_step_iff
+    - ✅ asc case 配線 (v0.1.124): ascends A j k ⟹ onestep_anc_when_ascends + m_anc_below_ancestor_transfer
+    - 🚨 残差 ¬ascends case のみ (2 source copies が level-k 同値、transfer 非適用; Hunter (v) 固有 source-shift)
     - ✅ clause_v_asc_iff_from_onestep (asc case ⟸ onestep_anc, clause(i) asc と共通 crux)
     - 🚨 onestep_anc (clause(i) asc と共有) + not-asc case (値一致, 別 argument)
 
