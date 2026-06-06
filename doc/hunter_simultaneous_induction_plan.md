@@ -352,3 +352,16 @@ source-shift + target-shift に分離不可。分解:
 mono_A は単独では閉じず、Hunter (i)-(v) 同時帰納に bundle 要 (Rb_cond ⟸ clause_i;
 Htop = 同 level 循環)。`joint_induction_design.md` の `bms_2_5_joint` (DOM+5clause を
 BMS.induct) が唯一の道。
+
+### 2026-06-06 (続): HBND の clean 還元 — F1 + F2
+`ancestor_monotone_expand` の 4 hard 前提のうち Hmpl_le1/Hmpl_gt1 は既存 sorry-free
+還元 `mpl_expansion_le_from_height_bound`(@18556) で **HBND** (`height A ≤ mpl A + 2`,
+sharp: `l1>1 ⟹ ≤ mpl+1`) に帰着。HBND を更に分解 (probe 0/2991, faithful stripped):
+- **F1**: 最終列 C は row ≥ height-2 で非ゼロ (top nonzero row `mc ≥ H-2`)。
+- **F2**: `mpl A = mc` (= C の top nonzero row)。
+- F1 + F2 ⟹ `mpl A = mc ≥ H-2` ⟹ HBND。
+- F2 易方向 `mpl ≤ mc` は自明: m-parent 存在 ⟹ ∃p, elem p m < elem C m ⟹ elem C m > 0 ⟹ m ≤ mc。
+- F2 逆 `mpl ≥ mc` (= C は top nonzero row mc に parent を持つ) と F1 が残る構造的内容。
+- 注意: 「mpl(A[n]) ≥ mpl A」経由の HBND 還元は **偽** (mpl は l1=1 で tE=tA-1 と drop しうる)。
+HBND は mono_A 循環には依存しないが、F2 逆の parent 存在が ancestry 構造と絡む可能性。
+Rb_cond(⟸clause_i) と Htop は依然 joint bundle 必須。
