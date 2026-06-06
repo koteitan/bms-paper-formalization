@@ -365,3 +365,18 @@ sharp: `l1>1 ⟹ ≤ mpl+1`) に帰着。HBND を更に分解 (probe 0/2991, fai
 - 注意: 「mpl(A[n]) ≥ mpl A」経由の HBND 還元は **偽** (mpl は l1=1 で tE=tA-1 と drop しうる)。
 HBND は mono_A 循環には依存しないが、F2 逆の parent 存在が ancestry 構造と絡む可能性。
 Rb_cond(⟸clause_i) と Htop は依然 joint bundle 必須。
+
+### 2026-06-06 (最終結論): 分離可能ブリックは尽きた / 残りは不可分な joint induction
+workflow campaign 計6本 (15 agent) + 直接検証で確定:
+- **F2 hard 方向も interlock**: `mc ≤ mpl` ⟸ `last_col_nonzero_imp_m_parent`
+  (`elem A C m > 0 ⟹ m_parent A m C ≠ None`, last col, 任意 m)。m=0 版
+  `mpl_none_imp_last_col_row0_zero` は `row0_invariant` で clean(level-0 m_parent は
+  value-only, ancestry 不要)。level m>0 は **(m-1)-ancestry 条件**を要し ancestry↔value
+  循環に戻る → 中心 crux interlock。
+- **全フロンティアが中心 crux に interlock**: mono_A, BT(block-translation), HBND(F2経由),
+  clause_i, gateway(Suc m'), onestep。Hunter の joint (i)-(v) 同時帰納(bms_2_5_joint:
+  DOM+5clause を BMS.induct)でのみ解ける。
+- **分離可能な sorry-free ブリックは v0.1.125 で出し尽くした**: mc_easy(F2-easy), seed
+  cases, HBND_from_F1_F2, max_parent_level_imp_m_parent_top, 既存 mpl_expansion_le_*。
+  以後の前進は不可分な joint bundle 本体の構築が必須(multi-session, 直接 main 作業推奨;
+  workflow worktree は stale base 063a624 で recent lemma を持たない点に注意)。
