@@ -2965,6 +2965,27 @@ proof -
   qed
 qed
 
+text \<open>\<^bold>\<open>Block-start non-candidacy at \<open>Suc k' \<ge> t\<close> (sorry-free helper for
+  \<open>parent_in_G\<close>).\<close>  Any earlier block's \<^emph>\<open>start\<close> column \<open>idx_B(c, 0)\<close>
+  (\<open>c \<le> n\<close>) has, at row \<open>Suc k' \<ge> t\<close>, the \<^emph>\<open>same\<close> value as the leftmost
+  block-\<open>n\<close> start \<open>idx_B(n, 0)\<close> (block-independence,
+  @{thm elem_AEn_eq_at_row_k_ge_t_across_blocks}).  Hence it can never satisfy
+  the strict-value candidate test \<open>elem < elem idx_B(n,0)\<close> for the
+  level-\<open>Suc k'\<close> \<open>m\<close>-parent of \<open>idx_B(n, 0)\<close>.\<close>
+
+lemma block_start_value_eq_at_Suc_k_when_k_ge_t:
+  fixes A :: array
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and k_ge_t: "t \<le> Suc k'"
+      and c_le: "c \<le> n"
+      and l1_pos: "0 < l1 A"
+  shows "elem (A[n]) (idx_B_in_expansion A c 0) (Suc k')
+       = elem (A[n]) (idx_B_in_expansion A n 0) (Suc k')"
+  using elem_AEn_eq_at_row_k_ge_t_across_blocks
+          [OF A_BMS A_ne b0 mp k_ge_t c_le order.refl l1_pos] .
+
 text \<open>
   Block-shift invariance of @{term m_ancestor} at row \<open>Suc k'\<close>
   when \<open>Suc k' \<ge> t\<close>: chain induction applied at \<open>c = 0\<close>
