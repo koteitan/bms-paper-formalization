@@ -20150,4 +20150,120 @@ proof -
           b0En mplEn R2 m_lt j_pos j_lt t'_eq floor])
 qed
 
+section \<open>Structural bounds on the last column of a BMS array (F1/F2/HBND)\<close>
+
+text \<open>
+  \<open>mc A\<close>: the top (greatest) row index at which the last column of \<open>A\<close>
+  is nonzero.  We work with the set
+    \<open>{m < height A. elem A (last_col_idx A) m > 0}\<close>
+  and take its \<open>Max\<close>.  When \<open>max_parent_level A = Some t\<close>, this set
+  is nonempty (it contains \<open>t\<close>, see @{text mc_easy}), so the \<open>Max\<close> is well
+  defined.
+\<close>
+
+definition mc :: "array \<Rightarrow> nat" where
+  "mc A = Max {m. m < height A \<and> 0 < elem A (last_col_idx A) m}"
+
+text \<open>
+  \<^bold>\<open>F2-easy\<close>: if \<open>C\<close> has a (maximal) parent at level \<open>t\<close>, then \<open>t \<le> mc A\<close>.
+  The \<open>m\<^sub>0\<close>-parent \<open>p\<close> of \<open>C\<close> at level \<open>t\<close> satisfies
+  \<open>elem A p t < elem A C t\<close> (@{thm m_parent_elem_lt}), hence
+  \<open>elem A C t > 0\<close>; combined with \<open>t < height A\<close> (@{thm max_parent_level_lt}),
+  \<open>t\<close> lies in the set whose \<open>Max\<close> is \<open>mc A\<close>.
+\<close>
+
+lemma max_parent_level_imp_m_parent_top:
+  assumes A_ne: "A \<noteq> []"
+      and mp: "max_parent_level A = Some t"
+  shows "m_parent A t (last_col_idx A) \<noteq> None"
+proof -
+  let ?C = "last_col_idx A"
+  define ms where "ms = [m \<leftarrow> [0..<height A]. m_parent A m ?C \<noteq> None]"
+  have mp_form: "max_parent_level A
+               = (if ms = [] then None else Some (Max (set ms)))"
+    using A_ne unfolding max_parent_level_def ms_def by (simp add: Let_def)
+  have ms_ne: "ms \<noteq> []"
+  proof
+    assume "ms = []"
+    hence "max_parent_level A = None" using mp_form by simp
+    thus False using mp by simp
+  qed
+  have t_eq: "t = Max (set ms)" using mp_form ms_ne mp by simp
+  have t_in: "t \<in> set ms"
+    using t_eq Max_in[OF finite_set] ms_ne by simp
+  thus ?thesis unfolding ms_def set_filter by blast
+qed
+
+lemma mc_easy:
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and mp: "max_parent_level A = Some t"
+  shows "t \<le> mc A"
+proof -
+  let ?C = "last_col_idx A"
+  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
+  have mpt_ne: "m_parent A t ?C \<noteq> None"
+    using max_parent_level_imp_m_parent_top[OF A_ne mp] .
+  then obtain p where mpt: "m_parent A t ?C = Some p" by auto
+  have "elem A p t < elem A ?C t" by (rule m_parent_elem_lt[OF mpt])
+  hence cpos: "0 < elem A ?C t" by simp
+  let ?S = "{m. m < height A \<and> 0 < elem A ?C m}"
+  have fin: "finite ?S" by simp
+  have t_in: "t \<in> ?S" using t_lt_H cpos by simp
+  have "t \<le> Max ?S" using Max_ge[OF fin t_in] .
+  thus ?thesis unfolding mc_def .
+qed
+
+text \<open>
+  \<^bold>\<open>Seed case of F2/F1\<close>: for \<open>seed n\<close> (\<open>n > 0\<close>) the last column is
+  \<open>(1,1,\<dots>,1)\<close> of height \<open>n\<close>, so every row is nonzero and \<open>mc = n - 1\<close>;
+  \<open>max_parent_level (seed n) = Some (n - 1)\<close> (@{thm max_parent_level_seed}),
+  so F2 reads \<open>n - 1 = n - 1\<close> and F1 reads \<open>n \<le> (n - 1) + 2\<close>.
+\<close>
+
+lemma mc_seed:
+  assumes n_pos: "0 < n"
+  shows "mc (seed n) = n - 1"
+proof -
+  have last_idx: "last_col_idx (seed n) = 1" by (simp add: length_seed)
+  have H_eq: "height (seed n) = n" by (rule height_seed)
+  have set_eq: "{m. m < height (seed n) \<and> 0 < elem (seed n) (last_col_idx (seed n)) m}
+              = {m. m < n}"
+  proof -
+    have "\<And>m. m < n \<Longrightarrow> 0 < elem (seed n) 1 m" using elem_seed_1 by simp
+    thus ?thesis using last_idx H_eq by auto
+  qed
+  have "mc (seed n) = Max {m. m < n}" unfolding mc_def using set_eq by simp
+  also have "{m. m < n} = {0..<n}" by auto
+  also have "Max {0..<n} = n - 1" using n_pos by (intro Max_eqI) auto
+  finally show ?thesis .
+qed
+
+lemma F2_seed:
+  assumes n_pos: "0 < n"
+  shows "the (max_parent_level (seed n)) = mc (seed n)"
+  using max_parent_level_seed[OF n_pos] mc_seed[OF n_pos] by simp
+
+lemma F1_seed:
+  assumes n_pos: "0 < n"
+  shows "height (seed n) \<le> mc (seed n) + 2"
+  using mc_seed[OF n_pos] height_seed[of n] by simp
+
+text \<open>
+  \<^bold>\<open>HBND from F1 \<and> F2\<close> (pure arithmetic, sorry-free).  Given the two
+  structural facts
+    \<open>F2 : max_parent_level A = Some t \<Longrightarrow> t = mc A\<close>   (the equality), and
+    \<open>F1 : height A \<le> mc A + 2\<close>                          (last col nonzero near top),
+  the height bound \<open>height A \<le> t + 2\<close> is immediate by substitution.
+  This is the shape required to discharge the height-bound premises of the
+  \<open>mpl\<close>-expansion vehicles.
+\<close>
+
+lemma HBND_from_F1_F2:
+  assumes F2: "t = mc A"
+      and F1: "height A \<le> mc A + 2"
+  shows "height A \<le> t + 2"
+  using F1 F2 by simp
+
+
 end
+
