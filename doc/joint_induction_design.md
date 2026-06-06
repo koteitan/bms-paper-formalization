@@ -66,3 +66,24 @@ DOM(A[n']) を示す。 b0_start(A[n']) の位置で **l1 A による case-split
 - `loc_R1` 等は経験則 → §10 false-confidence 回避のため strip-correct + eval で再確認してから証明に使う([[feedback-strip-before-bms-verify]])。
 - 実装は段階的に(まず CASE l1≥2 の DOM step、 次に 5 clause、 最後に l1=1)。 各段階で isbman build green を保ち、 **net-new sorry を増やさない**(閉じられない部分は単一の明示 sorry に留め、 skeleton 化しない)。
 - premature skeleton(1→多 sorry)は過去 revert 済([[project-lemma-2-5-ii-iii-attack-state]] 续4)。 段階ごとに net-positive を確認。
+
+---
+
+## 2026-06-06: hollow-shortcut の落とし穴（重要・必読）
+
+bms_2_5_joint を組む際、**clause conjunct を `lemma_2_5_at_main` (BMS_Hunter) から
+引用してはならない**。`lemma_2_5_at_main` は clause_step 群の **6 sorry**
+(clause_i_iff_when_not_ascends, lemma_2_5_v_clause_step_iff, iii_single_step_t_to_Suc_t,
++ gateway/onestep/ancestor_monotone) に transitively 依存し、quick_and_dirty でのみ
+build する。これを引用した `bms_2_5_joint_holds` を完成（DOM-transfer を閉じても）しても
+**6 sorry に依存したまま**で、それで ancestor_monotone を閉じるのは **循環**（正味 +1 sorry,
+何も閉じない dead-end; 2026-06-06 に agent が実際にこれを作り revert した）。
+
+**正しい構造**: joint theorem は clause を `lemma_2_5_at_main` から引用せず、
+`induct A rule: BMS.induct` の **expand case 内で clause を再証明**し、その際 leaf-sorry
+(clause_i_iff の ?T≠[]、v_iff の ¬asc、iii_single_step、gateway Suc m'、onestep mono_res、
+ancestor_monotone expand) を **predecessor の DOM（= bundle の IH に含まれる mono_A）**で
+discharge する。つまり clause_step の証明を BMS.induct の IH にアクセスできる形に
+**inline/restructure** する必要がある（k/n induction と BMS.induct の interleave）。これが
+Hunter の同時帰納の本体で、大規模 multi-session work。bundle に DOM を入れるだけでは
+不十分 — clause_step 内部の sorry-leaf が predecessor DOM を使える配線が要。
