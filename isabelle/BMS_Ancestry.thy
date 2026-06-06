@@ -13606,6 +13606,204 @@ proof -
   qed
 qed
 
+text \<open>
+  \<^bold>\<open>Ancestry-from-domination, local copy\<close> (identical statement / proof to the
+  downstream \<open>b0_col_ancestor_below_t_from_DOM\<close>, restated here so it is
+  available \<^emph>\<open>before\<close> the gateway).  Takes the predecessor domination
+  (the \<open>DOM A\<close> conjunct of the joint induction) as an explicit hypothesis and
+  builds the level-\<open>m\<close> \<open>m\<close>-ancestry of every interior \<open>B\<^sub>0\<close> column \<open>s + j\<close>
+  by \<open>less_induct\<close> on the offset, without ever touching \<open>elem_lt_below_t\<close>.\<close>
+
+lemma gateway_b0_col_ancestor_below_t_from_DOM:
+  fixes A :: array
+  assumes b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and DOM: "\<And>m j. m < t \<Longrightarrow> 0 < j \<Longrightarrow> j < l1 A
+                  \<Longrightarrow> elem A s m < elem A (s + j) m"
+  shows "m < t \<longrightarrow> (\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m (s + j) s)"
+proof (induct m)
+  case 0
+  show ?case
+  proof
+    assume t_pos: "0 < t"
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A 0 (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_pos0: "0 < j" and j_lt0: "j < l1 A"
+      show "m_ancestor A 0 (s + j) s"
+        using j_pos0 j_lt0
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s 0 < elem A (s + j) 0"
+          by (rule DOM[OF t_pos j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        obtain p where mp_p: "m_parent A 0 (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_zero[OF s_lt e_lt] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A 0 (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A 0 (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A 0 p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+next
+  case (Suc m')
+  show ?case
+  proof
+    assume Sm_lt: "Suc m' < t"
+    have m'_lt: "m' < t" using Sm_lt by simp
+    have IH_all: "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A m' (s + j) s"
+      using Suc.hyps m'_lt by blast
+    show "\<forall>j. 0 < j \<longrightarrow> j < l1 A \<longrightarrow> m_ancestor A (Suc m') (s + j) s"
+    proof (intro allI impI)
+      fix j assume j_posS: "0 < j" and j_ltS: "j < l1 A"
+      show "m_ancestor A (Suc m') (s + j) s"
+        using j_posS j_ltS
+      proof (induct j rule: less_induct)
+        case (less j)
+        note j_pos = \<open>0 < j\<close> and j_lt = \<open>j < l1 A\<close>
+        have e_lt: "elem A s (Suc m') < elem A (s + j) (Suc m')"
+          by (rule DOM[OF Sm_lt j_pos j_lt])
+        have s_lt: "s < s + j" using j_pos by simp
+        have anc_r': "m_ancestor A m' (s + j) s" using IH_all j_pos j_lt by blast
+        obtain p where mp_p: "m_parent A (Suc m') (s + j) = Some p" and s_le_p: "s \<le> p"
+          using m_parent_ge_candidate_Suc[OF s_lt e_lt anc_r'] by blast
+        have p_lt: "p < s + j" using mp_p by (rule m_parent_lt)
+        show "m_ancestor A (Suc m') (s + j) s"
+        proof (cases "p = s")
+          case True
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        next
+          case False
+          from False s_le_p have s_lt_p: "s < p" by simp
+          obtain j' where p_eq: "p = s + j'" using s_le_p le_Suc_ex by blast
+          have j'_pos: "0 < j'" using s_lt_p p_eq by simp
+          have j'_lt_j: "j' < j" using p_lt p_eq by simp
+          have j'_lt: "j' < l1 A" using j'_lt_j j_lt by simp
+          have "m_ancestor A (Suc m') (s + j') s"
+            using less.hyps[OF j'_lt_j j'_pos j'_lt] .
+          hence "m_ancestor A (Suc m') p s" using p_eq by simp
+          thus ?thesis using m_anc_via_parent_some[OF mp_p] by blast
+        qed
+      qed
+    qed
+  qed
+qed
+
+text \<open>
+  \<^bold>\<open>Gateway residual @{text \<open>Suc m'\<close>} from predecessor domination.\<close>
+  The block-start candidacy of \<open>idx_B(n, 0)\<close> for the level-\<open>Suc m'\<close>
+  \<open>m\<close>-parent \<open>p\<close> of \<open>idx_B(n, a)\<close> reduces (via @{thm m_parent_Suc_candidate_le})
+  to two facts: the strict value bound at level \<open>Suc m'\<close> and the \<open>m'\<close>-ancestry
+  \<open>idx_B(n, 0)\<close> of \<open>idx_B(n, a)\<close> (the gateway property one level down, supplied
+  by the joint induction as \<open>anc_step\<close>).  The value bound transfers from
+  \<open>DOM A\<close>: with \<open>Suc m' < t\<close> both \<open>B\<^sub>0\<close> columns offset \<open>0\<close> and \<open>a\<close> ascend
+  (ancestry of \<open>s\<close> recovered from \<open>DOM A\<close> by
+  @{thm gateway_b0_col_ancestor_below_t_from_DOM}), so the block-\<open>n\<close> bump
+  \<open>n \<cdot> delta A (Suc m')\<close> is common to both copies and cancels, leaving the
+  original gap \<open>elem A s (Suc m') < elem A (s + a) (Suc m')\<close>.\<close>
+
+lemma gateway_Sucm_from_DOM:
+  fixes A :: array and n :: nat
+  assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
+      and b0: "b0_start A = Some s"
+      and mp: "max_parent_level A = Some t"
+      and l1_pos: "0 < l1 A"
+      and n_pos: "0 < n"
+      and a_pos: "0 < a" and a_lt: "a < l1 A"
+      and Sm_lt_t: "Suc m' < t"
+      and DOM: "\<And>m j. m < t \<Longrightarrow> 0 < j \<Longrightarrow> j < l1 A
+                  \<Longrightarrow> elem A s m < elem A (s + j) m"
+      and anc_step: "m_ancestor (A[n]) m' (idx_B_in_expansion A n a)
+                                          (idx_B_in_expansion A n 0)"
+      and mp_eq: "m_parent (A[n]) (Suc m') (idx_B_in_expansion A n a) = Some p"
+  shows "idx_B_in_expansion A n 0 \<le> p"
+proof -
+  \<comment> \<open>Geometric / arithmetic side facts.\<close>
+  have is_arr: "is_array A" using BMS_is_array[OF A_BMS] .
+  have s_lt_last: "s < last_col_idx A" by (rule b0_start_lt[OF b0 A_ne])
+  have last_lt_arr: "last_col_idx A < arr_len A" using A_ne by (cases A) auto
+  have last_lt_len: "last_col_idx A < length A" using A_ne by (cases A) auto
+  have B0_form: "B0_block A = take (last_col_idx A - s) (drop s A)"
+    using b0 by (simp add: B0_block_def)
+  have "length (B0_block A) = min (last_col_idx A - s) (length A - s)"
+    using B0_form by simp
+  also have "\<dots> = last_col_idx A - s" using s_lt_last last_lt_len by simp
+  finally have l1_eq: "l1 A = last_col_idx A - s" unfolding l1_def by simp
+  have last_eq: "last_col_idx A = s + l1 A" using l1_eq s_lt_last by simp
+  have t_pos: "0 < t" using Sm_lt_t by simp
+  have t_lt_H: "t < height A" using max_parent_level_lt[OF mp] .
+  \<comment> \<open>keep / column bounds at level \<open>Suc m' < t\<close>.\<close>
+  have keep_ge_t: "t \<le> keep_of (G_block A @ Bs_concat A n)"
+    using keep_of_pre_strip_ge_max_parent_level[OF A_BMS A_ne b0 mp n_pos] .
+  have keep: "Suc m' < keep_of (G_block A @ Bs_concat A n)"
+    using Sm_lt_t keep_ge_t by linarith
+  \<comment> \<open>columns \<open>s + 0\<close> and \<open>s + a\<close> have full height; \<open>Suc m' < t < height\<close>.\<close>
+  have s0_lt_arr: "s + 0 < arr_len A" using s_lt_last last_lt_arr by simp
+  have sa_lt_arr: "s + a < arr_len A"
+  proof -
+    have "s + a < s + l1 A" using a_lt by simp
+    also have "\<dots> = last_col_idx A" using last_eq by simp
+    also have "\<dots> < arr_len A" using last_lt_arr .
+    finally show ?thesis .
+  qed
+  have len0: "length (A ! (s + 0)) = height A"
+    using length_col_arr[OF is_arr A_ne s0_lt_arr] .
+  have lena: "length (A ! (s + a)) = height A"
+    using length_col_arr[OF is_arr A_ne sa_lt_arr] .
+  have col0: "Suc m' < length (A ! (s + 0))" using len0 Sm_lt_t t_lt_H by simp
+  have cola: "Suc m' < length (A ! (s + a))" using lena Sm_lt_t t_lt_H by simp
+  \<comment> \<open>Both \<open>B\<^sub>0\<close> columns ascend at level \<open>Suc m'\<close> (ancestry of \<open>s\<close> recovered
+      from \<open>DOM A\<close>).\<close>
+  have anc_a: "m_ancestor A (Suc m') (s + a) s"
+    using gateway_b0_col_ancestor_below_t_from_DOM[OF b0 mp DOM] Sm_lt_t a_pos a_lt
+    by blast
+  have nsa_a: "non_strict_ancestor A (Suc m') (s + a) s"
+    using anc_a unfolding non_strict_ancestor_def by simp
+  have asc_a: "ascends A a (Suc m')"
+    using b0 mp Sm_lt_t nsa_a by (simp add: ascends_def)
+  have nsa_0: "non_strict_ancestor A (Suc m') (s + 0) s"
+    unfolding non_strict_ancestor_def by simp
+  have asc_0: "ascends A 0 (Suc m')"
+    using b0 mp Sm_lt_t nsa_0 by (simp add: ascends_def)
+  \<comment> \<open>Closed forms of the two block-\<open>n\<close> copies at level \<open>Suc m'\<close>.\<close>
+  have a0_lt: "(0::nat) < l1 A" using l1_pos .
+  have v0: "elem (A[n]) (idx_B_in_expansion A n 0) (Suc m')
+          = (A ! (s + 0)) ! (Suc m') + n * delta A (Suc m')"
+    using elem_AEn_cross_block_when_ascends
+            [OF A_BMS A_ne b0 asc_0 order.refl a0_lt keep col0] .
+  have va: "elem (A[n]) (idx_B_in_expansion A n a) (Suc m')
+          = (A ! (s + a)) ! (Suc m') + n * delta A (Suc m')"
+    using elem_AEn_cross_block_when_ascends
+            [OF A_BMS A_ne b0 asc_a order.refl a_lt keep cola] .
+  \<comment> \<open>The base gap from \<open>DOM A\<close>.\<close>
+  have base: "elem A s (Suc m') < elem A (s + a) (Suc m')"
+    by (rule DOM[OF Sm_lt_t a_pos a_lt])
+  have base': "(A ! s) ! (Suc m') < (A ! (s + a)) ! (Suc m')"
+    using base by (simp add: elem_def)
+  have cand_lt: "elem (A[n]) (idx_B_in_expansion A n 0) (Suc m')
+               < elem (A[n]) (idx_B_in_expansion A n a) (Suc m')"
+    using v0 va base' by simp
+  \<comment> \<open>Index ordering and candidacy.\<close>
+  have idx_lt: "idx_B_in_expansion A n 0 < idx_B_in_expansion A n a"
+    using a_pos unfolding idx_B_in_expansion_def by simp
+  show ?thesis
+    using m_parent_Suc_candidate_le[OF mp_eq idx_lt cand_lt anc_step] .
+qed
+
 lemma m_parent_block_n_stays_until_zero:
   fixes A :: array and n :: nat
   assumes A_BMS: "A \<in> BMS" and A_ne: "A \<noteq> []"
